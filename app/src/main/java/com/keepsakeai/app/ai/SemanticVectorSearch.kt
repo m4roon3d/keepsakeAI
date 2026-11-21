@@ -75,8 +75,8 @@ class SemanticVectorSearch(private val keyStore: ApiKeyStore) {
      */
     fun computeLocalHashedEmbedding(text: String, dims: Int = 128): FloatArray {
         val vec = FloatArray(dims)
-        val normalized = text.lowercase(Locale.US).replace(Regex("[^a-z0-9\s]"), " ")
-        val tokens = normalized.split(Regex("\s+")).filter { it.length >= 2 }
+        val normalized = text.lowercase(Locale.US).replace(Regex("[^a-z0-9\\s]"), " ")
+        val tokens = normalized.split(Regex("\\s+")).filter { it.length >= 2 }
 
         for (token in tokens) {
             val h1 = abs(token.hashCode()) % dims

@@ -31,7 +31,7 @@ class SemanticVectorSearchTest {
 
     private fun computeStandaloneEmbedding(text: String, dims: Int = 128): FloatArray {
         val vec = FloatArray(dims)
-        val tokens = text.lowercase().replace(Regex("[^a-z0-9\s]"), " ").split(Regex("\s+")).filter { it.length >= 2 }
+        val tokens = text.lowercase().replace(Regex("[^a-z0-9\\s]"), " ").split(Regex("\\s+")).filter { it.length >= 2 }
         for (t in tokens) {
             vec[kotlin.math.abs(t.hashCode()) % dims] += 2.0f
             if (t.length >= 3) {
