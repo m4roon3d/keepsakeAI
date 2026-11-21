@@ -58,6 +58,7 @@ import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GlassToggle
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.Pill
+import com.keepsakeai.app.ui.components.LogoMark
 import com.keepsakeai.app.ui.components.simpleMarkdown
 import androidx.compose.ui.text.AnnotatedString
 import com.keepsakeai.app.ui.theme.Flow
@@ -207,6 +208,8 @@ fun MindPilotScreen(
         if (responses.isEmpty() && !isAsking) {
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
+                    LogoMark(Modifier.align(Alignment.CenterHorizontally), size = 64.dp)
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "Compare answers from Gemini, ChatGPT and Perplexity side by side, grounded in what you've saved, plus live web search, your location and today's date.",
                         color = c.muted,

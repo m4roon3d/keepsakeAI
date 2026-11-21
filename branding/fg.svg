@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+ <defs>
+  <radialGradient id="bgA" cx="30" cy="22" r="80" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#2A2470"/><stop offset="0.55" stop-color="#121735"/><stop offset="1" stop-color="#070A18"/>
+  </radialGradient>
+  <radialGradient id="bgGlow1" cx="22" cy="20" r="46" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#A855F7" stop-opacity="0.55"/><stop offset="1" stop-color="#A855F7" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="bgGlow2" cx="90" cy="92" r="50" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#22D3EE" stop-opacity="0.45"/><stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="halo" cx="54" cy="54" r="38" gradientUnits="userSpaceOnUse">
+   <stop offset="0.45" stop-color="#EC4899" stop-opacity="0.55"/><stop offset="0.75" stop-color="#6366F1" stop-opacity="0.25"/><stop offset="1" stop-color="#6366F1" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="body" x1="40" y1="28" x2="68" y2="80" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#FDBA74"/><stop offset="0.28" stop-color="#F472B6"/><stop offset="0.55" stop-color="#A855F7"/><stop offset="0.78" stop-color="#6366F1"/><stop offset="1" stop-color="#22D3EE"/>
+  </linearGradient>
+  <linearGradient id="depth" x1="40" y1="40" x2="70" y2="78" gradientUnits="userSpaceOnUse">
+   <stop offset="0.5" stop-color="#0B1020" stop-opacity="0"/><stop offset="1" stop-color="#0B1020" stop-opacity="0.35"/>
+  </linearGradient>
+  <linearGradient id="sheen" x1="42" y1="32" x2="50" y2="70" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.75"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="rim" x1="38" y1="27" x2="70" y2="81" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.35"/><stop offset="1" stop-color="#A5F3FC" stop-opacity="0.9"/>
+  </linearGradient>
+  <radialGradient id="sparkGlow" cx="54" cy="52" r="11" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.7"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </radialGradient>
+ </defs>
+  <circle cx="54" cy="54" r="38" fill="url(#halo)"/>
+  <path d="M54,27 C62.8,27 70,34.2 70,43 L70,65 C70,73.8 62.8,81 54,81 C45.2,81 38,73.8 38,65 L38,43 C38,34.2 45.2,27 54,27 Z" fill="url(#body)"/>
+  <path d="M54,27 C62.8,27 70,34.2 70,43 L70,65 C70,73.8 62.8,81 54,81 C45.2,81 38,73.8 38,65 L38,43 C38,34.2 45.2,27 54,27 Z" fill="url(#depth)"/>
+  <path d="M46.5,33 C43,35.5 41.5,39.5 41.5,44 L41.5,63 C41.5,66 42.3,68.6 43.8,70.8 C45.2,60 45.6,45 50.5,31.2 C49,31.6 47.7,32.2 46.5,33 Z" fill="url(#sheen)"/>
+  <path d="M54,31.5 C60.4,31.5 65.5,36.6 65.5,43 L65.5,65 C65.5,71.4 60.4,76.5 54,76.5 C47.6,76.5 42.5,71.4 42.5,65 L42.5,43 C42.5,36.6 47.6,31.5 54,31.5 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="0.9"/>
+  <path d="M54,27 C62.8,27 70,34.2 70,43 L70,65 C70,73.8 62.8,81 54,81 C45.2,81 38,73.8 38,65 L38,43 C38,34.2 45.2,27 54,27 Z" fill="none" stroke="url(#rim)" stroke-width="1.6"/>
+  <circle cx="54" cy="52" r="11" fill="url(#sparkGlow)"/>
+  <path d="M54,42.5 C54.9,48.3 56.2,50.1 62,51.5 C56.2,52.9 54.9,54.7 54,60.5 C53.1,54.7 51.8,52.9 46,51.5 C51.8,50.1 53.1,48.3 54,42.5 Z" fill="#FFFFFF"/>
+  <path d="M61.5,40 C61.8,41.9 62.2,42.4 64,42.8 C62.2,43.2 61.8,43.7 61.5,45.6 C61.2,43.7 60.8,43.2 59,42.8 C60.8,42.4 61.2,41.9 61.5,40 Z" fill="#FFFFFF" fill-opacity="0.85"/>
+</svg>

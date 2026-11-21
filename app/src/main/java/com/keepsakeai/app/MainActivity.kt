@@ -10,6 +10,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,6 +38,7 @@ import com.keepsakeai.app.ui.screens.MindPilotScreen
 import com.keepsakeai.app.ui.screens.SettingsScreen
 import com.keepsakeai.app.ui.screens.SnapsakeScreen
 import com.keepsakeai.app.ui.theme.MindSpaceTheme
+import com.keepsakeai.app.ui.theme.isFlowDark
 
 class MainActivity : ComponentActivity() {
 
@@ -49,6 +52,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MindSpaceTheme {
+                val dark = isFlowDark()
+                DisposableEffect(dark) {
+                    // Keep status/nav bar icons readable when the in-app mode differs from the system's.
+                    val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                    onDispose { }
+                }
                 var selectedTab by rememberSaveable { mutableIntStateOf(TAB_HOME) }
 
                 val projectionLauncher = rememberLauncherForActivityResult(

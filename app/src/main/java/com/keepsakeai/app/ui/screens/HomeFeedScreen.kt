@@ -68,6 +68,7 @@ import com.keepsakeai.app.ui.components.GlassCard
 import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.GradientCard
+import com.keepsakeai.app.ui.components.LogoMark
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.components.SectionLabel
 import com.keepsakeai.app.ui.theme.Flow
@@ -128,7 +129,12 @@ fun HomeFeedScreen(
         verticalItemSpacing = 10.dp
     ) {
         item(span = StaggeredGridItemSpan.FullLine) {
-            FlowHeader(eyebrow = "Living Flow Hub", title = "keepsake", gradientSuffix = "AI") {
+            FlowHeader(
+                eyebrow = "Your memory hub",
+                title = "keepsake",
+                gradientSuffix = "AI",
+                leading = { LogoMark(size = 46.dp) }
+            ) {
                 GlassButton("Snap", onClick = onTriggerScreenSnap, icon = Icons.Rounded.Screenshot)
             }
         }

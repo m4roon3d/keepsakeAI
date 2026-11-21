@@ -324,6 +324,7 @@ fun FlowHeader(
     title: String,
     modifier: Modifier = Modifier,
     gradientSuffix: String? = null,
+    leading: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
     val c = LocalFlow.current
@@ -331,6 +332,10 @@ fun FlowHeader(
         modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (leading != null) {
+            leading()
+            Spacer(Modifier.width(10.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(eyebrow, color = c.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Text(

@@ -9,6 +9,7 @@ import com.keepsakeai.app.ai.SemanticVectorSearch
 import com.keepsakeai.app.capture.OcrProcessor
 import com.keepsakeai.app.data.local.MindSpaceDatabase
 import com.keepsakeai.app.data.preferences.ApiKeyStore
+import com.keepsakeai.app.ui.theme.ThemeStore
 import com.keepsakeai.app.worker.DailyDigestWorker
 import java.util.concurrent.TimeUnit
 
@@ -27,6 +28,7 @@ class MindSpaceApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        ThemeStore.load(this)
         database = MindSpaceDatabase.getInstance(this)
         apiKeyStore = ApiKeyStore(this)
         mindPilotClient = MultiModelMindPilotClient(apiKeyStore)
