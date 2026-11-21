@@ -28,7 +28,7 @@ object LinkContentExtractor {
         .followRedirects(true)
         .build()
 
-    private val urlRegex = Regex("""https?://\\S+""", RegexOption.IGNORE_CASE)
+    private val urlRegex = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
 
     fun extractFirstUrl(text: String): String? = urlRegex.find(text)?.value?.trimEnd('.', ',', ')')
 

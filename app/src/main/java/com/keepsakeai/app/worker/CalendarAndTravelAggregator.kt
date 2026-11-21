@@ -23,8 +23,8 @@ data class TravelCardHighlight(
 
 object CalendarAndTravelAggregator {
 
-    private val pnrRegex = Regex("""(?:pnr|booking\\s*id)[:\\s#-]*([A-Z0-9]{6,10})""", RegexOption.IGNORE_CASE)
-    private val flightRegex = Regex("""\\b(6E|AI|UK|SG|QP|IX)[-\\s]?(\\d{3,4})\\b""")
+    private val pnrRegex = Regex("""(?:pnr|booking\s*id)[:\s#-]*([A-Z0-9]{6,10})""", RegexOption.IGNORE_CASE)
+    private val flightRegex = Regex("""\b(6E|AI|UK|SG|QP|IX)[-\s]?(\d{3,4})\b""")
 
     fun getUpcomingCalendarEvents(context: Context, nextHours: Long = 48L): List<UpcomingCalendarEvent> {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {

@@ -18,15 +18,15 @@ object UpiMessageParser {
     private val upiIndicators = listOf("upi", "vpa", "gpay", "phonepe", "paytm", "bhim", "ref no", "utr")
 
     private val amountRegex = Regex(
-        """(?:rs\\.?|inr|₹)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)""",
+        """(?:rs\.?|inr|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)""",
         RegexOption.IGNORE_CASE
     )
     private val merchantRegex = Regex(
-        """(?:to|at|vpa|info:?\\s*upi/?[a-z0-9]*/?)\\s+([A-Za-z0-9@._\\-\\s]{2,36}?)(?=\\s+(?:on|via|ref|utr|upi|avl|bal|from|using)|[.,;\\n]|$)""",
+        """(?:to|at|vpa|info:?\s*upi/?[a-z0-9]*/?)\s+([A-Za-z0-9@._\-\s]{2,36}?)(?=\s+(?:on|via|ref|utr|upi|avl|bal|from|using)|[.,;\n]|$)""",
         RegexOption.IGNORE_CASE
     )
     private val utrRegex = Regex(
-        """(?:utr|ref(?:\\s*no)?|upi\\s*ref)[:\\s#-]*([0-9]{10,16})""",
+        """(?:utr|ref(?:\s*no)?|upi\s*ref)[:\s#-]*([0-9]{10,16})""",
         RegexOption.IGNORE_CASE
     )
 
