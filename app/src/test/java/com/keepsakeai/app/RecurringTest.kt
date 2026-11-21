@@ -15,8 +15,8 @@ import org.junit.Test
 
 class RecurringTest {
     private val now = 1_795_000_000_000L
-    private fun e(m: String, amt: Double, daysAgo: Double, cat: String = "Other") =
-        ExpenseEntity(merchant = m, amount = amt, category = cat, sourceMethod = "UPI · HDFC Bank", timestamp = now - (daysAgo * DAY).toLong())
+    private fun e(m: String, amt: Double, daysAgo: Number, cat: String = "Other") =
+        ExpenseEntity(merchant = m, amount = amt, category = cat, sourceMethod = "UPI · HDFC Bank", timestamp = now - (daysAgo.toDouble() * DAY).toLong())
 
     @Test
     fun findsMonthlySubscriptionWithTwoCharges() {
