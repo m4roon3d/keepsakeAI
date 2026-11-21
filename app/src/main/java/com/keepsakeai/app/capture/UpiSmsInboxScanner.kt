@@ -36,6 +36,8 @@ object UpiSmsInboxScanner {
                     val sender = if (addrIdx >= 0) cursor.getString(addrIdx).orEmpty() else ""
                     val body = if (bodyIdx >= 0) cursor.getString(bodyIdx).orEmpty() else ""
                     val ts = if (dateIdx >= 0) cursor.getLong(dateIdx) else System.currentTimeMillis()
+                    // Banks and UPI apps send from short codes (e.g. AX-ICICIT); skip personal numbers.
+                    if (Regex("""^\+?[0-9 ()-]{7,}$""").matches(sender.trim())) continue
                     val parsed = UpiMessageParser.parse(sender, body)
                     if (parsed != null) {
                         results.add(
@@ -54,6 +56,26 @@ object UpiSmsInboxScanner {
                 }
             }
         }
-        return results
+        return dedupe(results)
+    }
+
+    /**
+     * Phones often keep the same SMS twice (dual SIM, RCS, OEM backups) and banks
+     * sometimes send a debit alert twice. Collapse by UPI ref, else by same amount
+     * within five minutes.
+     */
+    private fun dedupe(items: List<PendingUpiTransactionEntity>): List<PendingUpiTransactionEntity> {
+        val out = mutableListOf<PendingUpiTransactionEntity>()
+        val refs = HashSet<String>()
+        for (it in items) {
+            val ref = it.utrRef
+            if (ref != null) {
+                if (!refs.add(ref)) continue
+            } else if (out.any { o -> o.utrRef == null && o.amount == it.amount && kotlin.math.abs(o.receivedAt - it.receivedAt) < 5 * 60_000 }) {
+                continue
+            }
+            out.add(it)
+        }
+        return out
     }
 }

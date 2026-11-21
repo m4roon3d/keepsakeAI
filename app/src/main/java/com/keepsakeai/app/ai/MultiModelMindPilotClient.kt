@@ -52,6 +52,30 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     }
 
     /**
+     * Sorts payee names the keyword rules couldn't place, in one Gemini call.
+     * Returns name → category; empty when there's no key or the call fails.
+     */
+    suspend fun categorizeMerchants(names: List<String>): Map<String, String> = withContext(Dispatchers.IO) {
+        val key = keyStore.geminiKey
+        if (key.isBlank() || names.isEmpty()) return@withContext emptyMap()
+        val allowed = listOf("Food", "Transport", "Shopping", "Bills", "Entertainment", "Health", "Other")
+        val prompt = buildString {
+            append("Classify each Indian merchant or UPI payee below into exactly one of: ")
+            append(allowed.joinToString(", "))
+            append(". Person names and phone-number payees are Other. ")
+            append("Reply with ONLY a JSON object mapping each name exactly as given to its category.\n\n")
+            names.forEach { append(it).append('\n') }
+        }
+        val r = callGemini(key, prompt)
+        if (r.isError) return@withContext emptyMap()
+        runCatching {
+            val json = r.content.substringAfter('{', "").substringBeforeLast('}', "")
+            val obj = JSONObject("{$json}")
+            names.mapNotNull { n -> obj.optString(n).takeIf { it in allowed }?.let { n to it } }.toMap()
+        }.getOrDefault(emptyMap())
+    }
+
+    /**
      * Mind Pilot Ask Mode: queries selected AI models in parallel using saved MindSpace memories as context.
      */
     suspend fun askMindPilot(

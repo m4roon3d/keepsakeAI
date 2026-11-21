@@ -58,11 +58,21 @@ interface MindSpaceDao {
     @Query("SELECT COUNT(*) FROM expenses WHERE notes = :note")
     suspend fun countExpensesByNote(note: String): Int
 
-    @Query("SELECT COUNT(*) FROM pending_upi_transactions WHERE amount = :amount AND receivedAt = :receivedAt")
-    suspend fun countPendingByAmountTime(amount: Double, receivedAt: Long): Int
+    @Query("SELECT COUNT(*) FROM pending_upi_transactions WHERE amount = :amount AND receivedAt BETWEEN :from AND :to")
+    suspend fun countPendingByAmountWindow(amount: Double, from: Long, to: Long): Int
 
-    @Query("SELECT COUNT(*) FROM expenses WHERE amount = :amount AND timestamp = :timestamp")
-    suspend fun countExpensesByAmountTime(amount: Double, timestamp: Long): Int
+    @Query("SELECT COUNT(*) FROM expenses WHERE amount = :amount AND timestamp BETWEEN :from AND :to")
+    suspend fun countExpensesByAmountWindow(amount: Double, from: Long, to: Long): Int
+
+    /** Expenses that came from UPI / bank messages (old "UPI (Bank)" and new "Channel · Bank" formats). */
+    @Query("DELETE FROM expenses WHERE sourceMethod LIKE 'UPI (%' OR sourceMethod LIKE '% · %'")
+    suspend fun deleteImportedExpenses(): Int
+
+    @Query("DELETE FROM memories WHERE source = 'UPI_MESSAGE'")
+    suspend fun deleteUpiMemories(): Int
+
+    @Query("SELECT COUNT(*) FROM expenses WHERE sourceMethod LIKE 'UPI (%' OR sourceMethod LIKE '% · %'")
+    fun observeImportedCount(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPendingUpi(item: PendingUpiTransactionEntity): Long

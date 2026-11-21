@@ -196,7 +196,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     currency = item.currency,
                     category = categoryOverride,
                     notes = item.utrRef?.let { "UTR: $it" } ?: item.bankOrApp,
-                    sourceMethod = "UPI (${item.bankOrApp})",
+                    sourceMethod = if (" · " in item.bankOrApp) item.bankOrApp else "UPI · ${item.bankOrApp}",
                     timestamp = item.receivedAt
                 )
             )
@@ -205,7 +205,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 MemoryEntity(
                     title = "${item.merchant} — ${item.currency} ${item.amount}",
                     rawContent = item.rawMessage,
-                    aiSummary = "Approved UPI payment via ${item.bankOrApp} ($categoryOverride).",
+                    aiSummary = "Approved payment via ${item.bankOrApp} ($categoryOverride).",
                     collectionName = "Receipts",
                     source = CaptureSource.UPI_MESSAGE,
                     tagsCsv = "upi,receipt,${categoryOverride.lowercase()}",
@@ -239,18 +239,26 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             val found = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanRecentInbox(app, days) }
             val dismissed = dismissedUpiKeys()
             var added = 0
+            val fresh = mutableListOf<PendingUpiTransactionEntity>()
             found.forEach { item ->
                 val key = upiKey(item)
                 val seen = key in dismissed || if (item.utrRef != null) {
                     dao.countPendingByUtr(item.utrRef) > 0 || dao.countExpensesByNote("UTR: ${item.utrRef}") > 0
                 } else {
-                    dao.countPendingByAmountTime(item.amount, item.receivedAt) > 0 ||
-                        dao.countExpensesByAmountTime(item.amount, item.receivedAt) > 0
+                    val from = item.receivedAt - 5 * 60_000
+                    val to = item.receivedAt + 5 * 60_000
+                    dao.countPendingByAmountWindow(item.amount, from, to) > 0 ||
+                        dao.countExpensesByAmountWindow(item.amount, from, to) > 0
                 }
-                if (!seen) {
-                    dao.insertPendingUpi(item)
-                    added++
-                }
+                if (!seen) fresh.add(item)
+            }
+            // Let AI sort payees the keyword rules couldn't place.
+            val unknown = fresh.filter { it.suggestedCategory == "Other" && !it.merchant.endsWith(" payment") }
+                .map { it.merchant }.distinct().take(80)
+            val aiCats = if (unknown.isEmpty()) emptyMap() else app.mindPilotClient.categorizeMerchants(unknown)
+            fresh.forEach { item ->
+                dao.insertPendingUpi(aiCats[item.merchant]?.let { item.copy(suggestedCategory = it) } ?: item)
+                added++
             }
             isScanningSms.value = false
             statusMessage.value = when {
@@ -258,6 +266,35 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 added == 0 -> "All ${found.size} payments already imported"
                 else -> "Found $added new payment${if (added > 1) "s" else ""} to review"
             }
+        }
+    }
+
+    val importedCount: StateFlow<Int> = dao.observeImportedCount()
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
+
+    /** Removes every payment that came from messages (approved + waiting) so a clean re-import is possible. */
+    fun removeImportedPayments() {
+        viewModelScope.launch {
+            val n = dao.deleteImportedExpenses()
+            dao.deleteUpiMemories()
+            dao.clearPendingUpi()
+            app.getSharedPreferences("upi_prefs", android.content.Context.MODE_PRIVATE).edit().remove("dismissed").apply()
+            runCatching { MindSpaceWidget().updateAll(app) }
+            statusMessage.value = "Removed $n imported payment${if (n == 1) "" else "s"}"
+        }
+    }
+
+    fun clearPendingUpi() {
+        viewModelScope.launch {
+            pendingUpi.value.forEach { rememberDismissed(it) }
+            dao.clearPendingUpi()
+        }
+    }
+
+    fun deleteExpense(expense: ExpenseEntity) {
+        viewModelScope.launch {
+            dao.deleteExpense(expense)
+            statusMessage.value = "Deleted ${expense.merchant}"
         }
     }
 

@@ -15,7 +15,8 @@ class UpiMessageParserTest {
         assertNotNull(parsed)
         assertEquals(486.0, parsed!!.amount, 0.01)
         assertEquals("Food", parsed.category)
-        assertEquals("HDFC Bank", parsed.bankOrApp)
+        assertEquals("UPI · HDFC Bank", parsed.bankOrApp)
+        assertEquals("Swiggy Instamart", parsed.merchant)
         assertEquals("432618904512", parsed.utrRef)
     }
 
@@ -55,5 +56,45 @@ class UpiMessageParserTest {
         assertNotNull(parsed)
         assertEquals(1250.0, parsed!!.amount, 0.01)
         assertEquals("Bills", parsed.category)
+    }
+
+    @Test
+    fun iciciUpiDebitIgnoresSmsBlockNumberAndReadsUpiRef() {
+        val sms = "ICICI Bank Acct XX821 debited for Rs 176.00 on 20-Nov-26; COFFEE DAY credited. UPI:432618904512. Call 18002662 for dispute. SMS BLOCK 821 to 9215676766."
+        val p = UpiMessageParser.parse("AX-ICICIT", sms)
+        assertNotNull(p)
+        assertEquals(176.0, p!!.amount, 0.01)
+        assertEquals("Coffee Day", p.merchant)
+        assertEquals("432618904512", p.utrRef)
+        assertEquals("UPI · ICICI Bank", p.bankOrApp)
+        assertEquals("Food", p.category)
+    }
+
+    @Test
+    fun phoneNumberPayeeFallsBackToBankName() {
+        val sms = "ICICI Bank Acct XX821 debited for Rs 226.00 on 20-Nov-26; 9876543210 credited. UPI:432618904999. Call 18002662 for dispute. SMS BLOCK 821 to 9215676766."
+        val p = UpiMessageParser.parse("AX-ICICIT", sms)
+        assertNotNull(p)
+        assertEquals("ICICI Bank payment", p!!.merchant)
+    }
+
+    @Test
+    fun neverTakesAvailableBalanceAsAmount() {
+        val sms = "Avl Bal Rs 2,45,000.00. Your A/c XX12 debited for INR 499.00 at NETFLIX on 21-11-26."
+        val p = UpiMessageParser.parse("JD-HDFCBK", sms)
+        assertNotNull(p)
+        assertEquals(499.0, p!!.amount, 0.01)
+        assertEquals("Entertainment", p.category)
+    }
+
+    @Test
+    fun sbiUpiInfoFormat() {
+        val sms = "Dear UPI user A/C X1234 debited by 60.0 on date 20Nov26 trf to ZEPTO MARKETPLACE Refno 432600011122. If not u? call 1800111109 -SBI"
+        val p = UpiMessageParser.parse("VM-SBIUPI", sms)
+        assertNotNull(p)
+        assertEquals(60.0, p!!.amount, 0.01)
+        assertEquals("Zepto Marketplace", p.merchant)
+        assertEquals("432600011122", p.utrRef)
+        assertEquals("Food", p.category)
     }
 }

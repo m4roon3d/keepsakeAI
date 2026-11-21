@@ -33,13 +33,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.LocalHospital
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Theaters
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.keepsakeai.app.data.local.ExpenseEntity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,12 +76,13 @@ import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.GradientCard
 import com.keepsakeai.app.ui.components.Pill
+import com.keepsakeai.app.ui.components.SectionLabel
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
 import java.text.NumberFormat
 import java.util.Locale
 
-private val categories = listOf("Food", "Transport", "Shopping", "Bills", "Entertainment", "Other")
+private val categories = listOf("Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Cash", "Other")
 
 private fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Food" -> Icons.Rounded.Restaurant to Flow.Amber
@@ -82,6 +90,8 @@ private fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Shopping" -> Icons.Rounded.ShoppingBag to Flow.Pink
     "Bills" -> Icons.Rounded.Receipt to Flow.Indigo
     "Entertainment" -> Icons.Rounded.Theaters to Flow.Purple
+    "Health" -> Icons.Rounded.LocalHospital to Flow.Rose
+    "Cash" -> Icons.Rounded.Payments to Flow.Emerald
     else -> Icons.Rounded.Receipt to Flow.Teal
 }
 
@@ -116,6 +126,36 @@ fun ExpensesScreen(
     var smsDays by remember { mutableStateOf(30) }
     var smsBlocked by remember { mutableStateOf(false) }
     val scanningSms by viewModel.isScanningSms.collectAsState()
+    val importedCount by viewModel.importedCount.collectAsState()
+    var confirmRemoveAll by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
+
+    if (confirmRemoveAll) {
+        AlertDialog(
+            onDismissRequest = { confirmRemoveAll = false },
+            title = { Text("Remove imported payments?") },
+            text = { Text("This deletes all $importedCount payments imported from messages, plus anything waiting for approval. Payments you logged yourself stay. You can scan again afterwards.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.removeImportedPayments(); confirmRemoveAll = false }) {
+                    Text("Remove", color = Flow.Rose, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemoveAll = false }) { Text("Cancel") } }
+        )
+    }
+    confirmDelete?.let { exp ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            title = { Text("Delete this payment?") },
+            text = { Text("${exp.merchant} · ${money(exp.currency, exp.amount)}") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteExpense(exp); confirmDelete = null }) {
+                    Text("Delete", color = Flow.Rose, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } }
+        )
+    }
     val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         smsBlocked = !granted
         if (granted) viewModel.scanSmsInboxForUpi(smsDays)
@@ -186,7 +226,17 @@ fun ExpensesScreen(
                     )
                 }
                 Spacer(Modifier.height(6.dp))
-                Text("Read on your phone only. Nothing is uploaded; you approve each payment.", fontSize = 11.sp, color = c.muted)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Read on your phone only. You approve each payment.", fontSize = 11.sp, color = c.muted, modifier = Modifier.weight(1f))
+                    if (importedCount > 0 || pendingUpi.isNotEmpty()) {
+                        Text(
+                            "Remove imported",
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { confirmRemoveAll = true }
+                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -210,6 +260,10 @@ fun ExpensesScreen(
                             style = MaterialTheme.typography.titleSmall,
                             color = if (c.dark) Color(0xFFFCD34D) else Color(0xFF78350F),
                             modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            "Clear", color = c.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.clearPendingUpi() }.padding(6.dp)
                         )
                         Text(
                             "Approve all", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 13.sp,
@@ -304,9 +358,16 @@ fun ExpensesScreen(
             }
         }
 
+        if (expenses.isNotEmpty()) {
+            item { SectionLabel("Payments", trailing = "Long-press to delete") }
+        }
+
         items(expenses, key = { it.id }) { exp ->
             val (icon, tint) = categoryIcon(exp.category)
-            GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), padding = PaddingValues(12.dp)) {
+            GlassCard(
+                Modifier.fillMaxWidth().pointerInput(exp.id) { detectTapGestures(onLongPress = { confirmDelete = exp }) },
+                shape = RoundedCornerShape(20.dp), padding = PaddingValues(12.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(38.dp).clip(CircleShape).background(tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                         Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp))
