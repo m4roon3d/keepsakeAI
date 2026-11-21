@@ -28,12 +28,13 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
      * Analyzes any captured text, OCR screenshot, or voice transcript.
      * Falls back to deterministic local heuristics if no API key is configured.
      */
-    suspend fun analyzeCapture(rawText: String): AnalyzedCapture = withContext(Dispatchers.IO) {
+    suspend fun analyzeCapture(rawText: String, imageJpeg: ByteArray? = null): AnalyzedCapture = withContext(Dispatchers.IO) {
         val geminiKey = keyStore.geminiKey
         if (geminiKey.isNotBlank()) {
             val now = java.text.SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", java.util.Locale.ENGLISH).format(java.util.Date())
             val prompt = """
                 Today is $now (timezone ${java.util.TimeZone.getDefault().id}).
+                {{PHOTO}}
                 Analyze this captured content and return ONLY valid JSON with keys:
                 "title" (short 3-6 words),
                 "summary" (1-2 crisp sentences),
@@ -42,13 +43,16 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 "expense" (null, OR object {"merchant": string, "amount": number, "currency": string, "category": one of "Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"}),
                 "thread" (2-4 word name of the ongoing trip, project, event or topic this belongs to, e.g. "Goa trip", "Home loan", "Spark course"; null if standalone),
                 "facts" (array, at most 3, of lasting facts ABOUT THE USER that the content clearly states, as objects {"fact": short sentence, "category": one of "Profile", "Preferences", "Health", "Work", "People", "Places", "Money"}; empty array if none — never guess),
-                "reminder" (null, OR {"title": short action like "Pay BESCOM bill", "datetime": ISO 8601 local date-time like 2026-11-28T09:00, "kind": "due" | "event" | "deadline"} when the content has a specific FUTURE date or time worth remembering).
+                "reminder" (null, OR {"title": short action like "Pay BESCOM bill" or "Harris Jayaraj concert", "datetime": ISO 8601 local date-time like 2026-11-28T19:00 (use 09:00 when no time is given), "has_time": true only if a start time is actually stated, "kind": "due" | "event" | "deadline"} when the content has a specific FUTURE date worth remembering; for posters and tickets put the venue in the summary).
 
                 Captured content:
                 {{RAW}}
-            """.trimIndent().replace("{{RAW}}", rawText.take(6000))
+            """.trimIndent().replace("{{RAW}}", rawText.take(6000)).replace(
+                "{{PHOTO}}",
+                if (imageJpeg != null) "A photo of the capture is attached. Read ALL text in it in any language (Tamil, Hindi, Kannada, handwriting, stylised poster fonts) plus visual details, and combine it with the on-device text below, which may be incomplete or garbled. Write the title and summary in English." else ""
+            )
 
-            val result = callGemini(geminiKey, prompt, feature = "sort capture")
+            val result = callGemini(geminiKey, prompt, feature = "sort capture", imageJpeg = imageJpeg)
             if (!result.isError) {
                 parseAnalyzedJson(result.content, rawText)?.let { return@withContext it }
             }
@@ -188,17 +192,25 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         runCatching { auditSink?.invoke(provider, feature, prompt) }
     }
 
-    private fun callGemini(apiKey: String, prompt: String, grounded: Boolean = false, feature: String = "ask pilot"): MindPilotResponse {
-        audit("Gemini", if (grounded) "$feature + web search" else feature, prompt)
-        val bodyObj = JSONObject().put(
-            "contents",
-            JSONArray().put(
+    private fun callGemini(
+        apiKey: String,
+        prompt: String,
+        grounded: Boolean = false,
+        feature: String = "ask pilot",
+        imageJpeg: ByteArray? = null,
+    ): MindPilotResponse {
+        audit("Gemini", feature + (if (grounded) " + web search" else "") + (if (imageJpeg != null) " + photo" else ""), prompt)
+        val parts = JSONArray()
+        if (imageJpeg != null) {
+            parts.put(
                 JSONObject().put(
-                    "parts",
-                    JSONArray().put(JSONObject().put("text", prompt))
+                    "inline_data",
+                    JSONObject().put("mime_type", "image/jpeg").put("data", android.util.Base64.encodeToString(imageJpeg, android.util.Base64.NO_WRAP))
                 )
             )
-        )
+        }
+        parts.put(JSONObject().put("text", prompt))
+        val bodyObj = JSONObject().put("contents", JSONArray().put(JSONObject().put("parts", parts)))
         if (grounded) {
             // Live Google Search grounding: weather, news, places.
             bodyObj.put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
@@ -230,7 +242,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         return@use null
                     }
                     if (!resp.isSuccessful) {
-                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false, feature = feature)
+                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false, feature = feature, imageJpeg = imageJpeg)
                         return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
                     }
                     val parts = JSONObject(raw)
@@ -346,8 +358,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                             .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
                     }.getOrNull()
                     val title = r.optString("title")
-                    if (at != null && at > System.currentTimeMillis() && title.isNotBlank())
-                        ReminderSuggestion(title.take(60), at, r.optString("kind", "event")) else null
+                    if (at != null && at > System.currentTimeMillis() - 12 * 60 * 60 * 1000 && title.isNotBlank())
+                        ReminderSuggestion(title.take(60), at, r.optString("kind", "event"), r.optBoolean("has_time", true)) else null
                 }
             )
         }.getOrNull()

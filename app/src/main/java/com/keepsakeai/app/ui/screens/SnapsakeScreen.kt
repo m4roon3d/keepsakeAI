@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -165,6 +166,14 @@ fun SnapsakeScreen(
         } catch (e: ActivityNotFoundException) {
             pendingCameraFile = null
             error = "No camera app found on this phone."
+        }
+    }
+
+    val auto by viewModel.autoCamera.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(auto) {
+        if (auto) {
+            viewModel.autoCamera.value = false
+            openCamera()
         }
     }
 

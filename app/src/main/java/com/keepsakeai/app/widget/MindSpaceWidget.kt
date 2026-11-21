@@ -251,7 +251,7 @@ private fun RecentList(d: WidgetData, p: Palette, rows: Int) {
 @Composable
 private fun Actions(d: WidgetData, orb: Bitmap) {
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        GlassAction("snap", "snapsake", GlanceModifier.defaultWeight())
+        GlassAction("snap", "camera", GlanceModifier.defaultWeight())
         Spacer(GlanceModifier.width(6.dp))
         GlassAction(if (d.pendingUpi > 0) "review ${d.pendingUpi}" else "spend", "spend", GlanceModifier.defaultWeight())
         Spacer(GlanceModifier.width(6.dp))

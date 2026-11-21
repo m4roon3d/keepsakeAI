@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: snap straight into the camera, or ask Pilot. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="snap"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_snap"
+        android:shortcutShortLabel="@string/shortcut_snap"
+        android:shortcutLongLabel="@string/shortcut_snap_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.keepsakeai.app"
+            android:targetClass="com.keepsakeai.app.MainActivity">
+            <extra android:name="open_tab" android:value="camera" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="pilot"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_pilot"
+        android:shortcutShortLabel="@string/shortcut_pilot"
+        android:shortcutLongLabel="@string/shortcut_pilot_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.keepsakeai.app"
+            android:targetClass="com.keepsakeai.app.MainActivity">
+            <extra android:name="open_tab" android:value="pilot" />
+        </intent>
+    </shortcut>
+</shortcuts>

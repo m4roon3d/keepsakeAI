@@ -142,6 +142,7 @@ dependencies {
 
     // UPI QR codes for bill splitting
     implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     testImplementation("junit:junit:4.13.2")
 

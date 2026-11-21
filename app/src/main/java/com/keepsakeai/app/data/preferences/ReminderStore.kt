@@ -13,7 +13,13 @@ data class KeepReminder(
     val memoryId: Long,
     val status: String = "suggested",
     val notifyAt: Long = 0L,
-)
+    /** False when only a date was found (e.g. a poster without a show time). */
+    val hasTime: Boolean = true,
+) {
+    /** Date-only reminders stay visible for the whole day. */
+    fun isUpcoming(now: Long = System.currentTimeMillis()) =
+        status != "dismissed" && atMillis + (if (hasTime) 0L else 15L * 60 * 60 * 1000) > now
+}
 
 /** Reminders live in preferences (no database migration needed). */
 class ReminderStore(context: Context) {
@@ -25,7 +31,7 @@ class ReminderStore(context: Context) {
             val o = arr.getJSONObject(i)
             KeepReminder(
                 o.getLong("id"), o.getString("title"), o.getLong("at"), o.optString("kind", "event"),
-                o.optLong("memoryId"), o.optString("status", "suggested"), o.optLong("notifyAt")
+                o.optLong("memoryId"), o.optString("status", "suggested"), o.optLong("notifyAt"), o.optBoolean("hasTime", true)
             )
         }
     }.getOrDefault(emptyList())
@@ -36,7 +42,7 @@ class ReminderStore(context: Context) {
         val cutoff = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
         items.filter { it.atMillis > cutoff }.takeLast(200).forEach {
             arr.put(JSONObject().put("id", it.id).put("title", it.title).put("at", it.atMillis).put("kind", it.kind)
-                .put("memoryId", it.memoryId).put("status", it.status).put("notifyAt", it.notifyAt))
+                .put("memoryId", it.memoryId).put("status", it.status).put("notifyAt", it.notifyAt).put("hasTime", it.hasTime))
         }
         prefs.edit().putString("items", arr.toString()).apply()
     }

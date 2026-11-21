@@ -201,6 +201,7 @@ class MainActivity : FragmentActivity() {
         when (intent.getStringExtra(EXTRA_OPEN_TAB)) {
             "home" -> requestedTab.intValue = TAB_HOME
             "snapsake" -> requestedTab.intValue = TAB_SNAPSAKE
+            "camera" -> { requestedTab.intValue = TAB_SNAPSAKE; viewModel.autoCamera.value = true }
             "pilot" -> requestedTab.intValue = TAB_PILOT
             "spend" -> requestedTab.intValue = TAB_SPEND
             "settings" -> requestedTab.intValue = TAB_SETTINGS

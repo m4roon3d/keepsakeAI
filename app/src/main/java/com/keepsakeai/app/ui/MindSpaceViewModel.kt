@@ -104,7 +104,9 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             val fetched = link?.let { runCatching { com.keepsakeai.app.capture.LinkContentExtractor.fetch(it) }.getOrNull() }
             val enriched = if (fetched != null) "$text\n\n${fetched.platform}: ${fetched.title}\n${fetched.bodyText.take(3000)}" else text
 
-            val analyzed = app.mindPilotClient.analyzeCapture(enriched)
+            // Let Gemini see the photo too (Tamil text, handwriting, posters), not just on-device OCR.
+            val jpeg = photoUri?.let { p -> withContext(Dispatchers.IO) { com.keepsakeai.app.capture.ImagePrep.jpegForAi(app, Uri.parse(p)) } }
+            val analyzed = app.mindPilotClient.analyzeCapture(enriched, jpeg)
             val embedInput = "${analyzed.title} ${analyzed.summary} $text ${analyzed.tags.joinToString(" ")}"
             val vector = app.vectorSearch.embedText(embedInput)
 
@@ -141,7 +143,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
             analyzed.reminder?.let { r ->
-                reminderStore.add(KeepReminder(id = System.currentTimeMillis(), title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId))
+                reminderStore.add(KeepReminder(id = System.currentTimeMillis(), title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId, hasTime = r.hasTime))
                 reminders.value = reminderStore.all()
             }
             refreshWidget()
@@ -184,7 +186,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val reminders = MutableStateFlow(reminderStore.all())
 
     fun scheduleReminder(r: KeepReminder) {
-        val at = com.keepsakeai.app.worker.ReminderWorker.schedule(app, r)
+        val at = com.keepsakeai.app.worker.ReminderWorker.schedule(app, r).first()
         reminderStore.update(r.id) { it.copy(status = "scheduled", notifyAt = at) }
         reminders.value = reminderStore.all()
         statusMessage.value = "I'll remind you " + java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.ENGLISH).format(java.util.Date(at))
@@ -199,19 +201,16 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     fun captureImageUri(uri: Uri, source: CaptureSource = CaptureSource.CAMERA_SCAN) {
         viewModelScope.launch {
             isCapturing.value = true
-            runCatching {
-                val ocrText = app.ocrProcessor.extractTextFromUri(uri)
-                if (ocrText.isBlank()) {
-                    statusMessage.value = "No readable text found in image"
-                } else {
-                    captureText(ocrText, source)
-                }
-            }.onFailure {
-                statusMessage.value = "OCR failed: ${it.localizedMessage}"
-            }
+            val local = withContext(Dispatchers.IO) { com.keepsakeai.app.capture.ImagePrep.importToSnaps(app, uri) } ?: uri
+            val ocrText = runCatching { app.ocrProcessor.extractTextFromUri(local) }.getOrDefault("")
+            // Even with no readable (Latin) text, Gemini can still read the photo itself.
+            captureText(ocrText.ifBlank { "Photo" }, source, photoUri = local.toString())
             isCapturing.value = false
         }
     }
+
+    /** Set by the widget / app shortcut so snapsake opens the camera straight away. */
+    val autoCamera = MutableStateFlow(false)
 
     fun addManualExpense(merchant: String, amount: Double, category: String) {
         viewModelScope.launch {

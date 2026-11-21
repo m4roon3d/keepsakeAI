@@ -183,7 +183,7 @@ fun HomeFeedScreen(
             }
         } else {
         if (!searching) {
-            val upcoming = reminders.filter { it.status != "dismissed" && it.atMillis > System.currentTimeMillis() }.sortedBy { it.atMillis }.take(3)
+            val upcoming = reminders.filter { it.isUpcoming() }.sortedBy { it.atMillis }.take(3)
             items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
                 ReminderSuggestionCard(r, onRemind = {
                     if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {

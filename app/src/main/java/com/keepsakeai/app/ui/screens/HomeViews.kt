@@ -136,7 +136,7 @@ fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>) {
 fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () -> Unit) {
     val c = LocalFlow.current
     val context = LocalContext.current
-    val whenText = SimpleDateFormat("EEE d MMM, h:mm a", Locale.ENGLISH).format(Date(r.atMillis))
+    val whenText = SimpleDateFormat(if (r.hasTime) "EEE d MMM, h:mm a" else "EEE d MMM", Locale.ENGLISH).format(Date(r.atMillis))
     val shape = RoundedCornerShape(24.dp)
     Column(
         Modifier.fillMaxWidth().clip(shape)
@@ -167,6 +167,7 @@ fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () 
                         .putExtra(CalendarContract.Events.TITLE, r.title)
                         .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, r.atMillis)
                         .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, r.atMillis + 60 * 60 * 1000)
+                        .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, !r.hasTime)
                     runCatching { context.startActivity(i) }
                 }.padding(horizontal = 8.dp, vertical = 8.dp)
             )

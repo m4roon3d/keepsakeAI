@@ -30,6 +30,7 @@ data class ReminderSuggestion(
     val title: String,
     val atMillis: Long,
     val kind: String, // due | event | deadline
+    val hasTime: Boolean = true,
 )
 
 data class DetectedExpense(
