@@ -46,6 +46,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -106,6 +108,16 @@ fun HomeFeedScreen(
     val semantic by viewModel.semanticResults.collectAsState()
 
     var quickNote by remember { mutableStateOf("") }
+    var hubView by rememberSaveable { mutableStateOf(HubView.KEEPSAKES) }
+    val facts by viewModel.facts.collectAsState()
+    val reminders by viewModel.reminders.collectAsState()
+    val expenses by viewModel.expenses.collectAsState()
+    val context = LocalContext.current
+    var pendingReminder by remember { mutableStateOf<com.keepsakeai.app.data.preferences.KeepReminder?>(null) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        pendingReminder?.let { r -> viewModel.scheduleReminder(r) }
+        pendingReminder = null
+    }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { viewModel.captureImageUri(it, CaptureSource.CAMERA_SCAN) }
@@ -160,6 +172,27 @@ fun HomeFeedScreen(
         }
 
         if (!searching) {
+            item(span = StaggeredGridItemSpan.FullLine) { HubSwitcher(hubView, facts.size) { hubView = it } }
+        }
+        if (!searching && hubView != HubView.KEEPSAKES) {
+            when (hubView) {
+                HubView.TIMELINE -> timelineItems(allMemories, expenses)
+                HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
+                HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() })
+                else -> {}
+            }
+        } else {
+        if (!searching) {
+            val upcoming = reminders.filter { it.status != "dismissed" && it.atMillis > System.currentTimeMillis() }.sortedBy { it.atMillis }.take(3)
+            items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
+                ReminderSuggestionCard(r, onRemind = {
+                    if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
+                        pendingReminder = r
+                        notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else viewModel.scheduleReminder(r)
+                }, onDismiss = { viewModel.dismissReminder(r) })
+            }
+            item(span = StaggeredGridItemSpan.FullLine) { OnThisDayCard(allMemories, expenses) }
             // keepsake Suggest aurora card
             item(span = StaggeredGridItemSpan.FullLine) {
                 GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
@@ -261,6 +294,7 @@ fun HomeFeedScreen(
             items(cards, key = { it.first.id }) { (mem, score) ->
                 MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) })
             }
+        }
         }
     }
 }

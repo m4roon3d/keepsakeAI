@@ -116,6 +116,15 @@ interface MindSpaceDao {
     @Query("SELECT * FROM personal_facts ORDER BY pinned DESC, createdAt DESC")
     fun observePersonalFacts(): Flow<List<PersonalFactEntity>>
 
+    @Query("SELECT * FROM personal_facts")
+    suspend fun getFacts(): List<PersonalFactEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFact(fact: PersonalFactEntity): Long
+
+    @Delete
+    suspend fun deleteFact(fact: PersonalFactEntity)
+
     @Query("SELECT * FROM memories WHERE threadKey = :threadKey ORDER BY createdAt DESC")
     fun observeMemoriesByThread(threadKey: String): Flow<List<MemoryEntity>>
 

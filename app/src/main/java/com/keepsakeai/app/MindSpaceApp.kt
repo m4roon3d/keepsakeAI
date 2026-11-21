@@ -12,8 +12,12 @@ import com.keepsakeai.app.data.preferences.ApiKeyStore
 import com.keepsakeai.app.ui.theme.ThemeStore
 import com.keepsakeai.app.worker.DailyDigestWorker
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.launch
 
 class MindSpaceApp : Application() {
+
+    /** Background scope for fire-and-forget work such as audit logging. */
+    val appScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     lateinit var database: MindSpaceDatabase
         private set
@@ -32,7 +36,16 @@ class MindSpaceApp : Application() {
         com.keepsakeai.app.notify.Notifier.createChannels(this)
         database = MindSpaceDatabase.getInstance(this)
         apiKeyStore = ApiKeyStore(this)
-        mindPilotClient = MultiModelMindPilotClient(apiKeyStore)
+        mindPilotClient = MultiModelMindPilotClient(apiKeyStore).also { client ->
+            // AI activity log: record every outgoing call.
+            client.auditSink = { provider, feature, prompt ->
+                appScope.launch {
+                    database.dao().insertAiAuditLog(
+                        com.keepsakeai.app.data.local.AiCallAuditEntity(provider = provider, feature = feature, promptPreview = prompt.take(1500))
+                    )
+                }
+            }
+        }
         vectorSearch = SemanticVectorSearch(apiKeyStore)
         ocrProcessor = OcrProcessor(this)
 

@@ -31,19 +31,24 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     suspend fun analyzeCapture(rawText: String): AnalyzedCapture = withContext(Dispatchers.IO) {
         val geminiKey = keyStore.geminiKey
         if (geminiKey.isNotBlank()) {
+            val now = java.text.SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", java.util.Locale.ENGLISH).format(java.util.Date())
             val prompt = """
+                Today is $now (timezone ${java.util.TimeZone.getDefault().id}).
                 Analyze this captured content and return ONLY valid JSON with keys:
                 "title" (short 3-6 words),
                 "summary" (1-2 crisp sentences),
                 "collection" (one of: "Travel", "Study Notes", "Events", "Personal Projects", "Receipts", "Watch Later", "General"),
                 "tags" (array of 2-4 short lowercase tags),
-                "expense" (null, OR object {"merchant": string, "amount": number, "currency": string, "category": one of "Food", "Transport", "Shopping", "Bills", "Entertainment", "Other"}).
-                
-                Captured content:
-                $rawText
-            """.trimIndent()
+                "expense" (null, OR object {"merchant": string, "amount": number, "currency": string, "category": one of "Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"}),
+                "thread" (2-4 word name of the ongoing trip, project, event or topic this belongs to, e.g. "Goa trip", "Home loan", "Spark course"; null if standalone),
+                "facts" (array, at most 3, of lasting facts ABOUT THE USER that the content clearly states, as objects {"fact": short sentence, "category": one of "Profile", "Preferences", "Health", "Work", "People", "Places", "Money"}; empty array if none — never guess),
+                "reminder" (null, OR {"title": short action like "Pay BESCOM bill", "datetime": ISO 8601 local date-time like 2026-11-28T09:00, "kind": "due" | "event" | "deadline"} when the content has a specific FUTURE date or time worth remembering).
 
-            val result = callGemini(geminiKey, prompt)
+                Captured content:
+                {{RAW}}
+            """.trimIndent().replace("{{RAW}}", rawText.take(6000))
+
+            val result = callGemini(geminiKey, prompt, feature = "sort capture")
             if (!result.isError) {
                 parseAnalyzedJson(result.content, rawText)?.let { return@withContext it }
             }
@@ -66,7 +71,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             append("Reply with ONLY a JSON object mapping each name exactly as given to its category.\n\n")
             names.forEach { append(it).append('\n') }
         }
-        val r = callGemini(key, prompt)
+        val r = callGemini(key, prompt, feature = "sort payees")
         if (r.isError) return@withContext emptyMap()
         runCatching {
             val json = r.content.substringAfter('{', "").substringBeforeLast('}', "")
@@ -84,7 +89,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         memories: List<MemoryEntity>,
         agentMode: Boolean,
         deviceContext: String = "",
-        moneyContext: String = ""
+        moneyContext: String = "",
+        factsContext: String = ""
     ): List<MindPilotResponse> = coroutineScope {
         val contextBlock = if (memories.isEmpty()) {
             "No saved memories yet."
@@ -100,6 +106,9 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             
             {{DEVICE}}
 
+            What you know about the user (facts they taught keepsake):
+            {{FACTS}}
+
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
             and say when the data doesn't cover what was asked):
             {{MONEY}}
@@ -108,7 +117,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{CONTEXT}}
             
             Goal: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." })
         } else {
             """
             You are keepsake Pilot, the user's personal assistant. Answer concisely.
@@ -119,6 +128,9 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
 
             {{DEVICE}}
 
+            What you know about the user (facts they taught keepsake):
+            {{FACTS}}
+
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
             and say when the data doesn't cover what was asked):
             {{MONEY}}
@@ -127,7 +139,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{CONTEXT}}
             
             Question: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." })
         }
 
         providers.map { provider ->
@@ -169,7 +181,15 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         "gemini-2.5-flash"
     )
 
-    private fun callGemini(apiKey: String, prompt: String, grounded: Boolean = false): MindPilotResponse {
+    /** Every outgoing AI call is reported here (provider, feature, prompt) for the activity log. */
+    var auditSink: ((provider: String, feature: String, prompt: String) -> Unit)? = null
+
+    private fun audit(provider: String, feature: String, prompt: String) {
+        runCatching { auditSink?.invoke(provider, feature, prompt) }
+    }
+
+    private fun callGemini(apiKey: String, prompt: String, grounded: Boolean = false, feature: String = "ask pilot"): MindPilotResponse {
+        audit("Gemini", if (grounded) "$feature + web search" else feature, prompt)
         val bodyObj = JSONObject().put(
             "contents",
             JSONArray().put(
@@ -210,7 +230,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         return@use null
                     }
                     if (!resp.isSuccessful) {
-                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false)
+                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false, feature = feature)
                         return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
                     }
                     val parts = JSONObject(raw)
@@ -237,6 +257,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     }
 
     private fun callOpenAi(apiKey: String, prompt: String): MindPilotResponse {
+        audit("ChatGPT", "ask pilot", prompt)
         val bodyJson = JSONObject()
             .put("model", "gpt-4o-mini")
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
@@ -264,6 +285,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     }
 
     private fun callPerplexity(apiKey: String, prompt: String): MindPilotResponse {
+        audit("Perplexity", "ask pilot", prompt)
         val bodyJson = JSONObject()
             .put("model", "sonar")
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
@@ -292,8 +314,9 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
 
     private fun parseAnalyzedJson(rawResponse: String, fallbackText: String): AnalyzedCapture? {
         return runCatching {
-            val cleaned = rawResponse.removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
-            val obj = JSONObject(cleaned)
+            val start = rawResponse.indexOf('{')
+            val end = rawResponse.lastIndexOf('}')
+            val obj = JSONObject(rawResponse.substring(start, end + 1))
             val tagsArr = obj.optJSONArray("tags") ?: JSONArray()
             val tags = List(tagsArr.length()) { idx -> tagsArr.getString(idx) }
             val expObj = obj.optJSONObject("expense")
@@ -310,7 +333,22 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 summary = obj.optString("summary", fallbackText.take(120)),
                 collection = obj.optString("collection", "General"),
                 tags = tags,
-                detectedExpense = expense?.takeIf { it.amount > 0.0 }
+                detectedExpense = expense?.takeIf { it.amount > 0.0 },
+                facts = obj.optJSONArray("facts")?.let { arr ->
+                    List(arr.length()) { i -> arr.optJSONObject(i) }
+                        .mapNotNull { o -> o?.optString("fact")?.takeIf { it.isNotBlank() }?.let { it to o.optString("category", "Profile") } }
+                        .take(3)
+                } ?: emptyList(),
+                thread = obj.optString("thread").takeIf { it.isNotBlank() && it != "null" },
+                reminder = obj.optJSONObject("reminder")?.let { r ->
+                    val at = runCatching {
+                        java.time.LocalDateTime.parse(r.optString("datetime").take(16))
+                            .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    }.getOrNull()
+                    val title = r.optString("title")
+                    if (at != null && at > System.currentTimeMillis() && title.isNotBlank())
+                        ReminderSuggestion(title.take(60), at, r.optString("kind", "event")) else null
+                }
             )
         }.getOrNull()
     }

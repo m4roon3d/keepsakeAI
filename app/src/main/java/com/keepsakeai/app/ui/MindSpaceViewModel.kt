@@ -16,6 +16,8 @@ import com.keepsakeai.app.capture.UpiSmsInboxScanner
 import com.keepsakeai.app.context.DeviceContext
 import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
+import com.keepsakeai.app.data.local.PersonalFactEntity
+import com.keepsakeai.app.data.preferences.KeepReminder
 import com.keepsakeai.app.widget.MindSpaceWidget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -90,20 +92,26 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         if (text.isBlank()) return
         viewModelScope.launch {
             isCapturing.value = true
-            val analyzed = app.mindPilotClient.analyzeCapture(text)
+            // Shared links: pull the article / video title and text so the memory is useful later.
+            val link = url ?: com.keepsakeai.app.capture.LinkContentExtractor.extractFirstUrl(text)
+            val fetched = link?.let { runCatching { com.keepsakeai.app.capture.LinkContentExtractor.fetch(it) }.getOrNull() }
+            val enriched = if (fetched != null) "$text\n\n${fetched.platform}: ${fetched.title}\n${fetched.bodyText.take(3000)}" else text
+
+            val analyzed = app.mindPilotClient.analyzeCapture(enriched)
             val embedInput = "${analyzed.title} ${analyzed.summary} $text ${analyzed.tags.joinToString(" ")}"
             val vector = app.vectorSearch.embedText(embedInput)
 
-            dao.insertMemory(
+            val memoryId = dao.insertMemory(
                 MemoryEntity(
                     title = analyzed.title,
-                    rawContent = text,
+                    rawContent = enriched,
                     aiSummary = analyzed.summary,
                     collectionName = analyzed.collection,
                     source = source,
-                    sourceUrl = url,
+                    sourceUrl = link,
                     tagsCsv = analyzed.tags.joinToString(","),
                     embeddingCsv = app.vectorSearch.encodeVector(vector),
+                    threadKey = analyzed.thread?.let { matchThread(it) } ?: analyzed.collection,
                     photoUrisCsv = photoUri.orEmpty()
                 )
             )
@@ -118,10 +126,67 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 )
             }
-            runCatching { MindSpaceWidget().updateAll(app) }
-            statusMessage.value = "Saved to ${analyzed.collection}"
+            // Lasting facts about the user, without duplicates.
+            if (analyzed.facts.isNotEmpty()) {
+                val known = dao.getFacts().map { it.fact.lowercase().trim() }.toSet()
+                analyzed.facts.filter { it.first.lowercase().trim() !in known }.forEach { (fact, cat) ->
+                    dao.insertFact(PersonalFactEntity(fact = fact, category = cat, sourceMemoryId = memoryId))
+                }
+            }
+            analyzed.reminder?.let { r ->
+                reminderStore.add(KeepReminder(id = System.currentTimeMillis(), title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId))
+                reminders.value = reminderStore.all()
+            }
+            refreshWidget()
+            statusMessage.value = when {
+                analyzed.reminder != null -> "Saved · found a date: ${analyzed.reminder.title}"
+                analyzed.facts.isNotEmpty() -> "Saved · learned ${analyzed.facts.size} new thing${if (analyzed.facts.size > 1) "s" else ""} about you"
+                else -> "Saved to ${analyzed.collection}"
+            }
             isCapturing.value = false
         }
+    }
+
+    /** Reuse an existing thread name when the AI words it slightly differently. */
+    private suspend fun matchThread(name: String): String {
+        val existing = dao.getRecentMemories(300).map { it.threadKey }.distinct()
+        val n = name.trim().lowercase()
+        return existing.firstOrNull { it.lowercase() == n || it.lowercase().contains(n) || n.contains(it.lowercase()) && it.length > 3 }
+            ?: name.trim().replaceFirstChar { it.uppercase() }
+    }
+
+    // ── Facts ────────────────────────────────────────────────────
+    val facts: StateFlow<List<PersonalFactEntity>> = dao.observePersonalFacts()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun addFact(text: String, category: String = "Profile") {
+        if (text.isBlank()) return
+        viewModelScope.launch { dao.insertFact(PersonalFactEntity(fact = text.trim(), category = category)) }
+    }
+
+    fun togglePin(fact: PersonalFactEntity) {
+        viewModelScope.launch { dao.insertFact(fact.copy(pinned = !fact.pinned)) }
+    }
+
+    fun deleteFact(fact: PersonalFactEntity) {
+        viewModelScope.launch { dao.deleteFact(fact) }
+    }
+
+    // ── Reminders found in captures ──────────────────────────────
+    private val reminderStore = com.keepsakeai.app.data.preferences.ReminderStore(app)
+    val reminders = MutableStateFlow(reminderStore.all())
+
+    fun scheduleReminder(r: KeepReminder) {
+        val at = com.keepsakeai.app.worker.ReminderWorker.schedule(app, r)
+        reminderStore.update(r.id) { it.copy(status = "scheduled", notifyAt = at) }
+        reminders.value = reminderStore.all()
+        statusMessage.value = "I'll remind you " + java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.ENGLISH).format(java.util.Date(at))
+    }
+
+    fun dismissReminder(r: KeepReminder) {
+        com.keepsakeai.app.worker.ReminderWorker.cancel(app, r.id)
+        reminderStore.update(r.id) { it.copy(status = "dismissed") }
+        reminders.value = reminderStore.all()
     }
 
     fun captureImageUri(uri: Uri, source: CaptureSource = CaptureSource.CAMERA_SCAN) {
@@ -187,6 +252,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
                 deviceContext = DeviceContext.promptBlock(app),
+                factsContext = dao.getFacts().sortedByDescending { it.pinned }.take(25)
+                    .joinToString("\n") { "- ${it.fact}${if (it.pinned) " (important)" else ""}" },
                 moneyContext = withContext(Dispatchers.Default) {
                     spendDigest(
                         expenses.value.ifEmpty { dao.observeAllExpenses().first() },

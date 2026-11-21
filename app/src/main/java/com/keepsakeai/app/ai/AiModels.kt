@@ -17,7 +17,19 @@ data class AnalyzedCapture(
     val summary: String,
     val collection: String,
     val tags: List<String>,
-    val detectedExpense: DetectedExpense? = null
+    val detectedExpense: DetectedExpense? = null,
+    /** Lasting facts about the user, e.g. ("Vegetarian", "Food"). */
+    val facts: List<Pair<String, String>> = emptyList(),
+    /** Ongoing topic this belongs to, e.g. "Goa trip". */
+    val thread: String? = null,
+    val reminder: ReminderSuggestion? = null,
+)
+
+/** A future date found in a capture: a bill due date, an event, a deadline. */
+data class ReminderSuggestion(
+    val title: String,
+    val atMillis: Long,
+    val kind: String, // due | event | deadline
 )
 
 data class DetectedExpense(
