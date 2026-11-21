@@ -111,8 +111,23 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         }.awaitAll()
     }
 
+    /**
+     * Google retires Gemini model IDs regularly, so try a list of candidates and
+     * remember whichever one answers. If Google's 404 names a replacement model,
+     * that one is tried first.
+     */
+    @Volatile private var workingGeminiModel: String? = null
+
+    private val geminiModelCandidates = listOf(
+        "gemini-flash-latest",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash"
+    )
+
     private fun callGemini(apiKey: String, prompt: String): MindPilotResponse {
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
         val bodyJson = JSONObject().put(
             "contents",
             JSONArray().put(
@@ -121,29 +136,56 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                     JSONArray().put(JSONObject().put("text", prompt))
                 )
             )
-        )
-        return runCatching {
-            val req = Request.Builder()
-                .url(url)
-                .post(bodyJson.toString().toRequestBody(jsonMediaType))
-                .build()
-            client.newCall(req).execute().use { resp ->
-                val raw = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) {
-                    return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
+        ).toString()
+
+        val queue = ArrayDeque<String>()
+        workingGeminiModel?.let { queue.add(it) }
+        geminiModelCandidates.forEach { if (it !in queue) queue.add(it) }
+        val tried = mutableSetOf<String>()
+        var lastError = "Gemini error: no model available"
+
+        while (queue.isNotEmpty()) {
+            val model = queue.removeFirst()
+            if (!tried.add(model)) continue
+            val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+            val outcome = runCatching {
+                val req = Request.Builder()
+                    .url(url)
+                    .post(bodyJson.toRequestBody(jsonMediaType))
+                    .build()
+                client.newCall(req).execute().use { resp ->
+                    val raw = resp.body?.string().orEmpty()
+                    if (resp.code == 404 || (resp.code == 400 && raw.contains("model", ignoreCase = true) && raw.contains("not", ignoreCase = true))) {
+                        Regex("""use models/([A-Za-z0-9.\-]+)""").find(raw)?.groupValues?.get(1)?.let { suggested ->
+                            if (suggested !in tried) queue.addFirst(suggested)
+                        }
+                        lastError = "Gemini error (${resp.code}) for $model"
+                        return@use null
+                    }
+                    if (!resp.isSuccessful) {
+                        return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
+                    }
+                    val parts = JSONObject(raw)
+                        .getJSONArray("candidates")
+                        .getJSONObject(0)
+                        .getJSONObject("content")
+                        .getJSONArray("parts")
+                    val text = buildString {
+                        for (i in 0 until parts.length()) {
+                            val p = parts.getJSONObject(i)
+                            if (p.optBoolean("thought", false)) continue
+                            append(p.optString("text"))
+                        }
+                    }
+                    workingGeminiModel = model
+                    MindPilotResponse(AiProvider.GEMINI, text.trim())
                 }
-                val text = JSONObject(raw)
-                    .getJSONArray("candidates")
-                    .getJSONObject(0)
-                    .getJSONObject("content")
-                    .getJSONArray("parts")
-                    .getJSONObject(0)
-                    .getString("text")
-                MindPilotResponse(AiProvider.GEMINI, text.trim())
+            }.getOrElse {
+                return MindPilotResponse(AiProvider.GEMINI, "Network error: ${it.localizedMessage}", isError = true)
             }
-        }.getOrElse {
-            MindPilotResponse(AiProvider.GEMINI, "Network error: ${it.localizedMessage}", isError = true)
+            if (outcome != null) return outcome
         }
+        return MindPilotResponse(AiProvider.GEMINI, lastError, isError = true)
     }
 
     private fun callOpenAi(apiKey: String, prompt: String): MindPilotResponse {

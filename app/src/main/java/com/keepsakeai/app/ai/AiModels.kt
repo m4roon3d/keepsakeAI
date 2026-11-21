@@ -1,7 +1,7 @@
 package com.keepsakeai.app.ai
 
 enum class AiProvider(val displayName: String, val tag: String) {
-    GEMINI("Gemini 2.5 Flash", "@Gemini"),
+    GEMINI("Gemini Flash", "@Gemini"),
     OPENAI("ChatGPT (GPT-4o)", "@ChatGPT"),
     PERPLEXITY("Perplexity Sonar", "@Perplexity")
 }
