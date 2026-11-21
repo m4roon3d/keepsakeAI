@@ -5,13 +5,19 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,42 +37,51 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.LocalHospital
-import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import com.keepsakeai.app.data.local.ExpenseEntity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.keepsakeai.app.MindSpaceApp
+import com.keepsakeai.app.data.local.ExpenseEntity
 import com.keepsakeai.app.ui.MindSpaceViewModel
 import com.keepsakeai.app.ui.components.DockClearance
 import com.keepsakeai.app.ui.components.FlowHeader
@@ -75,18 +90,42 @@ import com.keepsakeai.app.ui.components.GlassCard
 import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.GradientCard
-import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.components.LogoMark
 import com.keepsakeai.app.ui.components.MarkGlyph
+import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.components.SectionLabel
+import com.keepsakeai.app.ui.spend.Donut
+import com.keepsakeai.app.ui.spend.GroupBy
+import com.keepsakeai.app.ui.spend.LegendRow
+import com.keepsakeai.app.ui.spend.Slice
+import com.keepsakeai.app.ui.spend.SpendFilter
+import com.keepsakeai.app.ui.spend.SpendGroup
+import com.keepsakeai.app.ui.spend.SpendPeriod
+import com.keepsakeai.app.ui.spend.StackedBar
+import com.keepsakeai.app.ui.spend.TrendBars
+import com.keepsakeai.app.ui.spend.accountOf
+import com.keepsakeai.app.ui.spend.applyFilter
+import com.keepsakeai.app.ui.spend.breakdown
+import com.keepsakeai.app.ui.spend.buckets
+import com.keepsakeai.app.ui.spend.channelOf
+import com.keepsakeai.app.ui.spend.dayLabel
+import com.keepsakeai.app.ui.spend.grouped
+import com.keepsakeai.app.ui.spend.inRange
+import com.keepsakeai.app.ui.spend.percentChange
+import com.keepsakeai.app.ui.spend.periodRange
+import com.keepsakeai.app.ui.spend.previousRange
+import com.keepsakeai.app.ui.spend.startOfDay
+import com.keepsakeai.app.ui.spend.topMerchants
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 private val categories = listOf("Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Cash", "Other")
 
-private fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
+internal fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Food" -> Icons.Rounded.Restaurant to Flow.Amber
     "Transport" -> Icons.Rounded.DirectionsCar to Flow.Sky
     "Shopping" -> Icons.Rounded.ShoppingBag to Flow.Pink
@@ -94,7 +133,17 @@ private fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Entertainment" -> Icons.Rounded.Theaters to Flow.Purple
     "Health" -> Icons.Rounded.LocalHospital to Flow.Rose
     "Cash" -> Icons.Rounded.Payments to Flow.Emerald
-    else -> Icons.Rounded.Receipt to Flow.Teal
+    else -> Icons.Rounded.Receipt to Color(0xFF94A3B8)
+}
+
+private fun channelColor(ch: String): Color = when (ch) {
+    "UPI" -> Flow.Indigo
+    "Card" -> Flow.Pink
+    "Bank transfer" -> Flow.Sky
+    "ATM" -> Flow.Amber
+    "Manual" -> Flow.Purple
+    "Receipt" -> Flow.Teal
+    else -> Flow.Violet
 }
 
 private fun hasSmsPermission(context: Context) =
@@ -111,6 +160,19 @@ private fun money(code: String, v: Double): String {
     return currencySymbol(code) + nf.format(v)
 }
 
+/** Short form for chart labels: ₹1.2L, ₹45.3K, ₹860. */
+private fun moneyShort(code: String, v: Double): String {
+    val s = currencySymbol(code)
+    return when {
+        v >= 1_00_00_000 -> s + String.format(Locale.US, "%.1fCr", v / 1_00_00_000)
+        v >= 1_00_000 -> s + String.format(Locale.US, "%.1fL", v / 1_00_000)
+        v >= 10_000 -> s + String.format(Locale.US, "%.1fK", v / 1000)
+        else -> money(code, Math.round(v).toDouble())
+    }
+}
+
+private fun pct(part: Double, whole: Double) = if (whole > 0) ((part / whole) * 100).toInt() else 0
+
 @Composable
 fun ExpensesScreen(
     viewModel: MindSpaceViewModel,
@@ -122,6 +184,15 @@ fun ExpensesScreen(
     val pendingUpi by viewModel.pendingUpi.collectAsState()
     val currency = (context.applicationContext as MindSpaceApp).apiKeyStore.defaultCurrency.ifBlank { "INR" }
 
+    // Dashboard state
+    var period by rememberSaveable { mutableStateOf(SpendPeriod.THIS_MONTH) }
+    var filter by remember { mutableStateOf(SpendFilter()) }
+    var groupBy by rememberSaveable { mutableStateOf(GroupBy.CATEGORY) }
+    var expanded by remember { mutableStateOf(setOf<String>()) }
+    var showAll by remember { mutableStateOf(setOf<String>()) }
+    var openTool by rememberSaveable { mutableStateOf<String?>(null) } // "log" | "import"
+
+    // Quick log / import state
     var merchant by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Food") }
@@ -132,6 +203,41 @@ fun ExpensesScreen(
     var confirmRemoveAll by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
 
+    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        smsBlocked = !granted
+        if (granted) viewModel.scanSmsInboxForUpi(smsDays)
+    }
+
+    // ── Derived data ─────────────────────────────────────────────
+    val range = remember(period, expenses) { periodRange(period, expenses) }
+    val inPeriod = remember(range, expenses) { expenses.inRange(range) }
+    val shown = remember(inPeriod, filter) { inPeriod.applyFilter(filter) }
+    val total = shown.sumOf { it.amount }
+    val prevTotal = remember(period, expenses, filter) {
+        previousRange(period)?.let { expenses.inRange(it).applyFilter(filter).sumOf { e -> e.amount } }
+    }
+    val change = prevTotal?.let { percentChange(total, it) }
+    val trend = remember(shown, range) { shown.buckets(range) }
+    // Each dashboard ignores its own dimension so the other slices stay visible (dimmed).
+    val forCategories = remember(inPeriod, filter) { inPeriod.applyFilter(filter.copy(categories = emptySet())) }
+    val catSlices = remember(forCategories) {
+        forCategories.breakdown { it.category }.map { (k, v) -> Slice(k, v, categoryIcon(k).second) }
+    }
+    val forChannels = remember(inPeriod, filter) { inPeriod.applyFilter(filter.copy(channels = emptySet())) }
+    val chSlices = remember(forChannels) {
+        forChannels.breakdown { channelOf(it.sourceMethod) }.map { (k, v) -> Slice(k, v, channelColor(k)) }
+    }
+    val merchants = remember(inPeriod, filter) { inPeriod.applyFilter(filter.copy(merchant = null)).topMerchants(5) }
+    val groups = remember(shown, groupBy) { shown.grouped(groupBy) }
+
+    fun toggleCategory(k: String) {
+        filter = filter.copy(categories = if (k in filter.categories) filter.categories - k else filter.categories + k)
+    }
+    fun toggleChannel(k: String) {
+        filter = filter.copy(channels = if (k in filter.channels) filter.channels - k else filter.channels + k)
+    }
+
+    // ── Dialogs ──────────────────────────────────────────────────
     if (confirmRemoveAll) {
         AlertDialog(
             onDismissRequest = { confirmRemoveAll = false },
@@ -158,15 +264,6 @@ fun ExpensesScreen(
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } }
         )
     }
-    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        smsBlocked = !granted
-        if (granted) viewModel.scanSmsInboxForUpi(smsDays)
-    }
-
-    val total = expenses.sumOf { it.amount }
-    val byCategory = expenses.groupBy { it.category }
-        .mapValues { e -> e.value.sumOf { it.amount } }
-        .toList().sortedByDescending { it.second }
 
     LazyColumn(
         modifier = modifier,
@@ -190,202 +287,512 @@ fun ExpensesScreen(
             }
         }
 
-        // Replay the SMS inbox into the approval queue
+        // Tools: log an expense / import from SMS, folded away until needed
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(38.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Sms, null, tint = Flow.Emerald, modifier = Modifier.size(19.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Import from Messages", style = MaterialTheme.typography.titleSmall, color = c.text)
-                        Text("Pull past UPI & bank debit SMS into your review queue", fontSize = 11.sp, color = c.muted)
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    listOf(30 to "30 days", 90 to "90 days", 365 to "1 year").forEach { (d, label) ->
-                        Pill(label, smsDays == d, { smsDays = d }, Modifier.weight(1f))
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                GradientButton(
-                    if (scanningSms) "Reading messages…" else "Scan messages",
-                    enabled = !scanningSms,
-                    brush = Flow.spendGradient,
-                    icon = Icons.Rounded.Sms,
-                    onClick = {
-                        if (hasSmsPermission(context)) viewModel.scanSmsInboxForUpi(smsDays)
-                        else smsPermission.launch(Manifest.permission.READ_SMS)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (smsBlocked) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "SMS access is blocked. Open App info → ⋮ → Allow restricted settings, then Permissions → SMS → Allow.",
-                        fontSize = 11.sp, color = Flow.Rose,
-                        modifier = Modifier.clickable {
-                            runCatching {
-                                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
-                            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill("log expense", openTool == "log", { openTool = if (openTool == "log") null else "log" }, Modifier.weight(1f), icon = Icons.Rounded.Add)
+                Pill("import sms", openTool == "import", { openTool = if (openTool == "import") null else "import" }, Modifier.weight(1f), icon = Icons.Rounded.Sms)
+            }
+        }
+        item {
+            Column {
+                AnimatedVisibility(openTool == "log", enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    QuickLogCard(
+                        merchant, { merchant = it }, amountText, { amountText = it }, category, { category = it },
+                        onAdd = { amt ->
+                            viewModel.addManualExpense(merchant, amt, category)
+                            merchant = ""; amountText = ""; openTool = null
                         }
                     )
                 }
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Read on your phone only. You approve each payment.", fontSize = 11.sp, color = c.muted, modifier = Modifier.weight(1f))
-                    if (importedCount > 0 || pendingUpi.isNotEmpty()) {
-                        Text(
-                            "Remove imported",
-                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { confirmRemoveAll = true }
-                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
-                    }
+                AnimatedVisibility(openTool == "import", enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    ImportCard(
+                        smsDays = smsDays, onDays = { smsDays = it },
+                        scanning = scanningSms, blocked = smsBlocked,
+                        canRemove = importedCount > 0 || pendingUpi.isNotEmpty(),
+                        onScan = {
+                            if (hasSmsPermission(context)) viewModel.scanSmsInboxForUpi(smsDays)
+                            else smsPermission.launch(Manifest.permission.READ_SMS)
+                        },
+                        onOpenAppInfo = {
+                            runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }
+                        },
+                        onRemoveAll = { confirmRemoveAll = true }
+                    )
                 }
             }
         }
 
         if (pendingUpi.isNotEmpty()) {
-            item {
-                val shape = RoundedCornerShape(26.dp)
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(shape)
-                        .background(if (c.dark) Flow.Amber.copy(alpha = 0.10f) else Color(0xCCFFFBEB))
-                        .border(1.dp, Flow.Amber.copy(alpha = 0.45f), shape)
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.Inbox, null, tint = Flow.Amber, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "Waiting for approval (${pendingUpi.size})",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = if (c.dark) Color(0xFFFCD34D) else Color(0xFF78350F),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            "Clear", color = c.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.clearPendingUpi() }.padding(6.dp)
-                        )
-                        Text(
-                            "Approve all", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.approveAllPendingUpi() }.padding(6.dp)
-                        )
-                    }
-                    pendingUpi.forEach { item ->
-                        var selectedCat by remember(item.id) { mutableStateOf(item.suggestedCategory) }
-                        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp)) {
-                            Row {
-                                Text(item.merchant, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(money(item.currency, item.amount), style = MaterialTheme.typography.titleSmall, color = Flow.Indigo)
-                            }
-                            Text("${item.bankOrApp}${item.utrRef?.let { " · UTR $it" } ?: ""}", fontSize = 11.sp, color = c.muted)
-                            Spacer(Modifier.height(4.dp))
-                            Text("“${item.rawMessage}”", fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(8.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(categories) { cat ->
-                                    Pill(cat, selectedCat == cat, { selectedCat = cat })
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "Dismiss", color = c.muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.dismissPendingUpi(item) }.padding(10.dp)
-                                )
-                                Spacer(Modifier.weight(1f))
-                                GradientButton("Approve", onClick = { viewModel.approvePendingUpi(item, selectedCat) }, brush = Flow.spendGradient)
-                            }
-                        }
-                    }
+            item { PendingCard(viewModel, currencyFallback = currency) }
+        }
+
+        // Period
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SpendPeriod.entries.forEach { p ->
+                    Pill(p.label, period == p, { period = p }, Modifier.weight(1f))
                 }
             }
         }
 
+        // Hero: total, change, average, trend
         item {
             GradientCard(Flow.spendGradient, Modifier.fillMaxWidth(), glow = Flow.Emerald) {
-                Text("Approved spend", color = Color(0xFFD1FAE5), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(money(currency, total), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
-                if (byCategory.isNotEmpty()) Spacer(Modifier.height(12.dp))
-                byCategory.forEach { (cat, sum) ->
-                    val pct = if (total > 0) (sum / total).toFloat() else 0f
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(cat, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        Text("${money(currency, sum)} · ${(pct * 100).toInt()}%", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (filter.isActive) "${period.label} · filtered" else "spent ${period.label}",
+                        color = Color(0xFFD1FAE5), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                    )
+                    if (change != null) {
+                        val up = change > 0
+                        Box(
+                            Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 9.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                "${if (up) "▲" else "▼"} ${kotlin.math.abs(change)}% vs ${if (period == SpendPeriod.THIS_MONTH) "last month" else "before"}",
+                                color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.2f))) {
-                        Box(Modifier.fillMaxWidth(pct).fillMaxHeight().clip(CircleShape).background(Color.White))
-                    }
-                    Spacer(Modifier.height(8.dp))
                 }
-                if (byCategory.isEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text("Approved UPI payments and logged expenses show up here.", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                Text(money(currency, total), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+                Row {
+                    HeroStat(moneyShort(currency, total / range.days), "per day")
+                    Spacer(Modifier.width(18.dp))
+                    HeroStat("${shown.size}", if (shown.size == 1) "payment" else "payments")
+                    Spacer(Modifier.width(18.dp))
+                    val biggest = shown.maxByOrNull { it.amount }
+                    if (biggest != null) HeroStat(moneyShort(currency, biggest.amount), "largest")
+                }
+                Spacer(Modifier.height(12.dp))
+                TrendBars(trend, Color.White, height = 56.dp)
+                Spacer(Modifier.height(4.dp))
+                Row {
+                    val fmt = SimpleDateFormat("d MMM", Locale.ENGLISH)
+                    val faint = Color.White.copy(alpha = 0.75f)
+                    Text(fmt.format(Date(range.start)).lowercase(), fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f))
+                    Text(if (range.days <= 45) "daily" else "weekly", fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    Text(fmt.format(Date(range.end - 1)).lowercase(), fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                 }
             }
         }
 
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                Text("Quick log", style = MaterialTheme.typography.titleSmall, color = c.text)
-                Spacer(Modifier.height(10.dp))
-                GlassField(merchant, { merchant = it }, "Merchant (e.g. Swiggy, Metro)", Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                GlassField(
-                    amountText, { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } }, "Amount",
-                    Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(categories) { cat -> Pill(cat, category == cat, { category = cat }) }
+        if (inPeriod.isEmpty()) {
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Text("Nothing spent ${period.label} yet. Log an expense or import your SMS to see the breakdown.", color = c.muted, style = MaterialTheme.typography.bodyMedium)
                 }
-                Spacer(Modifier.height(10.dp))
-                GradientButton(
-                    "Add transaction",
-                    brush = Flow.spendGradient,
-                    enabled = (amountText.toDoubleOrNull() ?: 0.0) > 0.0,
-                    onClick = {
-                        val amt = amountText.toDoubleOrNull() ?: 0.0
-                        if (amt > 0.0) {
-                            viewModel.addManualExpense(merchant, amt, category)
-                            merchant = ""
-                            amountText = ""
+            }
+        } else {
+            // Where it went: category donut
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    DashTitle("where it went", "tap to filter")
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val catTotal = catSlices.sumOf { it.value }
+                        val sel = catSlices.filter { it.key in filter.categories }
+                        Donut(
+                            slices = catSlices,
+                            selected = filter.categories,
+                            centerTop = moneyShort(currency, if (sel.isEmpty()) catTotal else sel.sumOf { it.value }),
+                            centerBottom = when {
+                                sel.isEmpty() -> "${catSlices.size} categories"
+                                sel.size == 1 -> sel.first().key.lowercase()
+                                else -> "${sel.size} selected"
+                            },
+                            onTap = { toggleCategory(it) },
+                            size = 132.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            catSlices.take(6).forEach { s ->
+                                LegendRow(
+                                    s.color, s.key, moneyShort(currency, s.value), pct(s.value, catTotal),
+                                    selected = s.key in filter.categories,
+                                    dimmed = filter.categories.isNotEmpty() && s.key !in filter.categories,
+                                    onClick = { toggleCategory(s.key) }
+                                )
+                            }
+                            if (catSlices.size > 6) {
+                                Text("+${catSlices.size - 6} more", fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // How you paid: channel split
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    DashTitle("how you paid", null)
+                    Spacer(Modifier.height(12.dp))
+                    StackedBar(chSlices, filter.channels)
+                    Spacer(Modifier.height(8.dp))
+                    val chTotal = chSlices.sumOf { it.value }
+                    chSlices.forEach { s ->
+                        LegendRow(
+                            s.color, s.key, moneyShort(currency, s.value), pct(s.value, chTotal),
+                            selected = s.key in filter.channels,
+                            dimmed = filter.channels.isNotEmpty() && s.key !in filter.channels,
+                            onClick = { toggleChannel(s.key) }
+                        )
+                    }
+                }
+            }
+
+            // Top merchants
+            if (merchants.isNotEmpty()) {
+                item {
+                    GlassCard(Modifier.fillMaxWidth()) {
+                        DashTitle("top merchants", null)
+                        Spacer(Modifier.height(8.dp))
+                        val max = merchants.first().total
+                        merchants.forEachIndexed { i, m ->
+                            val sel = filter.merchant != null && filter.merchant.equals(m.name, ignoreCase = true)
+                            Column(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .background(if (sel) Flow.Indigo.copy(alpha = 0.12f) else Color.Transparent)
+                                    .clickable { filter = filter.copy(merchant = if (sel) null else m.name) }
+                                    .padding(horizontal = 8.dp, vertical = 7.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${i + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Flow.Indigo, modifier = Modifier.width(18.dp))
+                                    Text(m.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text("${m.count}×", fontSize = 11.sp, color = c.muted)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(moneyShort(currency, m.total), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text)
+                                }
+                                Spacer(Modifier.height(5.dp))
+                                Box(Modifier.padding(start = 18.dp).fillMaxWidth().height(4.dp).clip(CircleShape).background(c.divider)) {
+                                    Box(
+                                        Modifier.fillMaxWidth((m.total / max).toFloat()).fillMaxHeight().clip(CircleShape)
+                                            .background(Brush.horizontalGradient(listOf(Flow.Indigo, Flow.Sky)))
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Transactions: search, active filters, grouping
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionLabel("transactions", trailing = "${shown.size} · ${moneyShort(currency, total)}")
+                    GlassField(
+                        filter.query, { filter = filter.copy(query = it) }, "Search merchant, category or note",
+                        Modifier.fillMaxWidth(), leadingIcon = Icons.Rounded.Search
+                    )
+                    if (filter.isActive) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(filter.categories.toList()) { k -> RemovableChip(k, categoryIcon(k).second) { toggleCategory(k) } }
+                            items(filter.channels.toList()) { k -> RemovableChip(k, channelColor(k)) { toggleChannel(k) } }
+                            filter.merchant?.let { m -> item { RemovableChip(m, Flow.Indigo) { filter = filter.copy(merchant = null) } } }
+                            if (filter.query.isNotBlank()) item { RemovableChip("“${filter.query}”", Flow.Sky) { filter = filter.copy(query = "") } }
+                            item {
+                                Text(
+                                    "clear all", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
+                                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { filter = SpendFilter() }.padding(horizontal = 10.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("group by", fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(end = 8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(GroupBy.entries) { g ->
+                                Pill(g.label, groupBy == g, { groupBy = g; expanded = emptySet(); showAll = emptySet() })
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (shown.isEmpty()) {
+                item {
+                    GlassCard(Modifier.fillMaxWidth()) {
+                        Text("No payments match these filters.", color = c.muted, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+
+            items(groups, key = { "${groupBy.name}:${it.key}" }) { g ->
+                val isOpen = g.key in expanded || groups.size == 1
+                GroupCard(
+                    group = g,
+                    groupBy = groupBy,
+                    total = total,
+                    currency = currency,
+                    open = isOpen,
+                    showAll = g.key in showAll,
+                    onToggle = { expanded = if (g.key in expanded) expanded - g.key else expanded + g.key },
+                    onShowAll = { showAll = showAll + g.key },
+                    onDrill = {
+                        filter = when (groupBy) {
+                            GroupBy.CATEGORY -> filter.copy(categories = setOf(g.key))
+                            GroupBy.CHANNEL -> filter.copy(channels = setOf(g.key))
+                            GroupBy.MERCHANT -> filter.copy(merchant = g.label)
+                            GroupBy.DAY -> filter
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    onLongPress = { confirmDelete = it }
                 )
             }
         }
+    }
+}
 
-        if (expenses.isNotEmpty()) {
-            item { SectionLabel("Payments", trailing = "Long-press to delete") }
+// ── Pieces ───────────────────────────────────────────────────────────
+
+@Composable
+private fun HeroStat(value: String, label: String) {
+    Column {
+        Text(value, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun DashTitle(title: String, hint: String?) {
+    val c = LocalFlow.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
+        if (hint != null) Text(hint, fontSize = 11.sp, color = c.muted)
+    }
+}
+
+@Composable
+private fun RemovableChip(label: String, color: Color, onRemove: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.16f)).clickable(onClick = onRemove)
+            .padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+        Spacer(Modifier.width(4.dp))
+        Icon(Icons.Rounded.Close, "Remove filter", tint = color, modifier = Modifier.size(14.dp))
+    }
+}
+
+@Composable
+private fun GroupCard(
+    group: SpendGroup,
+    groupBy: GroupBy,
+    total: Double,
+    currency: String,
+    open: Boolean,
+    showAll: Boolean,
+    onToggle: () -> Unit,
+    onShowAll: () -> Unit,
+    onDrill: () -> Unit,
+    onLongPress: (ExpenseEntity) -> Unit,
+) {
+    val c = LocalFlow.current
+    val (icon, color) = when (groupBy) {
+        GroupBy.CATEGORY -> categoryIcon(group.key)
+        GroupBy.CHANNEL -> Icons.Rounded.Payments to channelColor(group.key)
+        GroupBy.MERCHANT -> categoryIcon(group.items.first().category)
+        GroupBy.DAY -> Icons.Rounded.Receipt to Flow.Indigo
+    }
+    GlassCard(Modifier.fillMaxWidth().animateContentSize(), padding = PaddingValues(0.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(38.dp).clip(CircleShape).background(color.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(group.label, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Box(Modifier.fillMaxWidth(0.9f).height(4.dp).clip(CircleShape).background(c.divider)) {
+                    Box(Modifier.fillMaxWidth(if (total > 0) (group.total / total).toFloat() else 0f).fillMaxHeight().clip(CircleShape).background(color))
+                }
+                Spacer(Modifier.height(3.dp))
+                Text("${group.items.size} payment${if (group.items.size == 1) "" else "s"} · ${pct(group.total, total)}%", fontSize = 11.sp, color = c.muted)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(money(currency, group.total), style = MaterialTheme.typography.titleSmall, color = c.text)
+            Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.padding(start = 4.dp).size(20.dp).rotate(if (open) 180f else 0f))
         }
+        if (open) {
+            HorizontalDivider(color = c.divider)
+            val list = if (showAll) group.items else group.items.take(6)
+            list.forEach { exp -> TxnRow(exp, groupBy, currency, onLongPress) }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!showAll && group.items.size > 6) {
+                    Text(
+                        "show all ${group.items.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onShowAll).padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                if (groupBy != GroupBy.DAY) {
+                    Text(
+                        "filter to this →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onDrill).padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
 
-        items(expenses, key = { it.id }) { exp ->
-            val (icon, tint) = categoryIcon(exp.category)
-            GlassCard(
-                Modifier.fillMaxWidth().pointerInput(exp.id) { detectTapGestures(onLongPress = { confirmDelete = exp }) },
-                shape = RoundedCornerShape(20.dp), padding = PaddingValues(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(38.dp).clip(CircleShape).background(tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-                        Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp))
+@Composable
+private fun TxnRow(exp: ExpenseEntity, groupBy: GroupBy, currency: String, onLongPress: (ExpenseEntity) -> Unit) {
+    val c = LocalFlow.current
+    val ch = channelOf(exp.sourceMethod)
+    val acct = accountOf(exp.sourceMethod)
+    val sub = buildList {
+        if (groupBy != GroupBy.DAY) add(dayLabel(startOfDay(exp.timestamp)))
+        if (groupBy != GroupBy.CATEGORY) add(exp.category.lowercase())
+        if (groupBy != GroupBy.CHANNEL) add(listOfNotNull(ch, acct).joinToString(" · "))
+    }.joinToString("  ·  ")
+    Row(
+        Modifier.fillMaxWidth()
+            .pointerInput(exp.id) { detectTapGestures(onLongPress = { onLongPress(exp) }) }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(categoryIcon(exp.category).second))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (groupBy == GroupBy.MERCHANT) SimpleDateFormat("d MMM, h:mm a", Locale.ENGLISH).format(Date(exp.timestamp)).lowercase() else exp.merchant,
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            Text(sub, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(money(exp.currency.ifBlank { currency }, exp.amount), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text)
+    }
+}
+
+@Composable
+private fun QuickLogCard(
+    merchant: String, onMerchant: (String) -> Unit,
+    amountText: String, onAmount: (String) -> Unit,
+    category: String, onCategory: (String) -> Unit,
+    onAdd: (Double) -> Unit,
+) {
+    val c = LocalFlow.current
+    GlassCard(Modifier.fillMaxWidth()) {
+        Text("log an expense", style = MaterialTheme.typography.titleSmall, color = c.text)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassField(merchant, onMerchant, "Merchant", Modifier.weight(1.4f))
+            GlassField(
+                amountText, { onAmount(it.filter { ch -> ch.isDigit() || ch == '.' }) }, "Amount", Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(categories) { cat -> Pill(cat, category == cat, { onCategory(cat) }) }
+        }
+        Spacer(Modifier.height(10.dp))
+        val amt = amountText.toDoubleOrNull() ?: 0.0
+        GradientButton("Add", brush = Flow.spendGradient, enabled = amt > 0.0, onClick = { onAdd(amt) }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun ImportCard(
+    smsDays: Int, onDays: (Int) -> Unit,
+    scanning: Boolean, blocked: Boolean, canRemove: Boolean,
+    onScan: () -> Unit, onOpenAppInfo: () -> Unit, onRemoveAll: () -> Unit,
+) {
+    val c = LocalFlow.current
+    GlassCard(Modifier.fillMaxWidth()) {
+        Text("import from messages", style = MaterialTheme.typography.titleSmall, color = c.text)
+        Text("UPI, card and bank debit SMS go to your review queue. Read on your phone only.", fontSize = 11.sp, color = c.muted)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(30 to "30 days", 90 to "90 days", 365 to "1 year").forEach { (d, label) ->
+                Pill(label, smsDays == d, { onDays(d) }, Modifier.weight(1f))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        GradientButton(
+            if (scanning) "Reading messages…" else "Scan messages",
+            enabled = !scanning, brush = Flow.spendGradient, icon = Icons.Rounded.Sms,
+            onClick = onScan, modifier = Modifier.fillMaxWidth()
+        )
+        if (blocked) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "SMS access is blocked. Open App info → ⋮ → Allow restricted settings, then Permissions → SMS → Allow.",
+                fontSize = 11.sp, color = Flow.Rose, modifier = Modifier.clickable(onClick = onOpenAppInfo)
+            )
+        }
+        if (canRemove) {
+            Text(
+                "Remove imported", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
+                modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable(onClick = onRemoveAll).padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String) {
+    val c = LocalFlow.current
+    val pendingUpi by viewModel.pendingUpi.collectAsState()
+    val shape = RoundedCornerShape(26.dp)
+    var open by remember { mutableStateOf(pendingUpi.size <= 3) }
+    Column(
+        Modifier.fillMaxWidth().clip(shape)
+            .background(if (c.dark) Flow.Amber.copy(alpha = 0.10f) else Color(0xCCFFFBEB))
+            .border(1.dp, Flow.Amber.copy(alpha = 0.45f), shape)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).clip(RoundedCornerShape(50)).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Inbox, null, tint = Flow.Amber, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "to review (${pendingUpi.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (c.dark) Color(0xFFFCD34D) else Color(0xFF78350F)
+                )
+                Icon(Icons.Rounded.ExpandMore, null, tint = Flow.Amber, modifier = Modifier.size(18.dp).rotate(if (open) 180f else 0f))
+            }
+            Text(
+                "clear", color = c.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.clearPendingUpi() }.padding(6.dp)
+            )
+            Text(
+                "approve all", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.approveAllPendingUpi() }.padding(6.dp)
+            )
+        }
+        if (open) {
+            pendingUpi.forEach { item ->
+                var selectedCat by remember(item.id) { mutableStateOf(item.suggestedCategory) }
+                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp)) {
+                    Row {
+                        Text(item.merchant, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(money(item.currency.ifBlank { currencyFallback }, item.amount), style = MaterialTheme.typography.titleSmall, color = Flow.Indigo)
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(exp.merchant, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${exp.category} · ${exp.sourceMethod}", fontSize = 11.sp, color = c.muted, maxLines = 1)
+                    Text("${item.bankOrApp} · ${dayLabel(startOfDay(item.receivedAt))}", fontSize = 11.sp, color = c.muted)
+                    Spacer(Modifier.height(4.dp))
+                    Text("“${item.rawMessage}”", fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(categories) { cat -> Pill(cat, selectedCat == cat, { selectedCat = cat }) }
                     }
-                    Text(money(exp.currency, exp.amount), style = MaterialTheme.typography.titleSmall, color = Flow.Emerald)
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "dismiss", color = c.muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.dismissPendingUpi(item) }.padding(10.dp)
+                        )
+                        Spacer(Modifier.weight(1f))
+                        GradientButton("Approve", onClick = { viewModel.approvePendingUpi(item, selectedCat) }, brush = Flow.spendGradient)
+                    }
                 }
             }
         }
