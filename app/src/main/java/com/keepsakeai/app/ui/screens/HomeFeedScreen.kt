@@ -192,6 +192,22 @@ fun HomeFeedScreen(
                     } else viewModel.scheduleReminder(r)
                 }, onDismiss = { viewModel.dismissReminder(r) })
             }
+            val dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
+            if (dow == java.util.Calendar.SUNDAY || dow == java.util.Calendar.MONDAY) {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.overlay.value = "review" }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LogoMark(size = 34.dp, halo = false)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("your week is ready", style = MaterialTheme.typography.titleSmall, color = c.text)
+                                Text("spend, highlights and one insight", fontSize = 12.sp, color = c.muted)
+                            }
+                            Text("open →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                        }
+                    }
+                }
+            }
             item(span = StaggeredGridItemSpan.FullLine) { OnThisDayCard(allMemories, expenses) }
             // keepsake Suggest aurora card
             item(span = StaggeredGridItemSpan.FullLine) {

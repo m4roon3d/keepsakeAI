@@ -42,6 +42,10 @@ import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.CalendarViewWeek
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -107,7 +111,7 @@ private val keySpecs = listOf(
 private fun masked(key: String) = if (key.length <= 4) "••••" else "••••" + key.takeLast(4)
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.ui.MindSpaceViewModel? = null) {
     val context = LocalContext.current
     val c = LocalFlow.current
     val keyStore = (context.applicationContext as MindSpaceApp).apiKeyStore
@@ -115,6 +119,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     var currency by remember { mutableStateOf(keyStore.defaultCurrency.ifBlank { "INR" }) }
     var hasLocation by remember { mutableStateOf(DeviceContext.hasLocationPermission(context)) }
     var expandedKey by remember { mutableStateOf<String?>(null) }
+    var notifOn by remember { mutableStateOf(com.keepsakeai.app.notify.Notifier.canNotify(context)) }
     val scope = rememberCoroutineScope()
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -253,6 +258,34 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(top = 6.dp).clickable { openAppInfo() }
             )
         }
+
+        // ── Insights ───────────────────────────────────────────────
+        if (viewModel != null) {
+            val logs by viewModel.aiLogs.collectAsState()
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+                CardTitle(Icons.Rounded.Insights, "Insights", Flow.Indigo)
+                Spacer(Modifier.height(4.dp))
+                SlimRow(Icons.Rounded.CalendarViewWeek, Flow.Indigo, "Weekly review", "Spend, highlights and one insight", "Open", null) {
+                    viewModel.overlay.value = "review"
+                }
+                HorizontalDivider(color = c.divider)
+                SlimRow(Icons.Rounded.Visibility, Flow.Sky, "AI activity", "${logs.size} calls logged · see exactly what was sent", "Open", null) {
+                    viewModel.overlay.value = "ai_log"
+                }
+                HorizontalDivider(color = c.divider)
+                val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { notifOn = it }
+                SlimRow(
+                    Icons.Rounded.NotificationsActive, Flow.Amber, "Notifications",
+                    "Budgets, renewals, reminders, weekly review", if (notifOn) "On" else "Turn on", notifOn
+                ) {
+                    if (!notifOn && android.os.Build.VERSION.SDK_INT >= 33) notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else openAppInfo()
+                }
+            }
+        }
+
+        // ── Privacy & backup ───────────────────────────────────────
+        PrivacyCard(viewModel)
 
         // ── Footer ─────────────────────────────────────────────────
         Column(

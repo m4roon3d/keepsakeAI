@@ -7,7 +7,14 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.fragment.app.FragmentActivity
+import androidx.compose.runtime.mutableStateOf
+import com.keepsakeai.app.data.preferences.SecurityPrefs
+import com.keepsakeai.app.security.BiometricVaultHelper
+import com.keepsakeai.app.ui.screens.AiLogScreen
+import com.keepsakeai.app.ui.screens.LockScreen
+import com.keepsakeai.app.ui.review.WeeklyReviewScreen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.SystemBarStyle
@@ -41,15 +48,38 @@ import com.keepsakeai.app.ui.screens.SnapsakeScreen
 import com.keepsakeai.app.ui.theme.MindSpaceTheme
 import com.keepsakeai.app.ui.theme.isFlowDark
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val viewModel: MindSpaceViewModel by viewModels()
 
     /** Tab requested by the widget or a shortcut; consumed by the UI. */
     private val requestedTab = mutableIntStateOf(-1)
 
+    /** App lock: locked on launch and after a few minutes in the background. */
+    private val locked = mutableStateOf(false)
+    private var stoppedAt = 0L
+    private val lockAfterMs = 3 * 60 * 1000L
+
+    override fun onStart() {
+        super.onStart()
+        if (SecurityPrefs(this).appLock && stoppedAt > 0 && System.currentTimeMillis() - stoppedAt > lockAfterMs) {
+            locked.value = true
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        stoppedAt = System.currentTimeMillis()
+    }
+
+    private fun unlock() {
+        if (!BiometricVaultHelper.canAuthenticate(this)) { locked.value = false; return }
+        BiometricVaultHelper.authenticate(this, onSuccess = { locked.value = false }, onError = { })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        locked.value = SecurityPrefs(this).appLock
         handleIncomingIntent(intent)
 
         enableEdgeToEdge()
@@ -65,6 +95,8 @@ class MainActivity : ComponentActivity() {
                     onDispose { }
                 }
                 var selectedTab by rememberSaveable { mutableIntStateOf(TAB_HOME) }
+                val draft by viewModel.pilotDraft.collectAsState()
+                LaunchedEffect(draft) { if (draft != null) selectedTab = TAB_PILOT }
                 val wanted = requestedTab.intValue
                 LaunchedEffect(wanted) {
                     if (wanted >= 0) {
@@ -119,7 +151,8 @@ class MainActivity : ComponentActivity() {
                             onAskPilot = { q -> viewModel.pilotDraft.value = q; selectedTab = TAB_PILOT }
                         )
                         TAB_SETTINGS -> SettingsScreen(
-                            modifier = contentModifier
+                            modifier = contentModifier,
+                            viewModel = viewModel
                         )
                     }
 
@@ -133,6 +166,25 @@ class MainActivity : ComponentActivity() {
                             .align(Alignment.BottomCenter)
                             .navigationBarsPadding()
                     )
+
+                    // Full-screen overlays: weekly review, AI activity log
+                    val overlay by viewModel.overlay.collectAsState()
+                    if (overlay != null) {
+                        BackHandler { viewModel.overlay.value = null }
+                        AuroraBackground(Modifier.fillMaxSize()) {
+                            val m = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                            when (overlay) {
+                                OVERLAY_REVIEW -> WeeklyReviewScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
+                                OVERLAY_AI_LOG -> AiLogScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
+                                else -> viewModel.overlay.value = null
+                            }
+                        }
+                    }
+
+                    if (locked.value) {
+                        LaunchedEffect(Unit) { unlock() }
+                        LockScreen(onUnlock = { unlock() })
+                    }
                 }
             }
         }
@@ -145,6 +197,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
+        intent.getStringExtra(EXTRA_OPEN_OVERLAY)?.let { viewModel.overlay.value = it }
         when (intent.getStringExtra(EXTRA_OPEN_TAB)) {
             "home" -> requestedTab.intValue = TAB_HOME
             "snapsake" -> requestedTab.intValue = TAB_SNAPSAKE
@@ -174,6 +227,8 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_TRIGGER_SNAP = "extra_trigger_snap"
         const val EXTRA_OPEN_TAB = "open_tab"
         const val EXTRA_OPEN_OVERLAY = "open_overlay"
+        const val OVERLAY_REVIEW = "review"
+        const val OVERLAY_AI_LOG = "ai_log"
         const val TAB_HOME = 0
         const val TAB_SNAPSAKE = 1
         const val TAB_PILOT = 2

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.flow.first
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.data.local.DigestSuggestionEntity
 import com.keepsakeai.app.widget.MindSpaceWidget
@@ -51,7 +52,28 @@ class DailyDigestWorker(
             )
         }
         runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
+        runCatching { weeklyReviewNudge(app) }
         runCatching { MindSpaceWidget().updateAll(app) }
         return Result.success()
+    }
+
+    /** Sunday evening (or Monday morning if the phone slept): "your week is ready". */
+    private suspend fun weeklyReviewNudge(app: MindSpaceApp) {
+        val cal = java.util.Calendar.getInstance()
+        val dow = cal.get(java.util.Calendar.DAY_OF_WEEK)
+        val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+        val inWindow = (dow == java.util.Calendar.SUNDAY && hour >= 17) || (dow == java.util.Calendar.MONDAY && hour < 12)
+        if (!inWindow) return
+        val weekKey = java.text.SimpleDateFormat("YYYY-ww", java.util.Locale.US).format(java.util.Date(System.currentTimeMillis() - 12 * 60 * 60 * 1000))
+        if (!com.keepsakeai.app.data.preferences.MoneyPrefs(app).firstTime("review:$weekKey")) return
+        val expenses = app.database.dao().observeAllExpenses().first()
+        val memories = app.database.dao().getRecentMemories(500)
+        val w = com.keepsakeai.app.ui.review.computeWeek(expenses, memories)
+        com.keepsakeai.app.notify.Notifier.show(
+            app, com.keepsakeai.app.notify.Notifier.REVIEW, 7001,
+            "Your week in keepsake",
+            "₹" + String.format(java.util.Locale.US, "%,.0f", w.spent) + " spent · ${w.kept} kept. ${w.insight}",
+            openOverlay = "review"
+        )
     }
 }

@@ -135,6 +135,7 @@ dependencies {
 
     // Biometric App Lock (Fingerprint / Face Unlock)
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
 
     // Coil for Photo + Note Memory Card thumbnails
     implementation("io.coil-kt:coil-compose:2.7.0")

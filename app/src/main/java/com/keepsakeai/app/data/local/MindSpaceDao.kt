@@ -119,6 +119,37 @@ interface MindSpaceDao {
     @Query("SELECT * FROM personal_facts")
     suspend fun getFacts(): List<PersonalFactEntity>
 
+    // Backup / restore
+    @Query("SELECT * FROM memories")
+    suspend fun getAllMemories(): List<MemoryEntity>
+
+    @Query("SELECT * FROM expenses")
+    suspend fun getAllExpenses(): List<ExpenseEntity>
+
+    @Query("SELECT * FROM pending_upi_transactions")
+    suspend fun getAllPending(): List<PendingUpiTransactionEntity>
+
+    @Query("DELETE FROM memories")
+    suspend fun deleteAllMemories()
+
+    @Query("DELETE FROM expenses")
+    suspend fun deleteAllExpenses()
+
+    @Query("DELETE FROM personal_facts")
+    suspend fun deleteAllFacts()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMemories(items: List<MemoryEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(items: List<ExpenseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendings(items: List<PendingUpiTransactionEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFacts(items: List<PersonalFactEntity>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFact(fact: PersonalFactEntity): Long
 

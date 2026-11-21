@@ -69,6 +69,13 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val isAskingPilot = MutableStateFlow(false)
     val pilotResponses = MutableStateFlow<List<MindPilotResponse>>(emptyList())
     val currentPlace = MutableStateFlow<String?>(null)
+    /** Full-screen overlay currently shown ("review", "ai_log") or null. */
+    val overlay = MutableStateFlow<String?>(null)
+
+    val aiLogs = dao.observeAiAuditLogs().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun clearAiLogs() { viewModelScope.launch { dao.clearAiAuditLogs() } }
+
     /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
     val pilotDraft = MutableStateFlow<String?>(null)
 
