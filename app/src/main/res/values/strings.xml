@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">keepsake AI</string>
     <string name="accessibility_snap_description">Allows keepsake AI to capture visible screen text only when you tap the Floating Snap Key.</string>
-    <string name="widget_description">Your memories, this month's spend and payments to review, with one-tap snap and Pilot.</string>
+    <string name="widget_description">Your memories, this month’s spend and payments to review, with one-tap snap and Pilot.</string>
 </resources>
