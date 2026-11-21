@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">keepsake AI</string>
+    <string name="accessibility_snap_description">Allows keepsake AI to capture visible screen text only when you tap the Floating Snap Key.</string>
+</resources>
