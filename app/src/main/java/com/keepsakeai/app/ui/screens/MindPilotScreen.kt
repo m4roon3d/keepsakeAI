@@ -97,11 +97,19 @@ fun MindPilotScreen(
         if (hasLocation) viewModel.refreshPlace()
     }
     LaunchedEffect(hasLocation) { if (hasLocation) viewModel.refreshPlace() }
+    val draft by viewModel.pilotDraft.collectAsState()
+    LaunchedEffect(draft) {
+        draft?.let {
+            query = it
+            viewModel.pilotDraft.value = null
+            viewModel.runMindPilot(it)
+        }
+    }
 
     val presets = if (agentMode)
         listOf("Plan my weekend from my notes", "Turn my receipts into a budget")
     else
-        listOf("Weather tomorrow where I am?", "What did I save this week?", "Summarise my study notes")
+        listOf("Weather tomorrow where I am?", "What did I spend on food this month?", "What did I save this week?", "Summarise my study notes")
 
     LazyColumn(
         modifier = modifier,

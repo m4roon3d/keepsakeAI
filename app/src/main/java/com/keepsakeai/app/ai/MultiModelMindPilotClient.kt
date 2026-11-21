@@ -83,7 +83,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         providers: Set<AiProvider>,
         memories: List<MemoryEntity>,
         agentMode: Boolean,
-        deviceContext: String = ""
+        deviceContext: String = "",
+        moneyContext: String = ""
     ): List<MindPilotResponse> = coroutineScope {
         val contextBlock = if (memories.isEmpty()) {
             "No saved memories yet."
@@ -99,11 +100,15 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             
             {{DEVICE}}
 
+            The user's spending (computed by the app; trust these totals, quote amounts in ₹,
+            and say when the data doesn't cover what was asked):
+            {{MONEY}}
+
             Saved Context:
             {{CONTEXT}}
             
             Goal: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query)
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." })
         } else {
             """
             You are keepsake Pilot, the user's personal assistant. Answer concisely.
@@ -114,11 +119,15 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
 
             {{DEVICE}}
 
+            The user's spending (computed by the app; trust these totals, quote amounts in ₹,
+            and say when the data doesn't cover what was asked):
+            {{MONEY}}
+
             Saved Context:
             {{CONTEXT}}
             
             Question: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query)
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." })
         }
 
         providers.map { provider ->

@@ -50,6 +50,7 @@ class DailyDigestWorker(
                 )
             )
         }
+        runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
         runCatching { MindSpaceWidget().updateAll(app) }
         return Result.success()
     }

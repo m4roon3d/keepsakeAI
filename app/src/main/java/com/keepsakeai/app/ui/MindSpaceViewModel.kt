@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import com.keepsakeai.app.ui.spend.spendDigest
+import com.keepsakeai.app.ui.spend.isMoneyQuestion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -64,6 +67,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val isAskingPilot = MutableStateFlow(false)
     val pilotResponses = MutableStateFlow<List<MindPilotResponse>>(emptyList())
     val currentPlace = MutableStateFlow<String?>(null)
+    /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
+    val pilotDraft = MutableStateFlow<String?>(null)
 
     fun refreshPlace() {
         viewModelScope.launch { currentPlace.value = DeviceContext.currentPlace(app) }
@@ -181,7 +186,14 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 providers = selectedProviders.value,
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
-                deviceContext = DeviceContext.promptBlock(app)
+                deviceContext = DeviceContext.promptBlock(app),
+                moneyContext = withContext(Dispatchers.Default) {
+                    spendDigest(
+                        expenses.value.ifEmpty { dao.observeAllExpenses().first() },
+                        com.keepsakeai.app.data.preferences.MoneyPrefs(app).budgets,
+                        includeRows = isMoneyQuestion(query)
+                    )
+                }
             )
             isAskingPilot.value = false
         }
@@ -215,7 +227,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             )
             dao.deletePendingUpi(item)
-            runCatching { MindSpaceWidget().updateAll(app) }
+            refreshWidget()
         }
     }
 
@@ -302,7 +314,10 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun refreshWidget() {
-        viewModelScope.launch { runCatching { MindSpaceWidget().updateAll(app) } }
+        viewModelScope.launch {
+            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
+        }
     }
 
     private fun upiKey(item: PendingUpiTransactionEntity) = item.utrRef ?: "${item.amount}@${item.receivedAt}"

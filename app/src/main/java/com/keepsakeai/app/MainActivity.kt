@@ -115,7 +115,8 @@ class MainActivity : ComponentActivity() {
                         )
                         TAB_SPEND -> ExpensesScreen(
                             viewModel = viewModel,
-                            modifier = contentModifier
+                            modifier = contentModifier,
+                            onAskPilot = { q -> viewModel.pilotDraft.value = q; selectedTab = TAB_PILOT }
                         )
                         TAB_SETTINGS -> SettingsScreen(
                             modifier = contentModifier
@@ -172,6 +173,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_TRIGGER_SNAP = "extra_trigger_snap"
         const val EXTRA_OPEN_TAB = "open_tab"
+        const val EXTRA_OPEN_OVERLAY = "open_overlay"
         const val TAB_HOME = 0
         const val TAB_SNAPSAKE = 1
         const val TAB_PILOT = 2

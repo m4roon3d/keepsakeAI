@@ -139,6 +139,9 @@ dependencies {
     // Coil for Photo + Note Memory Card thumbnails
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // UPI QR codes for bill splitting
+    implementation("com.google.zxing:core:3.5.3")
+
     testImplementation("junit:junit:4.13.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

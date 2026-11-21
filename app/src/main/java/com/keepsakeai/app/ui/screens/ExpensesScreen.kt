@@ -95,6 +95,15 @@ import com.keepsakeai.app.ui.components.MarkGlyph
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.components.SectionLabel
 import com.keepsakeai.app.ui.spend.Donut
+import com.keepsakeai.app.ui.spend.AskMoneyCard
+import com.keepsakeai.app.ui.spend.BudgetDialog
+import com.keepsakeai.app.ui.spend.BudgetsCard
+import com.keepsakeai.app.ui.spend.PaymentActionsDialog
+import com.keepsakeai.app.ui.spend.SplitDialog
+import com.keepsakeai.app.ui.spend.SubscriptionsCard
+import com.keepsakeai.app.ui.spend.budgetStatuses
+import com.keepsakeai.app.ui.spend.detectRecurring
+import com.keepsakeai.app.data.preferences.MoneyPrefs
 import com.keepsakeai.app.ui.spend.GroupBy
 import com.keepsakeai.app.ui.spend.LegendRow
 import com.keepsakeai.app.ui.spend.Slice
@@ -176,7 +185,8 @@ private fun pct(part: Double, whole: Double) = if (whole > 0) ((part / whole) * 
 @Composable
 fun ExpensesScreen(
     viewModel: MindSpaceViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAskPilot: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val c = LocalFlow.current
@@ -202,6 +212,15 @@ fun ExpensesScreen(
     val importedCount by viewModel.importedCount.collectAsState()
     var confirmRemoveAll by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var actionFor by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var splitFor by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var editBudgets by remember { mutableStateOf(false) }
+    val moneyPrefs = remember { MoneyPrefs(context) }
+    var budgets by remember { mutableStateOf(moneyPrefs.budgets) }
+    var remindersOn by remember { mutableStateOf(moneyPrefs.renewalReminders) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) { moneyPrefs.renewalReminders = true; remindersOn = true }
+    }
 
     val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         smsBlocked = !granted
@@ -229,6 +248,12 @@ fun ExpensesScreen(
     }
     val merchants = remember(inPeriod, filter) { inPeriod.applyFilter(filter.copy(merchant = null)).topMerchants(5) }
     val groups = remember(shown, groupBy) { shown.grouped(groupBy) }
+    val subs = remember(expenses) { expenses.detectRecurring() }
+    val budgetRows = remember(expenses, budgets) {
+        val cal = java.util.Calendar.getInstance()
+        val daysLeft = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH) - cal.get(java.util.Calendar.DAY_OF_MONTH) + 1
+        budgetStatuses(expenses.inRange(periodRange(SpendPeriod.THIS_MONTH, expenses)), budgets, daysLeft)
+    }
 
     fun toggleCategory(k: String) {
         filter = filter.copy(categories = if (k in filter.categories) filter.categories - k else filter.categories + k)
@@ -262,6 +287,24 @@ fun ExpensesScreen(
                 }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } }
+        )
+    }
+
+    actionFor?.let { exp ->
+        PaymentActionsDialog(
+            title = "${exp.merchant} · ${money(exp.currency, exp.amount)}",
+            onSplit = { splitFor = exp; actionFor = null },
+            onDelete = { confirmDelete = exp; actionFor = null },
+            onDismiss = { actionFor = null }
+        )
+    }
+    splitFor?.let { exp -> SplitDialog(exp) { splitFor = null } }
+    if (editBudgets) {
+        BudgetDialog(
+            current = budgets,
+            categories = categories.filter { it != "Cash" },
+            onSave = { moneyPrefs.budgets = it; budgets = it; editBudgets = false; viewModel.refreshWidget() },
+            onDismiss = { editBudgets = false }
         )
     }
 
@@ -375,6 +418,25 @@ fun ExpensesScreen(
                     Text(if (range.days <= 45) "daily" else "weekly", fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                     Text(fmt.format(Date(range.end - 1)).lowercase(), fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                 }
+            }
+        }
+
+        item { BudgetsCard(budgetRows, onEdit = { editBudgets = true }) }
+        if (expenses.isNotEmpty()) {
+            item { AskMoneyCard(onAsk = onAskPilot) }
+        }
+        if (subs.isNotEmpty()) {
+            item {
+                SubscriptionsCard(
+                    subs, remindersOn,
+                    onToggleReminders = {
+                        if (remindersOn) { moneyPrefs.renewalReminders = false; remindersOn = false }
+                        else if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
+                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else { moneyPrefs.renewalReminders = true; remindersOn = true }
+                    },
+                    onTap = { s -> filter = SpendFilter(merchant = s.name); period = SpendPeriod.ALL; groupBy = GroupBy.DAY }
+                )
             }
         }
 
@@ -537,7 +599,7 @@ fun ExpensesScreen(
                             GroupBy.DAY -> filter
                         }
                     },
-                    onLongPress = { confirmDelete = it }
+                    onLongPress = { actionFor = it }
                 )
             }
         }

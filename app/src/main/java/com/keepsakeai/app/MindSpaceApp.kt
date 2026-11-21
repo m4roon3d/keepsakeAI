@@ -29,6 +29,7 @@ class MindSpaceApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ThemeStore.load(this)
+        com.keepsakeai.app.notify.Notifier.createChannels(this)
         database = MindSpaceDatabase.getInstance(this)
         apiKeyStore = ApiKeyStore(this)
         mindPilotClient = MultiModelMindPilotClient(apiKeyStore)
