@@ -58,7 +58,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         query: String,
         providers: Set<AiProvider>,
         memories: List<MemoryEntity>,
-        agentMode: Boolean
+        agentMode: Boolean,
+        deviceContext: String = ""
     ): List<MindPilotResponse> = coroutineScope {
         val contextBlock = if (memories.isEmpty()) {
             "No saved memories yet."
@@ -72,20 +73,28 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             """
             You are AI Mind Pilot in Agent Mode. Using the user's saved MindSpace context below, produce a concrete, step-by-step execution plan (including file/itinerary/action structure) to accomplish their goal.
             
+            {{DEVICE}}
+
             Saved Context:
-            $contextBlock
+            {{CONTEXT}}
             
-            Goal: $query
-            """.trimIndent()
+            Goal: {{QUERY}}
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query)
         } else {
             """
-            You are AI Mind Pilot. Answer the user's question concisely using their saved MindSpace context below when relevant.
-            
+            You are keepsake Pilot, the user's personal assistant. Answer concisely.
+            Use the device context (date, time, location) for anything time- or place-dependent,
+            search the web for live information such as weather, news or opening hours,
+            and use the user's saved memories when relevant. Never ask for the user's location
+            if it is given below.
+
+            {{DEVICE}}
+
             Saved Context:
-            $contextBlock
+            {{CONTEXT}}
             
-            Question: $query
-            """.trimIndent()
+            Question: {{QUERY}}
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query)
         }
 
         providers.map { provider ->
@@ -94,7 +103,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                     AiProvider.GEMINI -> {
                         val key = keyStore.geminiKey
                         if (key.isBlank()) localFallbackResponse(provider, query, memories, agentMode)
-                        else callGemini(key, fullPrompt)
+                        else callGemini(key, fullPrompt, grounded = true)
                     }
                     AiProvider.OPENAI -> {
                         val key = keyStore.openAiKey
@@ -127,8 +136,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         "gemini-2.5-flash"
     )
 
-    private fun callGemini(apiKey: String, prompt: String): MindPilotResponse {
-        val bodyJson = JSONObject().put(
+    private fun callGemini(apiKey: String, prompt: String, grounded: Boolean = false): MindPilotResponse {
+        val bodyObj = JSONObject().put(
             "contents",
             JSONArray().put(
                 JSONObject().put(
@@ -136,7 +145,12 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                     JSONArray().put(JSONObject().put("text", prompt))
                 )
             )
-        ).toString()
+        )
+        if (grounded) {
+            // Live Google Search grounding: weather, news, places.
+            bodyObj.put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+        }
+        val bodyJson = bodyObj.toString()
 
         val queue = ArrayDeque<String>()
         workingGeminiModel?.let { queue.add(it) }
@@ -163,6 +177,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         return@use null
                     }
                     if (!resp.isSuccessful) {
+                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false)
                         return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
                     }
                     val parts = JSONObject(raw)

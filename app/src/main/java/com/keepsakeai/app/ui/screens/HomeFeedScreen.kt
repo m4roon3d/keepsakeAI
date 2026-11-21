@@ -2,219 +2,332 @@ package com.keepsakeai.app.ui.screens
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CenterFocusWeak
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Screenshot
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.keepsakeai.app.data.local.CaptureSource
+import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.ui.MindSpaceViewModel
+import com.keepsakeai.app.ui.components.DockClearance
+import com.keepsakeai.app.ui.components.FlowHeader
+import com.keepsakeai.app.ui.components.GlassButton
+import com.keepsakeai.app.ui.components.GlassCard
+import com.keepsakeai.app.ui.components.GlassField
+import com.keepsakeai.app.ui.components.GradientButton
+import com.keepsakeai.app.ui.components.GradientCard
+import com.keepsakeai.app.ui.components.Pill
+import com.keepsakeai.app.ui.components.SectionLabel
+import com.keepsakeai.app.ui.theme.Flow
+import com.keepsakeai.app.ui.theme.LocalFlow
+
+/** Accent per Smart Collection, used for card stripes and labels. */
+fun collectionAccent(name: String): Pair<Color, Color> = when (name) {
+    "Travel" -> Flow.Sky to Flow.Cyan
+    "Study Notes" -> Flow.Indigo to Flow.Violet
+    "Events" -> Flow.Pink to Flow.Purple
+    "Personal Projects" -> Flow.Purple to Flow.Indigo
+    "Receipts" -> Flow.Emerald to Flow.Teal
+    "Watch Later" -> Flow.Amber to Flow.Pink
+    else -> Flow.Indigo to Flow.Sky
+}
 
 @Composable
 fun HomeFeedScreen(
     viewModel: MindSpaceViewModel,
     onTriggerScreenSnap: () -> Unit,
     onOpenPilot: () -> Unit,
+    onOpenSnapsake: () -> Unit,
+    onOpenSpend: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val c = LocalFlow.current
     val memories by viewModel.filteredMemories.collectAsState()
+    val allMemories by viewModel.allMemories.collectAsState()
     val collections by viewModel.collections.collectAsState()
     val selectedCol by viewModel.selectedCollection.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
     val isCapturing by viewModel.isCapturing.collectAsState()
+    val pendingUpi by viewModel.pendingUpi.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val semantic by viewModel.semanticResults.collectAsState()
 
     var quickNote by remember { mutableStateOf("") }
 
-    val imagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { viewModel.captureImageUri(it, CaptureSource.CAMERA_SCAN) }
     }
-
-    val voiceLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val spoken = result.data
-                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                ?.firstOrNull()
-            if (!spoken.isNullOrBlank()) {
-                viewModel.captureText(spoken, CaptureSource.VOICE_MEMO)
-            }
+            val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spoken.isNullOrBlank()) viewModel.captureText(spoken, CaptureSource.VOICE_MEMO)
         }
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(vertical = 16.dp)
+    val searching = searchQuery.isNotBlank()
+    val cards: List<Pair<MemoryEntity, Float?>> =
+        if (searching) semantic.map { it.memory to it.similarity } else memories.map { it to null }
+
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Fixed(2),
+        modifier = modifier,
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalItemSpacing = 10.dp
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "keepsake AI",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+        item(span = StaggeredGridItemSpan.FullLine) {
+            FlowHeader(eyebrow = "Living Flow Hub", title = "keepsake", gradientSuffix = "AI") {
+                GlassButton("Snap", onClick = onTriggerScreenSnap, icon = Icons.Rounded.Screenshot)
+            }
+        }
+
+        item(span = StaggeredGridItemSpan.FullLine) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GlassField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.runSemanticSearch(it) },
+                    placeholder = "Search memories by meaning…",
+                    leadingIcon = Icons.Rounded.Search,
+                    modifier = Modifier.weight(1f)
                 )
-                FilledTonalButton(onClick = onTriggerScreenSnap) {
-                    Icon(Icons.Default.Screenshot, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Screen Snap")
+                if (searching) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(c.glass)
+                            .clickable { viewModel.runSemanticSearch("") },
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Rounded.Close, "Clear search", tint = c.muted) }
                 }
             }
         }
 
-        // AI Mind Suggest Daily Card
-        item {
-            ElevatedCard(
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+        if (!searching) {
+            // keepsake Suggest aurora card
+            item(span = StaggeredGridItemSpan.FullLine) {
+                GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("AI Mind Suggest", fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("KEEPSAKE SUGGEST", color = Color.White.copy(alpha = 0.92f), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                        Box(
+                            Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.2f))
+                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                        ) { Text("AI Highlight", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
                     }
-                    Spacer(Modifier.height(6.dp))
-                    val latest = suggestions.firstOrNull()
-                    Text(
-                        text = latest?.body ?: "Tap refresh to synthesize your saved memories into today's brief.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
                     Spacer(Modifier.height(8.dp))
+                    val body = when {
+                        pendingUpi.isNotEmpty() -> "${pendingUpi.size} UPI payment${if (pendingUpi.size > 1) "s are" else " is"} waiting for your approval."
+                        suggestions.firstOrNull() != null -> suggestions.first().body
+                        allMemories.isEmpty() -> "Share a link, snap a receipt or jot a thought. keepsake sorts it into Smart Collections for you."
+                        else -> "${allMemories.size} memories organised into ${collections.size} Smart Collections. Ask Pilot to plan, summarise or find anything."
+                    }
+                    Text(body, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { viewModel.refreshDailySuggest() }) {
-                            Text("Refresh Digest")
-                        }
-                        TextButton(onClick = onOpenPilot) {
-                            Text("Ask Mind Pilot")
-                        }
+                        WhiteChip("Ask Pilot", solid = true, onClick = onOpenPilot)
+                        if (pendingUpi.isNotEmpty()) WhiteChip("Review ${pendingUpi.size} UPI", onClick = onOpenSpend)
+                        else WhiteChip("Refresh brief", onClick = { viewModel.refreshDailySuggest() })
                     }
                 }
             }
-        }
 
-        // Quick Capture Box
-        item {
-            OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+            // Quick capture composer
+            item(span = StaggeredGridItemSpan.FullLine) {
+                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)) {
+                    GlassField(
                         value = quickNote,
                         onValueChange = { quickNote = it },
-                        label = { Text("Snap a thought, link, or expense...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 3
+                        placeholder = "Capture a thought, link or receipt…",
+                        singleLine = false,
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            IconButton(onClick = { imagePicker.launch("image/*") }) {
-                                Icon(Icons.Default.ImageSearch, contentDescription = "Scan Image / Receipt")
+                    HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = 10.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
+                        ComposerIcon(Icons.Rounded.CenterFocusWeak, "Snapsake", Flow.Indigo, onOpenSnapsake)
+                        ComposerIcon(Icons.Rounded.Mic, "Voice note", Flow.Pink) {
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                             }
-                            IconButton(onClick = {
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                }
-                                runCatching { voiceLauncher.launch(intent) }
-                            }) {
-                                Icon(Icons.Default.Mic, contentDescription = "Voice Memo")
-                            }
+                            runCatching { voiceLauncher.launch(intent) }
                         }
-                        Button(
+                        ComposerIcon(Icons.Rounded.AddPhotoAlternate, "Read text from a photo", Flow.Emerald) {
+                            imagePicker.launch("image/*")
+                        }
+                        Spacer(Modifier.weight(1f))
+                        GradientButton(
+                            text = if (isCapturing) "Saving…" else "Save",
                             enabled = quickNote.isNotBlank() && !isCapturing,
                             onClick = {
                                 viewModel.captureText(quickNote)
                                 quickNote = ""
                             }
-                        ) {
-                            Text(if (isCapturing) "Analyzing..." else "Save to keepsake")
+                        )
+                    }
+                }
+            }
+
+            item(span = StaggeredGridItemSpan.FullLine) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("Smart Collections", trailing = "${allMemories.size} items")
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            Pill("All (${allMemories.size})", selectedCol == null, { viewModel.selectedCollection.value = null })
+                        }
+                        items(collections) { col ->
+                            val n = allMemories.count { it.collectionName == col }
+                            Pill("$col ($n)", selectedCol == col, { viewModel.selectedCollection.value = col })
                         }
                     }
                 }
             }
+        } else {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                SectionLabel("Closest matches", trailing = "${cards.size} found")
+            }
         }
 
-        // Smart Collections Filter Chips
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = selectedCol == null,
-                    onClick = { viewModel.selectedCollection.value = null },
-                    label = { Text("All") }
-                )
-                collections.forEach { col ->
-                    FilterChip(
-                        selected = selectedCol == col,
-                        onClick = { viewModel.selectedCollection.value = col },
-                        label = { Text(col) }
+        if (cards.isEmpty()) {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    Text(
+                        if (searching) "Nothing close to that yet." else "Your space is empty. Share anything to keepsake from any app, or type a note above.",
+                        color = c.muted,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
-        }
-
-        // Saved Memory Cards
-        if (memories.isEmpty()) {
-            item {
-                Text(
-                    text = "No memories yet. Share a link from any app, snap a receipt, or type a note above.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         } else {
-            items(memories, key = { it.id }) { mem ->
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AssistChip(onClick = {}, label = { Text(mem.collectionName) })
-                            IconButton(onClick = { viewModel.deleteMemory(mem) }) {
-                                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete")
-                            }
-                        }
-                        Text(mem.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(4.dp))
-                        Text(mem.aiSummary, style = MaterialTheme.typography.bodyMedium)
-                        if (mem.tagsCsv.isNotBlank()) {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                text = mem.tagsCsv.split(",").joinToString("  ") { "#$it" },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
+            items(cards, key = { it.first.id }) { (mem, score) ->
+                MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun WhiteChip(text: String, solid: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (solid) Color.White else Color.White.copy(alpha = 0.22f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ComposerIcon(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.10f)).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Icon(icon, label, tint = tint, modifier = Modifier.size(20.dp)) }
+    Spacer(Modifier.width(6.dp))
+}
+
+@Composable
+private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit) {
+    val c = LocalFlow.current
+    val (a1, a2) = collectionAccent(mem.collectionName)
+    val photo = mem.photoUrisCsv.split(",").firstOrNull { it.isNotBlank() }
+    GlassCard(padding = PaddingValues(12.dp)) {
+        if (photo != null) {
+            AsyncImage(
+                model = photo,
+                contentDescription = mem.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(16.dp))
+            )
+            Spacer(Modifier.height(10.dp))
+        } else {
+            Box(
+                Modifier.width(40.dp).height(5.dp).clip(CircleShape)
+                    .background(Brush.horizontalGradient(listOf(a1, a2)))
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                mem.collectionName.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = a1,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Rounded.DeleteOutline, "Delete",
+                tint = c.muted,
+                modifier = Modifier.size(18.dp).clip(CircleShape).clickable(onClick = onDelete)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(mem.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(4.dp))
+        Text(mem.aiSummary, style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 5, overflow = TextOverflow.Ellipsis)
+        val tag = mem.tagsCsv.split(",").firstOrNull { it.isNotBlank() }
+        if (tag != null || score != null) {
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = c.divider)
+            Spacer(Modifier.height(6.dp))
+            Row {
+                Text(tag?.let { "#$it" } ?: "", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Flow.Sky, modifier = Modifier.weight(1f), maxLines = 1)
+                if (score != null) Text("${(score * 100).toInt()}%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
             }
         }
     }

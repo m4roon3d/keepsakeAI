@@ -10,33 +10,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.keepsakeai.app.capture.ScreenCaptureService
 import com.keepsakeai.app.data.local.CaptureSource
 import com.keepsakeai.app.ui.MindSpaceViewModel
+import com.keepsakeai.app.ui.components.AuroraBackground
+import com.keepsakeai.app.ui.components.FloatingDock
+import com.keepsakeai.app.ui.components.StatusToast
 import com.keepsakeai.app.ui.screens.ExpensesScreen
 import com.keepsakeai.app.ui.screens.HomeFeedScreen
 import com.keepsakeai.app.ui.screens.MindPilotScreen
-import com.keepsakeai.app.ui.screens.OSeeScannerScreen
 import com.keepsakeai.app.ui.screens.SettingsScreen
+import com.keepsakeai.app.ui.screens.SnapsakeScreen
 import com.keepsakeai.app.ui.theme.MindSpaceTheme
 
 class MainActivity : ComponentActivity() {
@@ -47,9 +45,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
 
+        enableEdgeToEdge()
+
         setContent {
             MindSpaceTheme {
-                var selectedTab by remember { mutableIntStateOf(0) }
+                var selectedTab by rememberSaveable { mutableIntStateOf(TAB_HOME) }
 
                 val projectionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult()
@@ -68,66 +68,48 @@ class MainActivity : ComponentActivity() {
                     projectionLauncher.launch(mgr.createScreenCaptureIntent())
                 }
 
-                Scaffold(
-                    bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                icon = { Icon(Icons.Default.Home, contentDescription = "Hub") },
-                                label = { Text("Space") }
-                            )
-                            NavigationBarItem(
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 },
-                                icon = { Icon(Icons.Default.CameraAlt, contentDescription = "OSee") },
-                                label = { Text("OSee") }
-                            )
-                            NavigationBarItem(
-                                selected = selectedTab == 2,
-                                onClick = { selectedTab = 2 },
-                                icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Pilot") },
-                                label = { Text("Pilot") }
-                            )
-                            NavigationBarItem(
-                                selected = selectedTab == 3,
-                                onClick = { selectedTab = 3 },
-                                icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Expenses") },
-                                label = { Text("Spend") }
-                            )
-                            NavigationBarItem(
-                                selected = selectedTab == 4,
-                                onClick = { selectedTab = 4 },
-                                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                                label = { Text("Settings") }
-                            )
-                        }
-                    }
-                ) { padding ->
+                AuroraBackground {
+                    val contentModifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .imePadding()
                     when (selectedTab) {
-                        0 -> HomeFeedScreen(
+                        TAB_HOME -> HomeFeedScreen(
                             viewModel = viewModel,
                             onTriggerScreenSnap = triggerScreenSnap,
-                            onOpenPilot = { selectedTab = 2 },
-                            modifier = Modifier.padding(padding)
+                            onOpenPilot = { selectedTab = TAB_PILOT },
+                            onOpenSnapsake = { selectedTab = TAB_SNAPSAKE },
+                            onOpenSpend = { selectedTab = TAB_SPEND },
+                            modifier = contentModifier
                         )
-                        1 -> OSeeScannerScreen(
+                        TAB_SNAPSAKE -> SnapsakeScreen(
                             viewModel = viewModel,
-                            onSavedNavigateHome = { selectedTab = 0 },
-                            modifier = Modifier.padding(padding)
+                            onSavedNavigateHome = { selectedTab = TAB_HOME },
+                            modifier = contentModifier
                         )
-                        2 -> MindPilotScreen(
+                        TAB_PILOT -> MindPilotScreen(
                             viewModel = viewModel,
-                            modifier = Modifier.padding(padding)
+                            modifier = contentModifier
                         )
-                        3 -> ExpensesScreen(
+                        TAB_SPEND -> ExpensesScreen(
                             viewModel = viewModel,
-                            modifier = Modifier.padding(padding)
+                            modifier = contentModifier
                         )
-                        4 -> SettingsScreen(
-                            modifier = Modifier.padding(padding)
+                        TAB_SETTINGS -> SettingsScreen(
+                            modifier = contentModifier
                         )
                     }
+
+                    StatusToast(viewModel, Modifier.align(Alignment.TopCenter).statusBarsPadding())
+
+                    FloatingDock(
+                        selectedTab = selectedTab,
+                        pendingUpi = viewModel.pendingUpi.collectAsState().value.size,
+                        onSelect = { selectedTab = it },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                    )
                 }
             }
         }
@@ -160,5 +142,10 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TRIGGER_SNAP = "extra_trigger_snap"
+        const val TAB_HOME = 0
+        const val TAB_SNAPSAKE = 1
+        const val TAB_PILOT = 2
+        const val TAB_SPEND = 3
+        const val TAB_SETTINGS = 4
     }
 }

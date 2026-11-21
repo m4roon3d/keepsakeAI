@@ -13,6 +13,7 @@ import com.keepsakeai.app.data.local.CaptureSource
 import com.keepsakeai.app.data.local.DigestSuggestionEntity
 import com.keepsakeai.app.data.local.ExpenseEntity
 import com.keepsakeai.app.capture.UpiSmsInboxScanner
+import com.keepsakeai.app.context.DeviceContext
 import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
 import com.keepsakeai.app.widget.MindSpaceWidget
@@ -60,6 +61,11 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val useMemoryContext = MutableStateFlow(true)
     val isAskingPilot = MutableStateFlow(false)
     val pilotResponses = MutableStateFlow<List<MindPilotResponse>>(emptyList())
+    val currentPlace = MutableStateFlow<String?>(null)
+
+    fun refreshPlace() {
+        viewModelScope.launch { currentPlace.value = DeviceContext.currentPlace(app) }
+    }
 
     fun runSemanticSearch(query: String) {
         searchQuery.value = query
@@ -73,7 +79,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun captureText(text: String, source: CaptureSource = CaptureSource.TEXT_NOTE, url: String? = null) {
+    fun captureText(text: String, source: CaptureSource = CaptureSource.TEXT_NOTE, url: String? = null, photoUri: String? = null) {
         if (text.isBlank()) return
         viewModelScope.launch {
             isCapturing.value = true
@@ -90,7 +96,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     source = source,
                     sourceUrl = url,
                     tagsCsv = analyzed.tags.joinToString(","),
-                    embeddingCsv = app.vectorSearch.encodeVector(vector)
+                    embeddingCsv = app.vectorSearch.encodeVector(vector),
+                    photoUrisCsv = photoUri.orEmpty()
                 )
             )
             analyzed.detectedExpense?.let { exp ->
@@ -170,7 +177,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 query = query,
                 providers = selectedProviders.value,
                 memories = contextMemories,
-                agentMode = agentModeEnabled.value
+                agentMode = agentModeEnabled.value,
+                deviceContext = DeviceContext.promptBlock(app)
             )
             isAskingPilot.value = false
         }
