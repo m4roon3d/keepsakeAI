@@ -25,7 +25,7 @@ data class AgentActionResult(
 /**
  * Executes real on-device Agent Mode actions:
  * 1. Indexes local photos via Android MediaStore matching a keyword or date window.
- * 2. Exports a clean, standalone HTML itinerary/briefing from matched keepsake AI memories into Downloads.
+ * 2. Exports a clean, standalone HTML itinerary/briefing from matched trove memories into Downloads.
  */
 object DeviceAgentExecutor {
 
@@ -81,11 +81,11 @@ object DeviceAgentExecutor {
         val html = """
         <!DOCTYPE html>
         <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>$title — keepsake AI</title></head>
+        <title>$title — trove</title></head>
         <body style="font-family:system-ui,sans-serif;background:#f4f6ff;color:#0f172a;max-width:720px;margin:24px auto;padding:16px">
           <h1>$title</h1>
           <div style="background:#eef2ff;border-radius:16px;padding:16px;margin-bottom:20px;white-space:pre-line">$agentPlanText</div>
-          <h2>Grounded keepsake AI Memories (${memories.size})</h2>
+          <h2>Grounded trove Memories (${memories.size})</h2>
           $cardsHtml
         </body></html>
         """.trimIndent()

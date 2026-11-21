@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Automatically finds local device photos taken within +/- 24 hours of a captured memory
- * (or matching the memory's collection/trip folder) so keepsake AI can render rich Photo + Note cards.
+ * (or matching the memory's collection/trip folder) so trove can render rich Photo + Note cards.
  */
 object PhotoMemoryLinker {
 

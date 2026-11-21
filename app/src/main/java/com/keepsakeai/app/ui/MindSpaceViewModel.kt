@@ -374,7 +374,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /** Set by the widget / app shortcut so snapsake opens the camera straight away. */
+    /** Set by the widget / app shortcut so lens opens the camera straight away. */
     val autoCamera = MutableStateFlow(false)
 
     fun addManualExpense(merchant: String, amount: Double, category: String) {

@@ -20,7 +20,7 @@ import com.keepsakeai.app.ui.theme.Palette
 import com.keepsakeai.app.ui.theme.ThemeStore
 
 /**
- * The keepsake AI aurora capsule, drawn in code so it stays crisp at any size and
+ * The trove aurora capsule, drawn in code so it stays crisp at any size and
  * takes on the active theme's colours. Same geometry as the launcher icon
  * (branding/fg.svg), scaled from its 108-unit grid; the capsule spans x 38-70, y 27-81.
  */

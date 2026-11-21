@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Handles Android ACTION_ASSIST (bottom-corner swipe up or power-button assist gesture)
- * when the user selects keepsake AI as their Digital Assistant app.
+ * when the user selects trove as their Digital Assistant app.
  */
 class AssistSnapActivity : Activity() {
 
@@ -42,7 +42,7 @@ class AssistSnapActivity : Activity() {
                     )
                 )
             }
-            Toast.makeText(this, "Captured via Assist to keepsake AI", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Captured via Assist to trove", Toast.LENGTH_SHORT).show()
         } else {
             val intent = Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

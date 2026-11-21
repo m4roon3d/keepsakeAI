@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat
 import com.keepsakeai.app.MainActivity
 import com.keepsakeai.app.R
 
-/** keepsake notifications: money alerts, reminders and the weekly review. */
+/** trove notifications: money alerts, reminders and the weekly review. */
 object Notifier {
     const val MONEY = "money"
     const val REMINDERS = "reminders"

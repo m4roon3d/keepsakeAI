@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">keepsake AI</string>
-    <string name="accessibility_snap_description">Allows keepsake AI to capture visible screen text only when you tap the Floating Snap Key.</string>
+    <string name="app_name">trove</string>
+    <string name="accessibility_snap_description">Allows trove to capture visible screen text only when you tap the Floating Snap Key.</string>
     <string name="widget_description">Your memories, this month’s spend and payments to review, with one-tap snap and Pilot.</string>
     <string name="shortcut_snap">snap</string>
     <string name="shortcut_snap_long">Snap with camera</string>
     <string name="shortcut_pilot">ask pilot</string>
-    <string name="shortcut_pilot_long">Ask keepsake Pilot</string>
+    <string name="shortcut_pilot_long">Ask trove Pilot</string>
     <string name="shortcut_journal">journal</string>
     <string name="shortcut_journal_long">Voice journal</string>
 </resources>

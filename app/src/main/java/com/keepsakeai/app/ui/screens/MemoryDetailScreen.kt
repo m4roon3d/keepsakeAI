@@ -71,7 +71,7 @@ private val collectionsList = listOf("Journal", "Travel", "Study Notes", "Events
 private fun sourceLabel(m: MemoryEntity) = when (m.source.name) {
     "SHARE_SHEET" -> "shared from an app"
     "LINK_CAPTURE" -> "shared link"
-    "CAMERA_SCAN" -> "snapsake photo"
+    "CAMERA_SCAN" -> "lens photo"
     "SCREENSHOT_OCR" -> "screen snap"
     "VOICE_MEMO" -> "voice note"
     "UPI_MESSAGE" -> "UPI payment"

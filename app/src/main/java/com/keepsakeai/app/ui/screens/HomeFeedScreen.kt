@@ -162,7 +162,7 @@ fun HomeFeedScreen(
         item(span = StaggeredGridItemSpan.FullLine) {
             FlowHeader(
                 eyebrow = "your memory hub",
-                title = "keepsake",
+                title = "trove",
                 gradientSuffix = "AI",
                 leading = { LogoMark(size = 46.dp) }
             ) {
@@ -240,7 +240,7 @@ fun HomeFeedScreen(
                     HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = 10.dp))
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
-                        ComposerIcon(Icons.Rounded.CenterFocusWeak, "snapsake", Flow.Indigo, onOpenSnapsake)
+                        ComposerIcon(Icons.Rounded.CenterFocusWeak, "lens", Flow.Indigo, onOpenSnapsake)
                         ComposerIcon(Icons.Rounded.Mic, "Voice note", Flow.Pink) {
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -335,7 +335,7 @@ fun HomeFeedScreen(
             item(span = StaggeredGridItemSpan.FullLine) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Text(
-                        if (searching) "Nothing close to that yet." else "Your space is empty. Share anything to keepsake from any app, or type a note above.",
+                        if (searching) "Nothing close to that yet." else "Your space is empty. Share anything to trove from any app, or type a note above.",
                         color = c.muted,
                         style = MaterialTheme.typography.bodyMedium
                     )

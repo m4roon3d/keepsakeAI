@@ -9,14 +9,14 @@ import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-/** Photo helpers shared by snapsake, the home gallery button and the share sheet. */
+/** Photo helpers shared by lens, the home gallery button and the share sheet. */
 object ImagePrep {
 
     fun snapsDir(context: Context) = File(context.filesDir, "snaps").apply { mkdirs() }
 
     fun newSnapFile(context: Context) = File(snapsDir(context), "snap_${System.currentTimeMillis()}.jpg")
 
-    /** Copies a picked/shared image into keepsake's own folder (picker access is temporary). */
+    /** Copies a picked/shared image into trove's own folder (picker access is temporary). */
     fun importToSnaps(context: Context, source: Uri): Uri? = runCatching {
         if (source.scheme == "file") return source
         val dest = newSnapFile(context)

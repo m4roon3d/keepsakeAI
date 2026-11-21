@@ -18,7 +18,7 @@ data class ExtractedLinkContent(
 
 /**
  * Fetches full article text (Long-doc Capture) or YouTube/TikTok metadata + descriptions
- * when the user shares a link into keepsake AI.
+ * when the user shares a link into trove.
  */
 object LinkContentExtractor {
 

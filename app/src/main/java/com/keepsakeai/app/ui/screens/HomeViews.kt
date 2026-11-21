@@ -65,7 +65,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class HubView(val label: String) {
-    KEEPSAKES("keepsakes"), TODOS("to-dos"), PEOPLE("people & places"), THREADS("threads"), TIMELINE("timeline"), FACTS("about me")
+    KEEPSAKES("finds"), TODOS("to-dos"), PEOPLE("people & places"), THREADS("threads"), TIMELINE("timeline"), FACTS("about me")
 }
 
 private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
@@ -261,12 +261,12 @@ fun LazyStaggeredGridScope.factItems(
         Column {
             GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    GlassField(draft, { draft = it }, "Teach keepsake about you…", Modifier.weight(1f), bare = true)
+                    GlassField(draft, { draft = it }, "Teach trove about you…", Modifier.weight(1f), bare = true)
                     GradientButton("remember", enabled = draft.isNotBlank(), onClick = { onAdd(draft); draft = "" })
                 }
             }
             Text(
-                "Pilot uses these to personalise answers. keepsake also learns them from what you save. Pin the important ones.",
+                "Pilot uses these to personalise answers. trove also learns them from what you save. Pin the important ones.",
                 fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 8.dp)
             )
         }

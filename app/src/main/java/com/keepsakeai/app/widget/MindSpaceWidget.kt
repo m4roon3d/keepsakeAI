@@ -66,8 +66,8 @@ private data class WidgetData(
 val OpenTabKey = ActionParameters.Key<String>(MainActivity.EXTRA_OPEN_TAB)
 
 /**
- * keepsake AI home-screen widget: aurora glass card in the active theme with live stats,
- * the latest memory and one-tap shortcuts into snapsake, Spend and Pilot.
+ * trove home-screen widget: aurora glass card in the active theme with live stats,
+ * the latest memory and one-tap shortcuts into lens, Spend and Pilot.
  */
 class MindSpaceWidget : GlanceAppWidget() {
 
@@ -155,9 +155,9 @@ private fun WidgetContent(d: WidgetData, p: Palette, currency: String, bg: Bitma
 @Composable
 private fun Header(p: Palette, showOrb: Boolean, orb: Bitmap) {
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Image(ImageProvider(R.drawable.ic_launcher_foreground), "keepsake AI", GlanceModifier.size(40.dp))
+        Image(ImageProvider(R.drawable.ic_launcher_foreground), "trove", GlanceModifier.size(40.dp))
         Spacer(GlanceModifier.width(4.dp))
-        Text("keepsake", style = TextStyle(color = ColorProvider(White), fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        Text("trove", style = TextStyle(color = ColorProvider(White), fontSize = 16.sp, fontWeight = FontWeight.Bold))
         Text(" AI", style = TextStyle(color = ColorProvider(p.secondaryBright), fontSize = 16.sp, fontWeight = FontWeight.Bold))
         Spacer(GlanceModifier.defaultWeight())
         if (showOrb) {
@@ -172,7 +172,7 @@ private fun Header(p: Palette, showOrb: Boolean, orb: Bitmap) {
 private fun SmallBody(d: WidgetData, orb: Bitmap) {
     Column(GlanceModifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(ImageProvider(R.drawable.ic_launcher_foreground), "keepsake AI", GlanceModifier.size(40.dp))
+            Image(ImageProvider(R.drawable.ic_launcher_foreground), "trove", GlanceModifier.size(40.dp))
             Column {
                 Text("${d.memories}", style = TextStyle(color = ColorProvider(White), fontSize = 24.sp, fontWeight = FontWeight.Bold))
                 Text("kept", style = TextStyle(color = ColorProvider(Soft), fontSize = 11.sp))

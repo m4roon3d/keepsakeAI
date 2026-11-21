@@ -47,7 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Every call keepsake made to an AI: who, why, when and exactly what was sent. */
+/** Every call trove made to an AI: who, why, when and exactly what was sent. */
 @Composable
 fun AiLogScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
@@ -71,7 +71,7 @@ fun AiLogScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Mo
                 Text("$week calls this week · ${logs.size} kept", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = c.text)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "keepsake only talks to the AIs whose keys you added. Photos and your SMS stay on your phone: only the text shown below was sent (for payments, just the payee names).",
+                    "trove only talks to the AIs whose keys you added. Photos and your SMS stay on your phone: only the text shown below was sent (for payments, just the payee names).",
                     fontSize = 12.sp, color = c.muted
                 )
                 Spacer(Modifier.height(10.dp))

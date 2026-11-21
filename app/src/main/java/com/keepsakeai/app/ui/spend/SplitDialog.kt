@@ -59,7 +59,7 @@ import kotlin.math.ceil
 /** Standard UPI deep link; every UPI app understands it when scanned as a QR code. */
 fun upiLink(vpa: String, name: String, amount: Double, note: String): String {
     fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
-    return "upi://pay?pa=${enc(vpa)}&pn=${enc(name.ifBlank { "keepsake" })}&am=${String.format(Locale.US, "%.2f", amount)}&cu=INR&tn=${enc(note.take(40))}"
+    return "upi://pay?pa=${enc(vpa)}&pn=${enc(name.ifBlank { "trove" })}&am=${String.format(Locale.US, "%.2f", amount)}&cu=INR&tn=${enc(note.take(40))}"
 }
 
 /** Each person's share, rounded up to the rupee so the payer is never short. */

@@ -86,7 +86,7 @@ data class Brief(
 
 private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
 
-/** Builds the morning brief from what keepsake knows. Pure, unit-tested. */
+/** Builds the morning brief from what trove knows. Pure, unit-tested. */
 fun buildBrief(
     reminders: List<KeepReminder>,
     todos: List<Todo>,

@@ -97,7 +97,7 @@ private fun newSnapFile(context: Context) = File(snapsDir(context), "snap_${Syst
 private fun uriFor(context: Context, file: File): Uri =
     FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
-/** Copies a picked gallery image into keepsake's own folder (picker access is temporary). */
+/** Copies a picked gallery image into trove's own folder (picker access is temporary). */
 private fun importToSnaps(context: Context, source: Uri): Uri? = runCatching {
     val dest = newSnapFile(context)
     context.contentResolver.openInputStream(source)?.use { input ->
@@ -109,7 +109,7 @@ private fun importToSnaps(context: Context, source: Uri): Uri? = runCatching {
 /**
  * Snapsake: point, snap, keep.
  * Opens the phone's own camera app (or the photo picker), reads the text on-device
- * with ML Kit, and saves it to keepsake together with the photo.
+ * with ML Kit, and saves it to trove together with the photo.
  */
 @Composable
 fun SnapsakeScreen(
@@ -264,10 +264,10 @@ fun SnapsakeScreen(
                 )
             }
             GradientButton(
-                text = "Save to keepsake",
+                text = "Save to trove",
                 enabled = text.isNotBlank() || photo != null,
                 onClick = {
-                    val body = text.ifBlank { "Photo snapped with snapsake" }
+                    val body = text.ifBlank { "Photo snapped with lens" }
                     viewModel.captureText(mode.prefixPrompt + body, source = CaptureSource.CAMERA_SCAN, photoUri = photo)
                     photo = null
                     text = ""
@@ -277,7 +277,7 @@ fun SnapsakeScreen(
             )
         } else if (photo == null) {
             Text(
-                "snapsake opens your phone's own camera, so you get its full quality, zoom and HDR. Text is read on your phone; only the extracted text goes to your AI for sorting.",
+                "lens opens your phone's own camera, so you get its full quality, zoom and HDR. Text is read on your phone; only the extracted text goes to your AI for sorting.",
                 color = c.muted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 4.dp)

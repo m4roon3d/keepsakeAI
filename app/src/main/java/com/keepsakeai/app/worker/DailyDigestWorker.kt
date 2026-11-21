@@ -45,8 +45,8 @@ class DailyDigestWorker(
         if (recent.isNotEmpty()) {
             dao.insertSuggestion(
                 DigestSuggestionEntity(
-                    headline = "keepsake Suggest Daily Brief",
-                    body = "${recent.size} recent keepsakes across ${recent.map { it.collectionName }.distinct().size} Smart Collections.",
+                    headline = "trove Suggest Daily Brief",
+                    body = "${recent.size} recent finds across ${recent.map { it.collectionName }.distinct().size} Smart Collections.",
                     actionLabel = "Open Hub"
                 )
             )
@@ -71,7 +71,7 @@ class DailyDigestWorker(
         val w = com.keepsakeai.app.ui.review.computeWeek(expenses, memories)
         com.keepsakeai.app.notify.Notifier.show(
             app, com.keepsakeai.app.notify.Notifier.REVIEW, 7001,
-            "Your week in keepsake",
+            "Your week in trove",
             "₹" + String.format(java.util.Locale.US, "%,.0f", w.spent) + " spent · ${w.kept} kept. ${w.insight}",
             openOverlay = "review"
         )

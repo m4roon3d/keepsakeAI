@@ -34,7 +34,7 @@ object BiometricVaultHelper {
             }
         )
         val info = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock keepsake AI")
+            .setTitle("Unlock trove")
             .setSubtitle("Verify your identity to access your private memory hub")
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or

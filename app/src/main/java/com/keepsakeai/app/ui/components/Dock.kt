@@ -56,8 +56,8 @@ val DockClearance = 110.dp
 private data class DockItem(val tab: Int, val label: String, val icon: ImageVector)
 
 private val dockItems = listOf(
-    DockItem(MainActivity.TAB_HOME, "keepsake", Icons.Rounded.Dashboard),
-    DockItem(MainActivity.TAB_SNAPSAKE, "snapsake", Icons.Rounded.CenterFocusWeak),
+    DockItem(MainActivity.TAB_HOME, "trove", Icons.Rounded.Dashboard),
+    DockItem(MainActivity.TAB_SNAPSAKE, "lens", Icons.Rounded.CenterFocusWeak),
     DockItem(MainActivity.TAB_SPEND, "spend", Icons.Rounded.AccountBalanceWallet),
     DockItem(MainActivity.TAB_SETTINGS, "settings", Icons.Rounded.Tune),
 )
@@ -125,7 +125,7 @@ fun FloatingDock(
         Spacer(Modifier.width(10.dp))
         AuroraOrb(
             icon = Icons.Rounded.AutoAwesome,
-            contentDescription = "Ask keepsake Pilot",
+            contentDescription = "Ask trove Pilot",
             onClick = { onSelect(MainActivity.TAB_PILOT) },
             size = 60.dp
         )

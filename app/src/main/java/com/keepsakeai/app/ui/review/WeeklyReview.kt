@@ -222,7 +222,7 @@ private fun shareWeek(context: Context, w: WeekReview, rangeText: String) {
         text.textSize = size; text.typeface = Typeface.create(Typeface.DEFAULT, if (bold) Typeface.BOLD else Typeface.NORMAL); text.alpha = alpha
         cv.drawText(s, 90f, y, text)
     }
-    line("keepsake AI · your week", 150f, 42f, bold = true, alpha = 220)
+    line("trove · your week", 150f, 42f, bold = true, alpha = 220)
     line(rangeText, 205f, 34f, alpha = 170)
     line(r(w.spent), 380f, 130f, bold = true)
     line("spent · ${w.payments} payments" + (w.change?.let { "  ${if (it >= 0) "▲" else "▼"}${kotlin.math.abs(it)}%" } ?: ""), 450f, 38f, alpha = 200)
@@ -243,7 +243,7 @@ private fun shareWeek(context: Context, w: WeekReview, rangeText: String) {
     w.topMerchant?.let { line("top merchant  ${it.first} · ${r(it.second)}", yy, 40f); yy += 70f }
     line("memories kept  ${w.kept}", yy, 40f); yy += 70f
     if (w.dueNextWeek.isNotEmpty()) { line("renewals next week  ${w.dueNextWeek.size} · ${r(w.dueNextWeek.sumOf { it.amount })}", yy, 40f) }
-    line("made with keepsake AI", height - 90f, 32f, alpha = 150)
+    line("made with trove", height - 90f, 32f, alpha = 150)
 
     val dir = File(context.cacheDir, "shares").apply { mkdirs() }
     val file = File(dir, "week_${System.currentTimeMillis()}.png")

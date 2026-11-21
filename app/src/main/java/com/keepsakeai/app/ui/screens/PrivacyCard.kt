@@ -103,7 +103,7 @@ fun PrivacyCard(viewModel: MindSpaceViewModel?) {
                     message = "Set up a screen lock or fingerprint on your phone first."
                     return@GlassToggle
                 }
-                BiometricVaultHelper.authenticate(activity, onSuccess = { sec.appLock = true; lockOn = true; message = "App lock on. keepsake locks after 3 minutes away." }, onError = { })
+                BiometricVaultHelper.authenticate(activity, onSuccess = { sec.appLock = true; lockOn = true; message = "App lock on. trove locks after 3 minutes away." }, onError = { })
             },
             modifier = Modifier.fillMaxWidth(),
             accent = Flow.Emerald
@@ -134,13 +134,13 @@ fun PrivacyCard(viewModel: MindSpaceViewModel?) {
     if (askBackupPassword) {
         PasswordDialog(
             title = "protect your backup",
-            body = "You'll need this password to restore. keepsake can't recover it.",
+            body = "You'll need this password to restore. trove can't recover it.",
             confirmLabel = "choose where to save",
             needsConfirm = true,
             onConfirm = { pw ->
                 backupPassword = pw
                 askBackupPassword = false
-                val name = "keepsake-backup-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) + ".ksai"
+                val name = "trove-backup-" + SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) + ".ksai"
                 createDoc.launch(name)
             },
             onDismiss = { askBackupPassword = false }
@@ -149,7 +149,7 @@ fun PrivacyCard(viewModel: MindSpaceViewModel?) {
     restoreUri?.let { uri ->
         PasswordDialog(
             title = "restore backup",
-            body = "This replaces what's in keepsake now with the backup's contents.",
+            body = "This replaces what's in trove now with the backup's contents.",
             confirmLabel = "restore",
             needsConfirm = false,
             onConfirm = { pw ->

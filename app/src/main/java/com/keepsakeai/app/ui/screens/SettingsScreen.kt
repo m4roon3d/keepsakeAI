@@ -309,7 +309,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
         ) {
             LogoMark(size = 40.dp, halo = false)
             Spacer(Modifier.height(6.dp))
-            Text("keepsake AI", style = MaterialTheme.typography.titleSmall, color = c.text)
+            Text("trove", style = MaterialTheme.typography.titleSmall, color = c.text)
             Text("v${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", fontSize = 11.sp, color = c.muted)
         }
     }

@@ -84,7 +84,7 @@ private fun newRecorder(context: Context, file: File): MediaRecorder {
     return r
 }
 
-/** Talk for a minute; Gemini transcribes (any language mix) and keepsake keeps what matters. */
+/** Talk for a minute; Gemini transcribes (any language mix) and trove keeps what matters. */
 @Composable
 fun VoiceJournalScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current

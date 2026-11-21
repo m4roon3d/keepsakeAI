@@ -40,7 +40,7 @@ class DailyNudgeWorker(appContext: Context, params: WorkerParameters) : Coroutin
                 val journaled = app.database.dao().getRecentMemories(50)
                     .any { it.createdAt >= today && it.source == CaptureSource.VOICE_MEMO && it.rawContent.startsWith("Voice journal") }
                 if (!journaled) {
-                    Notifier.show(app, Notifier.REMINDERS, 7102, "How was your day?", "Talk for a minute. keepsake will keep what matters.", openOverlay = "journal")
+                    Notifier.show(app, Notifier.REMINDERS, 7102, "How was your day?", "Talk for a minute. trove will keep what matters.", openOverlay = "journal")
                 }
             }
         }

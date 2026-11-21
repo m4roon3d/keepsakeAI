@@ -39,7 +39,7 @@ fun LockScreen(onUnlock: () -> Unit) {
         ) {
             LogoMark(size = 110.dp)
             Spacer(Modifier.height(18.dp))
-            Text("keepsake AI is locked", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = c.text)
+            Text("trove is locked", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = c.text)
             Spacer(Modifier.height(6.dp))
             Text("Your memories and payments stay private.", fontSize = 13.sp, color = c.muted)
             Spacer(Modifier.height(28.dp))

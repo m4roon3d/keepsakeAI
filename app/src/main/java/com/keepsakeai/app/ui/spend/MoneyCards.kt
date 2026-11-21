@@ -100,7 +100,7 @@ fun BudgetsCard(statuses: List<BudgetStatus>, onEdit: () -> Unit) {
         }
         if (statuses.isEmpty()) {
             Spacer(Modifier.height(6.dp))
-            Text("Set a monthly limit overall or per category. keepsake shows a daily pace and warns you at 80%.", fontSize = 12.sp, color = c.muted)
+            Text("Set a monthly limit overall or per category. trove shows a daily pace and warns you at 80%.", fontSize = 12.sp, color = c.muted)
             return@GlassCard
         }
         Spacer(Modifier.height(6.dp))

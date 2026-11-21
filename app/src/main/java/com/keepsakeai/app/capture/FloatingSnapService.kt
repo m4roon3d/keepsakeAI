@@ -110,7 +110,7 @@ class FloatingSnapService : Service() {
                     )
                 )
             }
-            Toast.makeText(this, "Snapped to keepsake AI", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Snapped to trove", Toast.LENGTH_SHORT).show()
             return
         }
 

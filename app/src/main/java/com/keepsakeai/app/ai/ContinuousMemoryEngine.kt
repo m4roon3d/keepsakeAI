@@ -9,7 +9,7 @@ data class DistilledMemoryResult(
 )
 
 /**
- * Distills raw captures into enduring personal facts ("What keepsake remembers")
+ * Distills raw captures into enduring personal facts ("What trove remembers")
  * and assigns a Memory Thread key so related captures link into one evolving timeline.
  */
 object ContinuousMemoryEngine {

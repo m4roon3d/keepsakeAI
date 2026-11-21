@@ -145,10 +145,10 @@ class ScreenCaptureService : Service() {
         val channelId = "keepsake_ai_capture"
         val mgr = getSystemService(NotificationManager::class.java)
         mgr.createNotificationChannel(
-            NotificationChannel(channelId, "keepsake AI Capture", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(channelId, "trove Capture", NotificationManager.IMPORTANCE_LOW)
         )
         return Notification.Builder(this, channelId)
-            .setContentTitle("keepsake AI Snap")
+            .setContentTitle("trove Snap")
             .setContentText("Capturing & analyzing screen content...")
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .build()

@@ -128,7 +128,7 @@ fun LazyStaggeredGridScope.todoItems(
                 Text("due ${dayLabel(startOfDay(due!!))}", fontSize = 11.sp, color = Flow.Indigo, modifier = Modifier.padding(start = 10.dp, top = 6.dp))
             }
             Text(
-                "keepsake also adds to-dos from what you save: bills to pay, tickets to book, people to call.",
+                "trove also adds to-dos from what you save: bills to pay, tickets to book, people to call.",
                 fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 6.dp)
             )
         }

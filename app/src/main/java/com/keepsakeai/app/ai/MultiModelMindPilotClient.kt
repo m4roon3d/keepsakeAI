@@ -156,7 +156,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             
             {{DEVICE}}
 
-            What you know about the user (facts they taught keepsake):
+            What you know about the user (facts they taught trove):
             {{FACTS}}
 
             The user's open to-dos:
@@ -173,7 +173,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
         } else {
             """
-            You are keepsake Pilot, the user's personal assistant. Answer concisely.
+            You are trove Pilot, the user's personal assistant. Answer concisely.
             Use the device context (date, time, location) for anything time- or place-dependent,
             search the web for live information such as weather, news or opening hours,
             and use the user's saved memories when relevant. Never ask for the user's location
@@ -182,7 +182,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
 
             {{DEVICE}}
 
-            What you know about the user (facts they taught keepsake):
+            What you know about the user (facts they taught trove):
             {{FACTS}}
 
             The user's open to-dos:

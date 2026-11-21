@@ -120,7 +120,7 @@ fun MindPilotScreen(
         item {
             FlowHeader(
                 eyebrow = "ask across your memories",
-                title = "keepsake",
+                title = "trove",
                 gradientSuffix = "pilot",
                 leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.ORBIT) }
             ) {

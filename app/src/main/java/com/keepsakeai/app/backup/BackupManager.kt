@@ -68,7 +68,7 @@ object BackupManager {
     /** Replaces current data with the backup. Throws on a wrong password or a damaged file. */
     suspend fun restore(context: Context, uri: Uri, password: CharArray): Summary = withContext(Dispatchers.IO) {
         val bytes = context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
-        require(bytes.size > 33 && String(bytes, 0, 5) == MAGIC) { "This isn't a keepsake backup file." }
+        require(bytes.size > 33 && String(bytes, 0, 5) == MAGIC) { "This isn't a trove backup file." }
         val salt = bytes.copyOfRange(5, 21)
         val iv = bytes.copyOfRange(21, 33)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
