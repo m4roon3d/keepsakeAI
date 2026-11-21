@@ -68,7 +68,35 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val useMemoryContext = MutableStateFlow(true)
     val isAskingPilot = MutableStateFlow(false)
     val pilotResponses = MutableStateFlow<List<MindPilotResponse>>(emptyList())
+    /** Memories handed to Pilot for the current answer, by id (for citation chips). */
+    val pilotSources = MutableStateFlow<Map<Long, MemoryEntity>>(emptyMap())
     val currentPlace = MutableStateFlow<String?>(null)
+    /** Memory pages open on top of everything; back steps through related memories. */
+    val memoryStack = MutableStateFlow<List<Long>>(emptyList())
+    fun openMemory(id: Long) { memoryStack.value = memoryStack.value + id }
+    fun closeMemory() { memoryStack.value = memoryStack.value.dropLast(1) }
+    fun closeAllMemories() { memoryStack.value = emptyList() }
+
+    fun observeMemory(id: Long) = dao.observeMemory(id)
+
+    /** Memories closest in meaning, with same-thread memories first. */
+    suspend fun relatedTo(m: MemoryEntity): List<MemoryEntity> {
+        val all = dao.getRecentMemories(400).filter { it.id != m.id }
+        val sameThread = all.filter { m.threadKey.isNotBlank() && m.threadKey != "General" && it.threadKey == m.threadKey }.take(4)
+        val similar = app.vectorSearch.rankMemories("${m.title} ${m.aiSummary} ${m.tagsCsv.replace(',', ' ')}", all, topK = 8)
+            .filter { it.similarity > 0.2f }.map { it.memory }
+        return (sameThread + similar).distinctBy { it.id }.take(6)
+    }
+
+    fun updateMemory(m: MemoryEntity) {
+        viewModelScope.launch {
+            val vec = app.vectorSearch.embedText("${m.title} ${m.aiSummary} ${m.rawContent.take(500)} ${m.tagsCsv}")
+            dao.updateMemory(m.copy(embeddingCsv = app.vectorSearch.encodeVector(vec)))
+            statusMessage.value = "Saved changes"
+            refreshWidget()
+        }
+    }
+
     /** Full-screen overlay currently shown ("review", "ai_log") or null. */
     val overlay = MutableStateFlow<String?>(null)
 
@@ -252,6 +280,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             } else {
                 emptyList()
             }
+            val used = contextMemories.take(12)
+            pilotSources.value = used.associateBy { it.id }
             pilotResponses.value = app.mindPilotClient.askMindPilot(
                 query = query,
                 providers = selectedProviders.value,
@@ -268,6 +298,13 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     )
                 }
             )
+            pilotResponses.value = pilotResponses.value.map { r ->
+                if (r.isError) r else r.copy(
+                    cited = Regex("""\[(\d{1,2})]""").findAll(r.content)
+                        .mapNotNull { m -> used.getOrNull(m.groupValues[1].toInt() - 1)?.id }
+                        .distinct().toList()
+                )
+            }
             isAskingPilot.value = false
         }
     }

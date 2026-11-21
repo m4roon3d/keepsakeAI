@@ -86,6 +86,7 @@ fun MindPilotScreen(
     val isAsking by viewModel.isAskingPilot.collectAsState()
     val responses by viewModel.pilotResponses.collectAsState()
     val place by viewModel.currentPlace.collectAsState()
+    val sources by viewModel.pilotSources.collectAsState()
 
     var query by rememberSaveable { mutableStateOf("") }
     var hasLocation by remember { mutableStateOf(DeviceContext.hasLocationPermission(context)) }
@@ -252,10 +253,32 @@ fun MindPilotScreen(
                 Spacer(Modifier.height(8.dp))
                 SelectionContainer {
                     Text(
-                        if (resp.isError) AnnotatedString(resp.content) else simpleMarkdown(resp.content),
+                        if (resp.isError) AnnotatedString(resp.content) else simpleMarkdown(resp.content, citeColor = Flow.Indigo),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (resp.isError) Flow.Rose else c.text
                     )
+                }
+                if (resp.cited.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("FROM YOUR MEMORIES", style = MaterialTheme.typography.labelSmall, color = c.muted)
+                    Spacer(Modifier.height(6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        resp.cited.forEach { id ->
+                            val src = sources[id] ?: return@forEach
+                            val n = sources.keys.indexOf(id) + 1
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flow.Indigo.copy(alpha = 0.10f))
+                                    .clickable { viewModel.openMemory(id) }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("[$n]", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Flow.Indigo)
+                                Spacer(Modifier.width(8.dp))
+                                Text(src.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("open →", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                            }
+                        }
+                    }
                 }
             }
         }

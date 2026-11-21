@@ -14,6 +14,7 @@ import com.keepsakeai.app.data.preferences.SecurityPrefs
 import com.keepsakeai.app.security.BiometricVaultHelper
 import com.keepsakeai.app.ui.screens.AiLogScreen
 import com.keepsakeai.app.ui.screens.LockScreen
+import com.keepsakeai.app.ui.screens.MemoryDetailScreen
 import com.keepsakeai.app.ui.review.WeeklyReviewScreen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -177,6 +178,21 @@ class MainActivity : FragmentActivity() {
                                 OVERLAY_REVIEW -> WeeklyReviewScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_AI_LOG -> AiLogScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 else -> viewModel.overlay.value = null
+                            }
+                        }
+                    }
+
+                    // Memory pages sit above everything else
+                    val memStack by viewModel.memoryStack.collectAsState()
+                    memStack.lastOrNull()?.let { memId ->
+                        BackHandler { viewModel.closeMemory() }
+                        AuroraBackground(Modifier.fillMaxSize()) {
+                            androidx.compose.runtime.key(memId) {
+                                MemoryDetailScreen(
+                                    viewModel, memId,
+                                    onClose = { viewModel.closeMemory() },
+                                    modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                                )
                             }
                         }
                     }

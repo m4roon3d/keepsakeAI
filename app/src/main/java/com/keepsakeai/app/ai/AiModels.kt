@@ -9,7 +9,9 @@ enum class AiProvider(val displayName: String, val tag: String) {
 data class MindPilotResponse(
     val provider: AiProvider,
     val content: String,
-    val isError: Boolean = false
+    val isError: Boolean = false,
+    /** Ids of saved memories the answer cited as [n]. */
+    val cited: List<Long> = emptyList(),
 )
 
 data class AnalyzedCapture(

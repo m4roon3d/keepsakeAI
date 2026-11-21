@@ -99,9 +99,11 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         val contextBlock = if (memories.isEmpty()) {
             "No saved memories yet."
         } else {
-            memories.take(12).joinToString("\n") {
-                "- [${it.collectionName}] ${it.title}: ${it.aiSummary}"
-            }
+            val df = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.ENGLISH)
+            memories.take(12).mapIndexed { i, m ->
+                "[${i + 1}] ${m.title} (${m.collectionName}, saved ${df.format(java.util.Date(m.createdAt))}): ${m.aiSummary}" +
+                    m.rawContent.take(400).replace("\n", " ").let { if (it.isNotBlank() && it != m.aiSummary) " | details: $it" else "" }
+            }.joinToString("\n")
         }
 
         val fullPrompt = if (agentMode) {
@@ -128,7 +130,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             Use the device context (date, time, location) for anything time- or place-dependent,
             search the web for live information such as weather, news or opening hours,
             and use the user's saved memories when relevant. Never ask for the user's location
-            if it is given below.
+            if it is given below. When you use a saved memory, cite it inline by its number, like [2].
+            Only cite numbers listed under Saved Context, and never invent memories.
 
             {{DEVICE}}
 

@@ -108,7 +108,7 @@ private fun echoes(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, 
 }
 
 @Composable
-fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>) {
+fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, onOpen: (Long) -> Unit = {}) {
     val list = remember(memories, expenses) { echoes(memories, expenses) }
     if (list.isEmpty()) return
     val c = LocalFlow.current
@@ -122,7 +122,10 @@ fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>) {
             Spacer(Modifier.height(8.dp))
             Text(e.label.uppercase(), style = MaterialTheme.typography.labelSmall, color = Flow.Purple)
             e.memories.take(2).forEach { m ->
-                Text("• ${m.title}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    "• ${m.title}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = 3.dp)
+                )
             }
             if (e.memories.size > 2) Text("+${e.memories.size - 2} more", fontSize = 11.sp, color = c.muted)
             if (e.spent > 0) Text("and you spent ${rupees(e.spent)} that day", fontSize = 11.sp, color = c.muted)
@@ -187,7 +190,7 @@ private sealed class TimelineEntry(val time: Long) {
     class Pay(val e: ExpenseEntity) : TimelineEntry(e.timestamp)
 }
 
-fun LazyStaggeredGridScope.timelineItems(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>) {
+fun LazyStaggeredGridScope.timelineItems(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, onOpen: (Long) -> Unit = {}) {
     val since = System.currentTimeMillis() - 60 * DAY
     val entries = (memories.filter { it.createdAt >= since }.map { TimelineEntry.Mem(it) } +
         expenses.filter { it.timestamp >= since }.map { TimelineEntry.Pay(it) })
@@ -211,7 +214,12 @@ fun LazyStaggeredGridScope.timelineItems(memories: List<MemoryEntity>, expenses:
             GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(vertical = 4.dp)) {
                 list.forEach { entry ->
                     val time = SimpleDateFormat("h:mm a", Locale.ENGLISH).format(Date(entry.time)).lowercase()
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .then(if (entry is TimelineEntry.Mem) Modifier.clickable { onOpen(entry.m.id) } else Modifier)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(time, fontSize = 11.sp, color = c.muted, modifier = Modifier.width(58.dp))
                         when (entry) {
                             is TimelineEntry.Mem -> {
@@ -285,7 +293,7 @@ fun LazyStaggeredGridScope.factItems(
 
 // ── Threads ──────────────────────────────────────────────────────────
 
-fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (String) -> Unit) {
+fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (String) -> Unit, onOpen: (Long) -> Unit = {}) {
     val threads = memories.groupBy { it.threadKey.ifBlank { it.collectionName } }
         .filterValues { it.size >= 1 }
         .toList()
@@ -314,7 +322,7 @@ fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (Str
                 Spacer(Modifier.height(8.dp))
                 Column(Modifier.padding(start = 6.dp)) {
                     (if (open) sorted else sorted.take(3)).forEach { m ->
-                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = 4.dp)) {
                             Box(Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape).background(collectionAccent(m.collectionName).first))
                             Spacer(Modifier.width(10.dp))
                             Column {
@@ -337,6 +345,103 @@ fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (Str
                     Text("ask pilot about $name", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
+        }
+    }
+}
+
+
+// ── Memory-first home pieces ─────────────────────────────────────────
+
+/** The day at a glance: next reminder, what you kept lately, quick ways in. */
+@Composable
+fun TodayCard(next: KeepReminder?, memories: List<MemoryEntity>, onAsk: () -> Unit, onTimeline: () -> Unit) {
+    val now = System.currentTimeMillis()
+    val today = startOfDay(now)
+    val keptToday = memories.count { it.createdAt >= today }
+    val keptWeek = memories.count { it.createdAt >= now - 7 * DAY }
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greeting = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; in 17..21 -> "good evening"; else -> "late night thoughts?" }
+    val date = SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH).format(Date(now)).lowercase()
+    com.keepsakeai.app.ui.components.GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
+        Text("$greeting · $date", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(6.dp))
+        val headline = when {
+            memories.isEmpty() -> "Your second brain is empty. Snap, share or jot your first memory."
+            next != null -> {
+                val whenText = SimpleDateFormat(if (next.hasTime) "EEE d MMM, h:mm a" else "EEE d MMM", Locale.ENGLISH).format(Date(next.atMillis)).lowercase()
+                "Next up: ${next.title} · $whenText"
+            }
+            keptToday > 0 -> "You kept $keptToday thing${if (keptToday > 1) "s" else ""} today. Ask Pilot to connect the dots."
+            else -> "$keptWeek memories this week, ${memories.size} in all. What's on your mind?"
+        }
+        Text(headline, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, lineHeight = 23.sp)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HomeChip("ask pilot", solid = true, onClick = onAsk)
+            HomeChip("timeline", onClick = onTimeline)
+        }
+    }
+}
+
+@Composable
+private fun HomeChip(text: String, solid: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(if (solid) Color.White else Color.White.copy(alpha = 0.22f))
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp)
+    ) { Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+}
+
+/** Threads you're in the middle of, newest first. */
+@Composable
+fun ThreadsCarousel(memories: List<MemoryEntity>, onOpen: () -> Unit) {
+    val threads = memories.filter { it.threadKey.isNotBlank() && it.threadKey != "General" }
+        .groupBy { it.threadKey }
+        .filterValues { it.size >= 2 }
+        .toList()
+        .sortedByDescending { (_, v) -> v.maxOf { it.createdAt } }
+        .take(6)
+    if (threads.isEmpty()) return
+    val c = LocalFlow.current
+    Column {
+        SectionLabel("pick up where you left off", modifier = Modifier.padding(bottom = 8.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(threads.size) { i ->
+                val (name, items) = threads[i]
+                val latest = items.maxBy { it.createdAt }
+                val (a1, a2) = collectionAccent(latest.collectionName)
+                GlassCard(Modifier.width(190.dp), onClick = onOpen, padding = PaddingValues(12.dp)) {
+                    Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape).background(Brush.horizontalGradient(listOf(a1, a2))))
+                    Spacer(Modifier.height(8.dp))
+                    Text(name, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${items.size} linked · ${dayLabel(startOfDay(latest.createdAt))}", fontSize = 11.sp, color = c.muted)
+                    Spacer(Modifier.height(6.dp))
+                    Text(latest.title, fontSize = 12.sp, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** Money as one module of the hub: this month's spend and anything to review. */
+@Composable
+fun MoneyRow(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> Unit) {
+    if (expenses.isEmpty() && pending == 0) return
+    val c = LocalFlow.current
+    val monthStart = Calendar.getInstance().apply {
+        set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+    val month = expenses.filter { it.timestamp >= monthStart }.sumOf { it.amount }
+    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                Text("₹", fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("${rupees(month)} this month", style = MaterialTheme.typography.titleSmall, color = c.text)
+                Text(if (pending > 0) "$pending payment${if (pending > 1) "s" else ""} to review" else "spend, budgets & subscriptions", fontSize = 11.sp, color = if (pending > 0) Flow.Amber else c.muted)
+            }
+            Text("spend →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
         }
     }
 }

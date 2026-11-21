@@ -29,6 +29,12 @@ interface MindSpaceDao {
     """)
     suspend fun searchMemories(query: String): List<MemoryEntity>
 
+    @Query("SELECT * FROM memories WHERE id = :id")
+    fun observeMemory(id: Long): Flow<MemoryEntity?>
+
+    @androidx.room.Update
+    suspend fun updateMemory(memory: MemoryEntity)
+
     @Query("SELECT * FROM memories ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getRecentMemories(limit: Int = 15): List<MemoryEntity>
 

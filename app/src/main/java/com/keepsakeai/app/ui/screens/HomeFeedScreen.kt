@@ -176,75 +176,20 @@ fun HomeFeedScreen(
         }
         if (!searching && hubView != HubView.KEEPSAKES) {
             when (hubView) {
-                HubView.TIMELINE -> timelineItems(allMemories, expenses)
+                HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
-                HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() })
+                HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() }, onOpen = { viewModel.openMemory(it) })
                 else -> {}
             }
         } else {
         if (!searching) {
-            val upcoming = reminders.filter { it.isUpcoming() }.sortedBy { it.atMillis }.take(3)
-            items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
-                ReminderSuggestionCard(r, onRemind = {
-                    if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
-                        pendingReminder = r
-                        notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    } else viewModel.scheduleReminder(r)
-                }, onDismiss = { viewModel.dismissReminder(r) })
-            }
-            val dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
-            if (dow == java.util.Calendar.SUNDAY || dow == java.util.Calendar.MONDAY) {
-                item(span = StaggeredGridItemSpan.FullLine) {
-                    GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.overlay.value = "review" }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            LogoMark(size = 34.dp, halo = false)
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("your week is ready", style = MaterialTheme.typography.titleSmall, color = c.text)
-                                Text("spend, highlights and one insight", fontSize = 12.sp, color = c.muted)
-                            }
-                            Text("open →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
-                        }
-                    }
-                }
-            }
-            item(span = StaggeredGridItemSpan.FullLine) { OnThisDayCard(allMemories, expenses) }
-            // keepsake Suggest aurora card
-            item(span = StaggeredGridItemSpan.FullLine) {
-                GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("KEEPSAKE SUGGEST", color = Color.White.copy(alpha = 0.92f), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
-                        Box(
-                            Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.2f))
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) { Text("AI Highlight", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    val body = when {
-                        pendingUpi.isNotEmpty() -> "${pendingUpi.size} UPI payment${if (pendingUpi.size > 1) "s are" else " is"} waiting for your approval."
-                        suggestions.firstOrNull() != null -> suggestions.first().body
-                        allMemories.isEmpty() -> "Share a link, snap a receipt or jot a thought. keepsake sorts it into Smart Collections for you."
-                        else -> "${allMemories.size} memories organised into ${collections.size} Smart Collections. Ask Pilot to plan, summarise or find anything."
-                    }
-                    Text(body, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        WhiteChip("Ask Pilot", solid = true, onClick = onOpenPilot)
-                        if (pendingUpi.isNotEmpty()) WhiteChip("Review ${pendingUpi.size} UPI", onClick = onOpenSpend)
-                        else WhiteChip("Refresh brief", onClick = { viewModel.refreshDailySuggest() })
-                    }
-                }
-            }
-
             // Quick capture composer
             item(span = StaggeredGridItemSpan.FullLine) {
                 GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)) {
                     GlassField(
                         value = quickNote,
                         onValueChange = { quickNote = it },
-                        placeholder = "Capture a thought, link or receipt…",
+                        placeholder = "What's on your mind? A thought, link, plan…",
                         singleLine = false,
                         minLines = 2,
                         bare = true,
@@ -276,9 +221,51 @@ fun HomeFeedScreen(
                 }
             }
 
+            val upcoming = reminders.filter { it.isUpcoming() }.sortedBy { it.atMillis }.take(3)
+            item(span = StaggeredGridItemSpan.FullLine) {
+                TodayCard(
+                    next = upcoming.firstOrNull(),
+                    memories = allMemories,
+                    onAsk = onOpenPilot,
+                    onTimeline = { hubView = HubView.TIMELINE }
+                )
+            }
+            items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
+                ReminderSuggestionCard(r, onRemind = {
+                    if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
+                        pendingReminder = r
+                        notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else viewModel.scheduleReminder(r)
+                }, onDismiss = { viewModel.dismissReminder(r) })
+            }
+            val dow = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK)
+            if (dow == java.util.Calendar.SUNDAY || dow == java.util.Calendar.MONDAY) {
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.overlay.value = "review" }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LogoMark(size = 34.dp, halo = false)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("your week is ready", style = MaterialTheme.typography.titleSmall, color = c.text)
+                                Text("spend, highlights and one insight", fontSize = 12.sp, color = c.muted)
+                            }
+                            Text("open →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                        }
+                    }
+                }
+            }
+            item(span = StaggeredGridItemSpan.FullLine) { OnThisDayCard(allMemories, expenses, onOpen = { viewModel.openMemory(it) }) }
+            // Threads you're in the middle of, then a compact money row
+            item(span = StaggeredGridItemSpan.FullLine) {
+                ThreadsCarousel(allMemories, onOpen = { hubView = HubView.THREADS })
+            }
+            item(span = StaggeredGridItemSpan.FullLine) {
+                MoneyRow(expenses, pendingUpi.size, onOpen = onOpenSpend)
+            }
+
             item(span = StaggeredGridItemSpan.FullLine) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SectionLabel("Smart Collections", trailing = "${allMemories.size} items")
+                    SectionLabel("your memories", trailing = "${allMemories.size} kept")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item {
                             Pill("All (${allMemories.size})", selectedCol == null, { viewModel.selectedCollection.value = null })
@@ -308,7 +295,7 @@ fun HomeFeedScreen(
             }
         } else {
             items(cards, key = { it.first.id }) { (mem, score) ->
-                MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) })
+                MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) }, onOpen = { viewModel.openMemory(mem.id) })
             }
         }
         }
@@ -338,11 +325,11 @@ private fun ComposerIcon(icon: ImageVector, label: String, tint: Color, onClick:
 }
 
 @Composable
-private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit) {
+private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, onOpen: () -> Unit) {
     val c = LocalFlow.current
     val (a1, a2) = collectionAccent(mem.collectionName)
     val photo = mem.photoUrisCsv.split(",").firstOrNull { it.isNotBlank() }
-    GlassCard(padding = PaddingValues(12.dp)) {
+    GlassCard(padding = PaddingValues(12.dp), onClick = onOpen) {
         if (photo != null) {
             AsyncImage(
                 model = photo,
