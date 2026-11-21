@@ -130,12 +130,12 @@ fun HomeFeedScreen(
     ) {
         item(span = StaggeredGridItemSpan.FullLine) {
             FlowHeader(
-                eyebrow = "Your memory hub",
+                eyebrow = "your memory hub",
                 title = "keepsake",
                 gradientSuffix = "AI",
                 leading = { LogoMark(size = 46.dp) }
             ) {
-                GlassButton("Snap", onClick = onTriggerScreenSnap, icon = Icons.Rounded.Screenshot)
+                GlassButton("snap", onClick = onTriggerScreenSnap, icon = Icons.Rounded.Screenshot)
             }
         }
 

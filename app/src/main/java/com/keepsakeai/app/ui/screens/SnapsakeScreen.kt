@@ -175,14 +175,14 @@ fun SnapsakeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         FlowHeader(
-            eyebrow = "Point. Snap. Keep.",
+            eyebrow = "point. snap. keep.",
             title = "snap",
             gradientSuffix = "sake",
             joinSuffix = true,
             leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.LENS) }
         ) {
             GlassButton(
-                "Gallery",
+                "gallery",
                 onClick = { pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 icon = Icons.Rounded.PhotoLibrary
             )

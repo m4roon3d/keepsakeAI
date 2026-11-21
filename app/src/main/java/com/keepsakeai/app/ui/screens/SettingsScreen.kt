@@ -50,6 +50,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.glance.appwidget.updateAll
+import com.keepsakeai.app.widget.MindSpaceWidget
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +78,10 @@ import com.keepsakeai.app.ui.components.GlassCard
 import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.LogoMark
+import com.keepsakeai.app.ui.components.MarkGlyph
+import androidx.compose.material.icons.rounded.BrightnessAuto
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.DarkMode
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
@@ -107,6 +115,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     var currency by remember { mutableStateOf(keyStore.defaultCurrency.ifBlank { "INR" }) }
     var hasLocation by remember { mutableStateOf(DeviceContext.hasLocationPermission(context)) }
     var expandedKey by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         hasLocation = it.values.any { g -> g }
@@ -122,7 +131,24 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        FlowHeader(eyebrow = "Make it yours", title = "Settings")
+        FlowHeader(
+            eyebrow = "make it yours",
+            title = "",
+            gradientSuffix = "settings",
+            joinSuffix = true,
+            leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.TUNE) }
+        ) {
+            val next = ThemeMode.entries[(ThemeStore.mode.ordinal + 1) % ThemeMode.entries.size]
+            GlassButton(
+                ThemeStore.mode.label.lowercase(),
+                onClick = { ThemeStore.setMode(context, next) },
+                icon = when (ThemeStore.mode) {
+                    ThemeMode.SYSTEM -> Icons.Rounded.BrightnessAuto
+                    ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                    ThemeMode.DARK -> Icons.Rounded.DarkMode
+                }
+            )
+        }
 
         // ── Look & feel ────────────────────────────────────────────
         GlassCard(Modifier.fillMaxWidth()) {
@@ -141,7 +167,10 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             .clip(shape)
                             .background(if (selected) p.primary.copy(alpha = 0.12f) else Color.Transparent)
                             .border(if (selected) 2.dp else 1.dp, if (selected) p.primary else c.glassBorder, shape)
-                            .clickable { ThemeStore.setPalette(context, p) }
+                            .clickable {
+                                ThemeStore.setPalette(context, p)
+                                scope.launch { runCatching { MindSpaceWidget().updateAll(context) } }
+                            }
                             .padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {

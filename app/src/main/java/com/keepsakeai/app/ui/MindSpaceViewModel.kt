@@ -147,6 +147,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     sourceMethod = "Manual"
                 )
             )
+            refreshWidget()
         }
     }
 
@@ -220,7 +221,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun dismissPendingUpi(item: PendingUpiTransactionEntity) {
         rememberDismissed(item)
-        viewModelScope.launch { dao.deletePendingUpi(item) }
+        viewModelScope.launch { dao.deletePendingUpi(item); refreshWidget() }
     }
 
     fun approveAllPendingUpi() {
@@ -261,6 +262,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 added++
             }
             isScanningSms.value = false
+            refreshWidget()
             statusMessage.value = when {
                 found.isEmpty() -> "No UPI payments found in the last $days days"
                 added == 0 -> "All ${found.size} payments already imported"
@@ -295,7 +297,12 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             dao.deleteExpense(expense)
             statusMessage.value = "Deleted ${expense.merchant}"
+            refreshWidget()
         }
+    }
+
+    fun refreshWidget() {
+        viewModelScope.launch { runCatching { MindSpaceWidget().updateAll(app) } }
     }
 
     private fun upiKey(item: PendingUpiTransactionEntity) = item.utrRef ?: "${item.amount}@${item.receivedAt}"

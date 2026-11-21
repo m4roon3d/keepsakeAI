@@ -55,6 +55,15 @@ interface MindSpaceDao {
     @Query("SELECT COUNT(*) FROM pending_upi_transactions WHERE utrRef = :utr")
     suspend fun countPendingByUtr(utr: String): Int
 
+    @Query("SELECT COUNT(*) FROM pending_upi_transactions")
+    suspend fun countPendingUpi(): Int
+
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE timestamp >= :since")
+    suspend fun sumExpensesSince(since: Long): Double
+
+    @Query("SELECT COUNT(*) FROM memories")
+    suspend fun countMemories(): Int
+
     @Query("SELECT COUNT(*) FROM expenses WHERE notes = :note")
     suspend fun countExpensesByNote(note: String): Int
 

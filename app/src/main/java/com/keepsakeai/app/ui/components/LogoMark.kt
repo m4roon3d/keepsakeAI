@@ -24,7 +24,7 @@ import com.keepsakeai.app.ui.theme.ThemeStore
  * takes on the active theme's colours. Same geometry as the launcher icon
  * (branding/fg.svg), scaled from its 108-unit grid; the capsule spans x 38-70, y 27-81.
  */
-enum class MarkGlyph { SPARK, LENS }
+enum class MarkGlyph { SPARK, LENS, ORBIT, WALLET, TUNE }
 
 @Composable
 fun LogoMark(
@@ -123,12 +123,32 @@ private fun DrawScope.drawLogo(p: Palette, halo: Boolean, glyph: MarkGlyph) {
         ),
         radius = 11f * unit, center = Offset(x(54f), y(52f))
     )
+    val line = Stroke(width = 2.2f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
     if (glyph == MarkGlyph.SPARK) {
         drawPath(spark(::x, ::y, 54f, 51.5f, 8f, 9f), Color.White)
         drawPath(spark(::x, ::y, 61.5f, 42.8f, 2.5f, 2.8f), Color.White.copy(alpha = 0.85f))
+    } else if (glyph == MarkGlyph.ORBIT) {
+        // Pilot: a spark circled by an orbit
+        drawCircle(Color.White.copy(alpha = 0.9f), radius = 9.5f * unit, center = Offset(x(54f), y(52f)), style = Stroke(1.6f * unit))
+        drawPath(spark(::x, ::y, 54f, 52f, 5.5f, 6.2f), Color.White)
+        drawCircle(Color.White, radius = 1.8f * unit, center = Offset(x(61.2f), y(45.6f)))
+    } else if (glyph == MarkGlyph.WALLET) {
+        // Spend: wallet with a clasp
+        val body = RoundRect(x(45.5f), y(45f), x(62.5f), y(60f), CornerRadius(3f * unit))
+        drawPath(Path().apply { addRoundRect(body) }, Color.White, style = line)
+        drawPath(Path().apply { moveTo(x(47.5f), y(45f)); lineTo(x(57.5f), y(40.5f)); lineTo(x(59f), y(45f)) }, Color.White, style = line)
+        val clasp = RoundRect(x(55.5f), y(50f), x(62.5f), y(55f), CornerRadius(2f * unit))
+        drawPath(Path().apply { addRoundRect(clasp) }, Color.White)
+    } else if (glyph == MarkGlyph.TUNE) {
+        // Settings: three sliders
+        listOf(Triple(45f, 58.5f, 0.38f), Triple(51.5f, 58.5f, 0.75f), Triple(58f, 58.5f, 0.2f)).forEachIndexed { i, (yy, _, knob) ->
+            val l = 46f; val r = 62f
+            drawLine(Color.White.copy(alpha = 0.85f), Offset(x(l), y(yy)), Offset(x(r), y(yy)), strokeWidth = 1.9f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            drawCircle(Color.White, radius = 2.6f * unit, center = Offset(x(l + (r - l) * knob), y(yy)))
+        }
     } else {
         // Lens: four focus brackets around a dot (Snapsake)
-        val stroke = Stroke(width = 2.2f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val stroke = line
         val l = 46.5f; val r = 61.5f; val t = 44f; val b = 59f; val arm = 4.2f
         val brackets = Path().apply {
             moveTo(x(l), y(t + arm)); lineTo(x(l), y(t)); lineTo(x(l + arm), y(t))

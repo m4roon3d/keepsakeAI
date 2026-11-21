@@ -59,6 +59,9 @@ import com.keepsakeai.app.ui.components.GlassToggle
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.components.LogoMark
+import com.keepsakeai.app.ui.components.MarkGlyph
+import com.keepsakeai.app.ui.components.GlassButton
+import androidx.compose.material.icons.rounded.Add
 import com.keepsakeai.app.ui.components.simpleMarkdown
 import androidx.compose.ui.text.AnnotatedString
 import com.keepsakeai.app.ui.theme.Flow
@@ -106,8 +109,17 @@ fun MindPilotScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            FlowHeader(eyebrow = "Ask across your memories", title = "keepsake", gradientSuffix = "Pilot") {
-                Badge("Multi-model", Color.White, brush = Flow.auroraSweep)
+            FlowHeader(
+                eyebrow = "ask across your memories",
+                title = "keepsake",
+                gradientSuffix = "pilot",
+                leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.ORBIT) }
+            ) {
+                GlassButton(
+                    "new",
+                    onClick = { query = ""; viewModel.pilotResponses.value = emptyList() },
+                    icon = Icons.Rounded.Add
+                )
             }
         }
 

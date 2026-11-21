@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +45,9 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MindSpaceViewModel by viewModels()
 
+    /** Tab requested by the widget or a shortcut; consumed by the UI. */
+    private val requestedTab = mutableIntStateOf(-1)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIncomingIntent(intent)
@@ -61,6 +65,13 @@ class MainActivity : ComponentActivity() {
                     onDispose { }
                 }
                 var selectedTab by rememberSaveable { mutableIntStateOf(TAB_HOME) }
+                val wanted = requestedTab.intValue
+                LaunchedEffect(wanted) {
+                    if (wanted >= 0) {
+                        selectedTab = wanted
+                        requestedTab.intValue = -1
+                    }
+                }
 
                 val projectionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult()
@@ -133,6 +144,13 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
+        when (intent.getStringExtra(EXTRA_OPEN_TAB)) {
+            "home" -> requestedTab.intValue = TAB_HOME
+            "snapsake" -> requestedTab.intValue = TAB_SNAPSAKE
+            "pilot" -> requestedTab.intValue = TAB_PILOT
+            "spend" -> requestedTab.intValue = TAB_SPEND
+            "settings" -> requestedTab.intValue = TAB_SETTINGS
+        }
         if (intent.action == Intent.ACTION_SEND) {
             val type = intent.type.orEmpty()
             if (type.startsWith("text/")) {
@@ -153,6 +171,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TRIGGER_SNAP = "extra_trigger_snap"
+        const val EXTRA_OPEN_TAB = "open_tab"
         const val TAB_HOME = 0
         const val TAB_SNAPSAKE = 1
         const val TAB_PILOT = 2

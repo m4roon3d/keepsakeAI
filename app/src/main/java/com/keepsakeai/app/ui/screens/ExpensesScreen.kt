@@ -76,6 +76,8 @@ import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
 import com.keepsakeai.app.ui.components.GradientCard
 import com.keepsakeai.app.ui.components.Pill
+import com.keepsakeai.app.ui.components.LogoMark
+import com.keepsakeai.app.ui.components.MarkGlyph
 import com.keepsakeai.app.ui.components.SectionLabel
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
@@ -172,9 +174,15 @@ fun ExpensesScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            FlowHeader(eyebrow = "Receipts & UPI", title = "Spend") {
+            FlowHeader(
+                eyebrow = "receipts & UPI",
+                title = "",
+                gradientSuffix = "spend",
+                joinSuffix = true,
+                leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.WALLET) }
+            ) {
                 GlassButton(
-                    "UPI Listener",
+                    "alerts",
                     onClick = { runCatching { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) } },
                     icon = Icons.Rounded.NotificationsActive,
                     tint = Flow.Emerald
