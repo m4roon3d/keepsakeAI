@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -182,6 +183,7 @@ private fun moneyShort(code: String, v: Double): String {
 
 private fun pct(part: Double, whole: Double) = if (whole > 0) ((part / whole) * 100).toInt() else 0
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesScreen(
     viewModel: MindSpaceViewModel,
@@ -308,8 +310,14 @@ fun ExpensesScreen(
         )
     }
 
+    val refreshing by viewModel.isRefreshing.collectAsState()
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = { viewModel.refreshAll(scanSms = true) },
+        modifier = modifier
+    ) {
     LazyColumn(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -399,7 +407,10 @@ fun ExpensesScreen(
                         }
                     }
                 }
-                Text(money(currency, total), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+                val shownTotal by androidx.compose.animation.core.animateFloatAsState(
+                    total.toFloat(), androidx.compose.animation.core.tween(700), label = "total"
+                )
+                Text(money(currency, Math.round(shownTotal).toDouble()), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
                 Row {
                     HeroStat(moneyShort(currency, total / range.days), "per day")
                     Spacer(Modifier.width(18.dp))
@@ -604,6 +615,7 @@ fun ExpensesScreen(
             }
         }
     }
+}
 }
 
 // ── Pieces ───────────────────────────────────────────────────────────

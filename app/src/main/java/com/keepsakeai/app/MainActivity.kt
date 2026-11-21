@@ -8,6 +8,17 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.remember
+import com.keepsakeai.app.ui.screens.EntityScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.runtime.mutableStateOf
 import com.keepsakeai.app.data.preferences.SecurityPrefs
@@ -128,7 +139,14 @@ class MainActivity : FragmentActivity() {
                         .fillMaxSize()
                         .statusBarsPadding()
                         .imePadding()
-                    when (selectedTab) {
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            (fadeIn(tween(240)) + scaleIn(tween(240), initialScale = 0.985f)) togetherWith fadeOut(tween(140))
+                        },
+                        label = "tabs"
+                    ) { tab ->
+                    when (tab) {
                         TAB_HOME -> HomeFeedScreen(
                             viewModel = viewModel,
                             onTriggerScreenSnap = triggerScreenSnap,
@@ -156,6 +174,7 @@ class MainActivity : FragmentActivity() {
                             viewModel = viewModel
                         )
                     }
+                    }
 
                     StatusToast(viewModel, Modifier.align(Alignment.TopCenter).statusBarsPadding())
 
@@ -182,17 +201,45 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    // Memory pages sit above everything else
+                    // Person / place / project pages
+                    val entityKey by viewModel.openEntityKey.collectAsState()
+                    var shownEntity by remember { mutableStateOf<String?>(null) }
+                    if (entityKey != null) shownEntity = entityKey
+                    AnimatedVisibility(
+                        visible = entityKey != null,
+                        enter = slideInHorizontally(tween(260)) { it / 4 } + fadeIn(tween(200)),
+                        exit = slideOutHorizontally(tween(200)) { it / 4 } + fadeOut(tween(160))
+                    ) {
+                        BackHandler { viewModel.openEntityKey.value = null }
+                        AuroraBackground(Modifier.fillMaxSize()) {
+                            shownEntity?.let { k ->
+                                EntityScreen(viewModel, k, onClose = { viewModel.openEntityKey.value = null },
+                                    modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding())
+                            }
+                        }
+                    }
+
+                    // Memory pages sit above everything else; back steps through related memories
                     val memStack by viewModel.memoryStack.collectAsState()
-                    memStack.lastOrNull()?.let { memId ->
+                    var shownMemory by remember { mutableStateOf<Long?>(null) }
+                    memStack.lastOrNull()?.let { shownMemory = it }
+                    AnimatedVisibility(
+                        visible = memStack.isNotEmpty(),
+                        enter = slideInHorizontally(tween(260)) { it / 4 } + fadeIn(tween(200)),
+                        exit = slideOutHorizontally(tween(200)) { it / 4 } + fadeOut(tween(160))
+                    ) {
                         BackHandler { viewModel.closeMemory() }
                         AuroraBackground(Modifier.fillMaxSize()) {
-                            androidx.compose.runtime.key(memId) {
-                                MemoryDetailScreen(
-                                    viewModel, memId,
-                                    onClose = { viewModel.closeMemory() },
-                                    modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                                )
+                            shownMemory?.let { memId ->
+                                AnimatedContent(memId, transitionSpec = {
+                                    (slideInHorizontally(tween(240)) { it / 5 } + fadeIn(tween(200))) togetherWith fadeOut(tween(120))
+                                }, label = "memory") { id ->
+                                    MemoryDetailScreen(
+                                        viewModel, id,
+                                        onClose = { viewModel.closeMemory() },
+                                        modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                                    )
+                                }
                             }
                         }
                     }

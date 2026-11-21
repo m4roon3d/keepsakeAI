@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -87,6 +88,7 @@ fun collectionAccent(name: String): Pair<Color, Color> = when (name) {
     else -> Flow.Indigo to Flow.Sky
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeFeedScreen(
     viewModel: MindSpaceViewModel,
@@ -133,9 +135,21 @@ fun HomeFeedScreen(
     val cards: List<Pair<MemoryEntity, Float?>> =
         if (searching) semantic.map { it.memory to it.similarity } else memories.map { it to null }
 
+    val refreshing by viewModel.isRefreshing.collectAsState()
+    val todos by viewModel.todos.collectAsState()
+    val entities by viewModel.entities.collectAsState()
+    val backfilling by viewModel.isBackfilling.collectAsState()
+    val openTodos = todos.count { !it.done }
+    val dueToday = todos.count { !it.done && it.due != null && it.due < com.keepsakeai.app.ui.spend.startOfDay(System.currentTimeMillis()) + com.keepsakeai.app.ui.spend.DAY }
+
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = { viewModel.refreshAll() },
+        modifier = modifier
+    ) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(2),
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalItemSpacing = 10.dp
@@ -172,10 +186,33 @@ fun HomeFeedScreen(
         }
 
         if (!searching) {
-            item(span = StaggeredGridItemSpan.FullLine) { HubSwitcher(hubView, facts.size) { hubView = it } }
+            item(span = StaggeredGridItemSpan.FullLine) {
+                HubPills(hubView, openTodos, entities.count { !it.hidden }, facts.size) { hubView = it }
+            }
         }
         if (!searching && hubView != HubView.KEEPSAKES) {
             when (hubView) {
+                HubView.TODOS -> todoItems(
+                    todos,
+                    onAdd = { text, due -> viewModel.addTodo(text, due) },
+                    onToggle = { viewModel.toggleTodo(it) },
+                    onDelete = { viewModel.deleteTodo(it) },
+                    onRemind = { t ->
+                        if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
+                            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        viewModel.remindTodo(t)
+                    },
+                    onSetDue = { id, due -> viewModel.setTodoDue(id, due) },
+                    onOpenSource = { viewModel.openMemory(it) }
+                )
+                HubView.PEOPLE -> peopleItems(
+                    entities,
+                    unscanned = (allMemories.count { it.source != com.keepsakeai.app.data.local.CaptureSource.UPI_MESSAGE } - viewModel.backfilledCount()).coerceAtLeast(0),
+                    backfilling = backfilling,
+                    onBackfill = { viewModel.backfillEntities() },
+                    onOpen = { viewModel.openEntityKey.value = it }
+                )
                 HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
                 HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() }, onOpen = { viewModel.openMemory(it) })
@@ -227,11 +264,14 @@ fun HomeFeedScreen(
                     next = upcoming.firstOrNull(),
                     memories = allMemories,
                     onAsk = onOpenPilot,
-                    onTimeline = { hubView = HubView.TIMELINE }
+                    onTimeline = { hubView = HubView.TIMELINE },
+                    openTodos = openTodos,
+                    dueToday = dueToday,
+                    onTodos = { hubView = HubView.TODOS }
                 )
             }
             items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
-                ReminderSuggestionCard(r, onRemind = {
+                ReminderSuggestionCard(r, modifier = Modifier.animateItem(), onRemind = {
                     if (android.os.Build.VERSION.SDK_INT >= 33 && !com.keepsakeai.app.notify.Notifier.canNotify(context)) {
                         pendingReminder = r
                         notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
@@ -295,10 +335,11 @@ fun HomeFeedScreen(
             }
         } else {
             items(cards, key = { it.first.id }) { (mem, score) ->
-                MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) }, onOpen = { viewModel.openMemory(mem.id) })
+                MemoryCard(mem, score, onDelete = { viewModel.deleteMemory(mem) }, onOpen = { viewModel.openMemory(mem.id) }, modifier = Modifier.animateItem())
             }
         }
         }
+    }
     }
 }
 
@@ -325,11 +366,11 @@ private fun ComposerIcon(icon: ImageVector, label: String, tint: Color, onClick:
 }
 
 @Composable
-private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, onOpen: () -> Unit) {
+private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
     val (a1, a2) = collectionAccent(mem.collectionName)
     val photo = mem.photoUrisCsv.split(",").firstOrNull { it.isNotBlank() }
-    GlassCard(padding = PaddingValues(12.dp), onClick = onOpen) {
+    GlassCard(modifier, padding = PaddingValues(12.dp), onClick = onOpen) {
         if (photo != null) {
             AsyncImage(
                 model = photo,

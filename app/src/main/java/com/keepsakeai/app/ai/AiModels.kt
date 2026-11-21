@@ -25,7 +25,15 @@ data class AnalyzedCapture(
     /** Ongoing topic this belongs to, e.g. "Goa trip". */
     val thread: String? = null,
     val reminder: ReminderSuggestion? = null,
+    val entities: List<EntityMention> = emptyList(),
+    val todos: List<TodoSuggestion> = emptyList(),
 )
+
+/** A person, place, project or organisation mentioned in a capture. */
+data class EntityMention(val name: String, val type: String, val note: String)
+
+/** Something the user needs to do, found in a capture. */
+data class TodoSuggestion(val text: String, val due: Long?)
 
 /** A future date found in a capture: a bill due date, an event, a deadline. */
 data class ReminderSuggestion(

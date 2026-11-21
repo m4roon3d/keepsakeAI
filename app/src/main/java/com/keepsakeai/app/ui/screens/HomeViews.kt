@@ -64,7 +64,9 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-enum class HubView(val label: String) { KEEPSAKES("keepsakes"), TIMELINE("timeline"), FACTS("facts"), THREADS("threads") }
+enum class HubView(val label: String) {
+    KEEPSAKES("keepsakes"), TODOS("to-dos"), PEOPLE("people & places"), THREADS("threads"), TIMELINE("timeline"), FACTS("about me")
+}
 
 private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
 
@@ -136,13 +138,13 @@ fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, o
 // ── Reminders found in captures ──────────────────────────────────────
 
 @Composable
-fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () -> Unit) {
+fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
     val context = LocalContext.current
     val whenText = SimpleDateFormat(if (r.hasTime) "EEE d MMM, h:mm a" else "EEE d MMM", Locale.ENGLISH).format(Date(r.atMillis))
     val shape = RoundedCornerShape(24.dp)
     Column(
-        Modifier.fillMaxWidth().clip(shape)
+        modifier.fillMaxWidth().clip(shape)
             .background(Brush.linearGradient(listOf(Flow.Indigo.copy(alpha = 0.16f), Flow.Sky.copy(alpha = 0.10f))))
             .border(1.dp, Flow.Indigo.copy(alpha = 0.35f), shape)
             .padding(14.dp)
@@ -256,16 +258,18 @@ fun LazyStaggeredGridScope.factItems(
     item(span = StaggeredGridItemSpan.FullLine, key = "factInput") {
         val c = LocalFlow.current
         var draft by remember { mutableStateOf("") }
-        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassField(draft, { draft = it }, "Teach keepsake something about you…", Modifier.weight(1f), bare = true)
-                GradientButton("remember", enabled = draft.isNotBlank(), onClick = { onAdd(draft); draft = "" })
+        Column {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GlassField(draft, { draft = it }, "Teach keepsake about you…", Modifier.weight(1f), bare = true)
+                    GradientButton("remember", enabled = draft.isNotBlank(), onClick = { onAdd(draft); draft = "" })
+                }
             }
+            Text(
+                "Pilot uses these to personalise answers. keepsake also learns them from what you save. Pin the important ones.",
+                fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 8.dp)
+            )
         }
-        Text(
-            "Pilot uses these to personalise answers. keepsake also learns them from what you save. Pin the important ones.",
-            fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 6.dp)
-        )
     }
     if (facts.isEmpty()) return
     facts.groupBy { it.category }.toList().sortedBy { it.first }.forEach { (cat, list) ->
@@ -354,7 +358,15 @@ fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (Str
 
 /** The day at a glance: next reminder, what you kept lately, quick ways in. */
 @Composable
-fun TodayCard(next: KeepReminder?, memories: List<MemoryEntity>, onAsk: () -> Unit, onTimeline: () -> Unit) {
+fun TodayCard(
+    next: KeepReminder?,
+    memories: List<MemoryEntity>,
+    onAsk: () -> Unit,
+    onTimeline: () -> Unit,
+    openTodos: Int = 0,
+    dueToday: Int = 0,
+    onTodos: () -> Unit = {},
+) {
     val now = System.currentTimeMillis()
     val today = startOfDay(now)
     val keptToday = memories.count { it.createdAt >= today }
@@ -371,6 +383,7 @@ fun TodayCard(next: KeepReminder?, memories: List<MemoryEntity>, onAsk: () -> Un
                 val whenText = SimpleDateFormat(if (next.hasTime) "EEE d MMM, h:mm a" else "EEE d MMM", Locale.ENGLISH).format(Date(next.atMillis)).lowercase()
                 "Next up: ${next.title} · $whenText"
             }
+            dueToday > 0 -> "$dueToday to-do${if (dueToday > 1) "s" else ""} due today. Knock ${if (dueToday > 1) "them" else "it"} out?"
             keptToday > 0 -> "You kept $keptToday thing${if (keptToday > 1) "s" else ""} today. Ask Pilot to connect the dots."
             else -> "$keptWeek memories this week, ${memories.size} in all. What's on your mind?"
         }
@@ -378,6 +391,7 @@ fun TodayCard(next: KeepReminder?, memories: List<MemoryEntity>, onAsk: () -> Un
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HomeChip("ask pilot", solid = true, onClick = onAsk)
+            if (openTodos > 0) HomeChip("$openTodos to-do${if (openTodos > 1) "s" else ""}", onClick = onTodos)
             HomeChip("timeline", onClick = onTimeline)
         }
     }

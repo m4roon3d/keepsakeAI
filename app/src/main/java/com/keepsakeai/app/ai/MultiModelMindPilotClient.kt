@@ -44,6 +44,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 "thread" (2-4 word name of the ongoing trip, project, event or topic this belongs to, e.g. "Goa trip", "Home loan", "Spark course"; null if standalone),
                 "facts" (array, at most 3, of lasting facts ABOUT THE USER that the content clearly states, as objects {"fact": short sentence, "category": one of "Profile", "Preferences", "Health", "Work", "People", "Places", "Money"}; empty array if none — never guess),
                 "reminder" (null, OR {"title": short action like "Pay BESCOM bill" or "Harris Jayaraj concert", "datetime": ISO 8601 local date-time like 2026-11-28T19:00 (use 09:00 when no time is given), "has_time": true only if a start time is actually stated, "kind": "due" | "event" | "deadline"} when the content has a specific FUTURE date worth remembering; for posters and tickets put the venue in the summary).
+                "entities" (array, at most 6, of specific people, places, projects or organisations named in the content, as {"name": proper name as written, "type": "person" | "place" | "project" | "org", "note": one short fact this content adds about them, e.g. "recommended Toit for dinner", "phone 98450 12345", "venue of the Dec 14 concert"}; no generic words like "bank" or "friend"),
+                "todos" (array, at most 4, of concrete actions the USER needs to take that the content implies, as {"text": short imperative like "Pay BESCOM bill" or "Book Goa hotel", "due": ISO date like 2026-11-28 or null}; empty if nothing is actionable).
 
                 Captured content:
                 {{RAW}}
@@ -58,6 +60,36 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             }
         }
         localHeuristicAnalyze(rawText)
+    }
+
+    /**
+     * Finds people, places, projects and organisations in older memories, in one call per batch.
+     * Returns memory id → mentions. Empty without a Gemini key.
+     */
+    suspend fun extractEntities(memories: List<MemoryEntity>): Map<Long, List<EntityMention>> = withContext(Dispatchers.IO) {
+        val key = keyStore.geminiKey
+        if (key.isBlank() || memories.isEmpty()) return@withContext emptyMap()
+        val prompt = buildString {
+            append("For each numbered memory, list the specific people, places, projects or organisations it names. ")
+            append("Reply with ONLY JSON: {\"items\": [{\"n\": number, \"entities\": [{\"name\": string, \"type\": \"person\"|\"place\"|\"project\"|\"org\", \"note\": short fact the memory adds}]}]}. ")
+            append("Skip generic words (bank, friend, office). Use [] when none.\n\n")
+            memories.forEachIndexed { i, m ->
+                append("${i + 1}. ${m.title}: ${m.aiSummary} | ${m.rawContent.take(300).replace('\n', ' ')}\n")
+            }
+        }
+        val r = callGemini(key, prompt, feature = "find people & places")
+        if (r.isError) return@withContext emptyMap()
+        runCatching {
+            val obj = JSONObject(r.content.substring(r.content.indexOf('{'), r.content.lastIndexOf('}') + 1))
+            val items = obj.getJSONArray("items")
+            List(items.length()) { items.getJSONObject(it) }.mapNotNull { it2 ->
+                val m = memories.getOrNull(it2.optInt("n") - 1) ?: return@mapNotNull null
+                val ents = it2.optJSONArray("entities") ?: JSONArray()
+                m.id to List(ents.length()) { j -> ents.getJSONObject(j) }.mapNotNull { e ->
+                    e.optString("name").trim().takeIf { it.length >= 2 }?.let { EntityMention(it, e.optString("type", "person"), e.optString("note")) }
+                }
+            }.toMap()
+        }.getOrDefault(emptyMap())
     }
 
     /**
@@ -94,7 +126,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         agentMode: Boolean,
         deviceContext: String = "",
         moneyContext: String = "",
-        factsContext: String = ""
+        factsContext: String = "",
+        todosContext: String = ""
     ): List<MindPilotResponse> = coroutineScope {
         val contextBlock = if (memories.isEmpty()) {
             "No saved memories yet."
@@ -115,6 +148,9 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             What you know about the user (facts they taught keepsake):
             {{FACTS}}
 
+            The user's open to-dos:
+            {{TODOS}}
+
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
             and say when the data doesn't cover what was asked):
             {{MONEY}}
@@ -123,7 +159,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{CONTEXT}}
             
             Goal: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
         } else {
             """
             You are keepsake Pilot, the user's personal assistant. Answer concisely.
@@ -138,6 +174,9 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             What you know about the user (facts they taught keepsake):
             {{FACTS}}
 
+            The user's open to-dos:
+            {{TODOS}}
+
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
             and say when the data doesn't cover what was asked):
             {{MONEY}}
@@ -146,7 +185,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{CONTEXT}}
             
             Question: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
         }
 
         providers.map { provider ->
@@ -355,6 +394,22 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         .take(3)
                 } ?: emptyList(),
                 thread = obj.optString("thread").takeIf { it.isNotBlank() && it != "null" },
+                entities = obj.optJSONArray("entities")?.let { arr ->
+                    List(arr.length()) { i -> arr.optJSONObject(i) }.mapNotNull { o ->
+                        o?.optString("name")?.trim()?.takeIf { it.length >= 2 }?.let { EntityMention(it, o.optString("type", "person"), o.optString("note")) }
+                    }.take(6)
+                } ?: emptyList(),
+                todos = obj.optJSONArray("todos")?.let { arr ->
+                    List(arr.length()) { i -> arr.optJSONObject(i) }.mapNotNull { o ->
+                        o?.optString("text")?.trim()?.takeIf { it.length >= 3 }?.let { t ->
+                            val due = runCatching {
+                                java.time.LocalDate.parse(o.optString("due").take(10)).atTime(9, 0)
+                                    .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                            }.getOrNull()
+                            TodoSuggestion(t, due)
+                        }
+                    }.take(4)
+                } ?: emptyList(),
                 reminder = obj.optJSONObject("reminder")?.let { r ->
                     val at = runCatching {
                         java.time.LocalDateTime.parse(r.optString("datetime").take(16))

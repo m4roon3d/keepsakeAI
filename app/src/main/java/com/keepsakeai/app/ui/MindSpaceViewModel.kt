@@ -170,6 +170,11 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     dao.insertFact(PersonalFactEntity(fact = fact, category = cat, sourceMemoryId = memoryId))
                 }
             }
+            // People, places & projects, and to-dos found in the capture
+            analyzed.entities.forEach { e -> entityStore.addMention(e.type, e.name, e.note, memoryId, System.currentTimeMillis()) }
+            val newTodos = analyzed.todos.mapNotNull { t -> todoStore.add(t.text, t.due, memoryId) }
+            if (analyzed.entities.isNotEmpty()) entities.value = entityStore.all()
+            if (newTodos.isNotEmpty()) todos.value = todoStore.all()
             analyzed.reminder?.let { r ->
                 reminderStore.add(KeepReminder(id = System.currentTimeMillis(), title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId, hasTime = r.hasTime))
                 reminders.value = reminderStore.all()
@@ -177,6 +182,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             refreshWidget()
             statusMessage.value = when {
                 analyzed.reminder != null -> "Saved · found a date: ${analyzed.reminder.title}"
+                newTodos.isNotEmpty() -> "Saved · added ${newTodos.size} to-do${if (newTodos.size > 1) "s" else ""}"
                 analyzed.facts.isNotEmpty() -> "Saved · learned ${analyzed.facts.size} new thing${if (analyzed.facts.size > 1) "s" else ""} about you"
                 else -> "Saved to ${analyzed.collection}"
             }
@@ -207,6 +213,96 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun deleteFact(fact: PersonalFactEntity) {
         viewModelScope.launch { dao.deleteFact(fact) }
+    }
+
+    // ── People, places & projects ────────────────────────────────
+    private val entityStore = com.keepsakeai.app.data.preferences.EntityStore(app)
+    val entities = MutableStateFlow(entityStore.all())
+    val openEntityKey = MutableStateFlow<String?>(null)
+    val isBackfilling = MutableStateFlow(false)
+
+    fun backfilledCount(): Int = entityStore.backfilled.size
+
+    fun hideEntity(key: String) {
+        entityStore.hide(key)
+        entities.value = entityStore.all()
+        openEntityKey.value = null
+    }
+
+    /** Finds people, places and projects in memories saved before this feature existed. */
+    fun backfillEntities() {
+        if (isBackfilling.value) return
+        viewModelScope.launch {
+            isBackfilling.value = true
+            val done = entityStore.backfilled
+            val todo = dao.getRecentMemories(300).filter { it.id !in done && it.source != CaptureSource.UPI_MESSAGE }.take(90)
+            var found = 0
+            todo.chunked(15).forEach { batch ->
+                val result = app.mindPilotClient.extractEntities(batch)
+                batch.forEach { m ->
+                    result[m.id].orEmpty().forEach { e -> entityStore.addMention(e.type, e.name, e.note, m.id, m.createdAt); found++ }
+                }
+                entityStore.backfilled = entityStore.backfilled + batch.map { it.id }
+                entities.value = entityStore.all()
+            }
+            isBackfilling.value = false
+            statusMessage.value = if (todo.isEmpty()) "All memories already scanned" else "Found $found mentions in ${todo.size} memories"
+        }
+    }
+
+    // ── To-dos ───────────────────────────────────────────────────
+    private val todoStore = com.keepsakeai.app.data.preferences.TodoStore(app)
+    val todos = MutableStateFlow(todoStore.all())
+
+    fun addTodo(text: String, due: Long? = null) {
+        todoStore.add(text, due)
+        todos.value = todoStore.all()
+    }
+
+    fun toggleTodo(id: Long) {
+        todoStore.toggle(id)
+        todos.value = todoStore.all()
+    }
+
+    fun deleteTodo(id: Long) {
+        todoStore.remove(id)
+        todos.value = todoStore.all()
+    }
+
+    fun setTodoDue(id: Long, due: Long?) {
+        todoStore.update(id) { it.copy(due = due) }
+        todos.value = todoStore.all()
+    }
+
+    /** Turns a dated to-do into a reminder (day before and on the day, 9am). */
+    fun remindTodo(t: com.keepsakeai.app.data.preferences.Todo) {
+        val due = t.due ?: return
+        val r = KeepReminder(id = t.id, title = t.text, atMillis = due, kind = "due", memoryId = t.memoryId ?: 0L, hasTime = false)
+        reminderStore.add(r)
+        scheduleReminder(r)
+    }
+
+    // ── Pull to refresh ──────────────────────────────────────────
+    val isRefreshing = MutableStateFlow(false)
+
+    fun refreshAll(scanSms: Boolean = false) {
+        if (isRefreshing.value) return
+        viewModelScope.launch {
+            isRefreshing.value = true
+            val started = System.currentTimeMillis()
+            reminders.value = reminderStore.all()
+            todos.value = todoStore.all()
+            entities.value = entityStore.all()
+            refreshPlace()
+            if (scanSms && androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.READ_SMS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) scanSmsInboxForUpi(7)
+            refreshWidget()
+            // Let the spinner be seen; refreshing that ends instantly feels broken.
+            val elapsed = System.currentTimeMillis() - started
+            if (elapsed < 650) kotlinx.coroutines.delay(650 - elapsed)
+            isRefreshing.value = false
+        }
     }
 
     // ── Reminders found in captures ──────────────────────────────
@@ -258,6 +354,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     fun deleteMemory(memory: MemoryEntity) {
         viewModelScope.launch {
             dao.deleteMemory(memory)
+            entityStore.forgetMemory(memory.id)
+            entities.value = entityStore.all()
             runCatching { MindSpaceWidget().updateAll(app) }
         }
     }
@@ -288,6 +386,9 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
                 deviceContext = DeviceContext.promptBlock(app),
+                todosContext = todoStore.all().filter { !it.done }.take(30).joinToString("\n") { t ->
+                    "- ${t.text}" + (t.due?.let { d -> " (due " + java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.ENGLISH).format(java.util.Date(d)) + ")" } ?: "")
+                },
                 factsContext = dao.getFacts().sortedByDescending { it.pinned }.take(25)
                     .joinToString("\n") { "- ${it.fact}${if (it.pinned) " (important)" else ""}" },
                 moneyContext = withContext(Dispatchers.Default) {
