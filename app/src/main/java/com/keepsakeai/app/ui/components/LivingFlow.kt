@@ -283,13 +283,13 @@ fun GlassField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     shape: Shape = if (singleLine) RoundedCornerShape(50) else RoundedCornerShape(22.dp),
+    bare: Boolean = false,
 ) {
     val c = LocalFlow.current
     Row(
         modifier = modifier
             .clip(shape)
-            .background(c.glass)
-            .border(1.dp, c.glassBorder, shape)
+            .then(if (bare) Modifier else Modifier.background(c.glass).border(1.dp, c.glassBorder, shape))
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top
     ) {
@@ -324,6 +324,7 @@ fun FlowHeader(
     title: String,
     modifier: Modifier = Modifier,
     gradientSuffix: String? = null,
+    joinSuffix: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
@@ -342,7 +343,7 @@ fun FlowHeader(
                 buildAnnotatedString {
                     withStyle(SpanStyle(color = c.text)) { append(title) }
                     if (gradientSuffix != null) {
-                        append(" ")
+                        if (!joinSuffix) append(" ")
                         withStyle(SpanStyle(brush = Flow.titleGradient)) { append(gradientSuffix) }
                     }
                 },

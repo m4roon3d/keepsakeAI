@@ -24,17 +24,20 @@ import com.keepsakeai.app.ui.theme.ThemeStore
  * takes on the active theme's colours. Same geometry as the launcher icon
  * (branding/fg.svg), scaled from its 108-unit grid; the capsule spans x 38-70, y 27-81.
  */
+enum class MarkGlyph { SPARK, LENS }
+
 @Composable
 fun LogoMark(
     modifier: Modifier = Modifier,
     size: Dp = 32.dp,
     palette: Palette = ThemeStore.palette,
     halo: Boolean = true,
+    glyph: MarkGlyph = MarkGlyph.SPARK,
 ) {
-    Canvas(modifier.size(size)) { drawLogo(palette, halo) }
+    Canvas(modifier.size(size)) { drawLogo(palette, halo, glyph) }
 }
 
-private fun DrawScope.drawLogo(p: Palette, halo: Boolean) {
+private fun DrawScope.drawLogo(p: Palette, halo: Boolean, glyph: MarkGlyph) {
     // Fit the capsule's 54-unit height into the canvas with a little room for the halo.
     val unit = size.height / 62f
     fun x(v: Float) = size.width / 2f + (v - 54f) * unit
@@ -120,8 +123,22 @@ private fun DrawScope.drawLogo(p: Palette, halo: Boolean) {
         ),
         radius = 11f * unit, center = Offset(x(54f), y(52f))
     )
-    drawPath(spark(::x, ::y, 54f, 51.5f, 8f, 9f), Color.White)
-    drawPath(spark(::x, ::y, 61.5f, 42.8f, 2.5f, 2.8f), Color.White.copy(alpha = 0.85f))
+    if (glyph == MarkGlyph.SPARK) {
+        drawPath(spark(::x, ::y, 54f, 51.5f, 8f, 9f), Color.White)
+        drawPath(spark(::x, ::y, 61.5f, 42.8f, 2.5f, 2.8f), Color.White.copy(alpha = 0.85f))
+    } else {
+        // Lens: four focus brackets around a dot (Snapsake)
+        val stroke = Stroke(width = 2.2f * unit, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+        val l = 46.5f; val r = 61.5f; val t = 44f; val b = 59f; val arm = 4.2f
+        val brackets = Path().apply {
+            moveTo(x(l), y(t + arm)); lineTo(x(l), y(t)); lineTo(x(l + arm), y(t))
+            moveTo(x(r - arm), y(t)); lineTo(x(r), y(t)); lineTo(x(r), y(t + arm))
+            moveTo(x(r), y(b - arm)); lineTo(x(r), y(b)); lineTo(x(r - arm), y(b))
+            moveTo(x(l + arm), y(b)); lineTo(x(l), y(b)); lineTo(x(l), y(b - arm))
+        }
+        drawPath(brackets, Color.White, style = stroke)
+        drawCircle(Color.White, radius = 2.6f * unit, center = Offset(x(54f), y(51.5f)))
+    }
 }
 
 /** Four-point star with curved sides, centred at (cx, cy). */

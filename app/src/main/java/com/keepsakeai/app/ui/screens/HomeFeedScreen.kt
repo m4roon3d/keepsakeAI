@@ -198,12 +198,13 @@ fun HomeFeedScreen(
                         placeholder = "Capture a thought, link or receipt…",
                         singleLine = false,
                         minLines = 2,
+                        bare = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = 10.dp))
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
-                        ComposerIcon(Icons.Rounded.CenterFocusWeak, "Snapsake", Flow.Indigo, onOpenSnapsake)
+                        ComposerIcon(Icons.Rounded.CenterFocusWeak, "snapsake", Flow.Indigo, onOpenSnapsake)
                         ComposerIcon(Icons.Rounded.Mic, "Voice note", Flow.Pink) {
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

@@ -15,7 +15,9 @@ data class ParsedUpiTransaction(
 object UpiMessageParser {
 
     private val debitKeywords = listOf("debited", "sent", "paid", "spent", "withdrawn", "txn of", "transferred")
-    private val upiIndicators = listOf("upi", "vpa", "gpay", "phonepe", "paytm", "bhim", "ref no", "utr")
+    private val upiIndicators = listOf("upi", "vpa", "gpay", "phonepe", "paytm", "bhim", "ref no", "utr", "a/c", "acct", "card", "imps", "neft")
+    /** Messages that mention money but aren't completed debits. */
+    private val ignoreKeywords = listOf("otp", "one time password", "requested", "request from", "will be debited", "is due", "due on", "reminder", "cashback", "offer", "credited to your", "has been credited", "received from", "refund")
 
     private val amountRegex = Regex(
         """(?:rs\.?|inr|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)""",
@@ -35,6 +37,7 @@ object UpiMessageParser {
         val isDebit = debitKeywords.any { it in lower }
         val isUpi = upiIndicators.any { it in lower } || sender.lowercase(Locale.US).contains("upi")
         if (!isDebit || !isUpi) return null
+        if (ignoreKeywords.any { it in lower }) return null
 
         val rawAmt = amountRegex.find(body)?.groupValues?.getOrNull(1)?.replace(",", "")
         val amount = rawAmt?.toDoubleOrNull() ?: return null

@@ -168,6 +168,7 @@ fun MindPilotScreen(
                     placeholder = if (agentMode) "Give Agent mode a multi-step goal…" else "Ask anything…",
                     singleLine = false,
                     minLines = 2,
+                    bare = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 LazyRow(

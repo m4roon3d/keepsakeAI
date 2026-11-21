@@ -5,12 +5,14 @@ import android.provider.Telephony
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
 
 /**
- * Optional historical SMS inbox scanner for personal builds where READ_SMS is granted.
+ * Replays the SMS inbox (READ_SMS) so past UPI and bank debits can be imported.
  * Scans recent inbox messages and returns parsed UPI transactions for Preview & Approve.
  */
 object UpiSmsInboxScanner {
 
-    fun scanRecentInbox(context: Context, maxMessages: Int = 100): List<PendingUpiTransactionEntity> {
+    /** Reads inbox SMS from the last [days] days (newest first) and parses UPI/bank debits. Call off the main thread. */
+    fun scanRecentInbox(context: Context, days: Int = 30, maxMessages: Int = 5000): List<PendingUpiTransactionEntity> {
+        val since = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
         val results = mutableListOf<PendingUpiTransactionEntity>()
         val projection = arrayOf(
             Telephony.Sms.ADDRESS,
@@ -21,8 +23,8 @@ object UpiSmsInboxScanner {
             context.contentResolver.query(
                 Telephony.Sms.Inbox.CONTENT_URI,
                 projection,
-                null,
-                null,
+                "${Telephony.Sms.DATE} >= ?",
+                arrayOf(since.toString()),
                 "${Telephony.Sms.DATE} DESC"
             )?.use { cursor ->
                 var count = 0

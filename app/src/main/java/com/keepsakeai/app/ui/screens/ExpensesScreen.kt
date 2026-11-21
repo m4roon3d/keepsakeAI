@@ -1,6 +1,13 @@
 package com.keepsakeai.app.ui.screens
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +37,7 @@ import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.ShoppingBag
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Theaters
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +85,9 @@ private fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     else -> Icons.Rounded.Receipt to Flow.Teal
 }
 
+private fun hasSmsPermission(context: Context) =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+
 private fun currencySymbol(code: String) = when (code.uppercase()) {
     "INR" -> "₹"; "USD" -> "$"; "EUR" -> "€"; "GBP" -> "£"; else -> "$code "
 }
@@ -102,6 +113,13 @@ fun ExpensesScreen(
     var merchant by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Food") }
+    var smsDays by remember { mutableStateOf(30) }
+    var smsBlocked by remember { mutableStateOf(false) }
+    val scanningSms by viewModel.isScanningSms.collectAsState()
+    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        smsBlocked = !granted
+        if (granted) viewModel.scanSmsInboxForUpi(smsDays)
+    }
 
     val total = expenses.sumOf { it.amount }
     val byCategory = expenses.groupBy { it.category }
@@ -121,6 +139,54 @@ fun ExpensesScreen(
                     icon = Icons.Rounded.NotificationsActive,
                     tint = Flow.Emerald
                 )
+            }
+        }
+
+        // Replay the SMS inbox into the approval queue
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(38.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Sms, null, tint = Flow.Emerald, modifier = Modifier.size(19.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Import from Messages", style = MaterialTheme.typography.titleSmall, color = c.text)
+                        Text("Pull past UPI & bank debit SMS into your review queue", fontSize = 11.sp, color = c.muted)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf(30 to "30 days", 90 to "90 days", 365 to "1 year").forEach { (d, label) ->
+                        Pill(label, smsDays == d, { smsDays = d }, Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                GradientButton(
+                    if (scanningSms) "Reading messages…" else "Scan messages",
+                    enabled = !scanningSms,
+                    brush = Flow.spendGradient,
+                    icon = Icons.Rounded.Sms,
+                    onClick = {
+                        if (hasSmsPermission(context)) viewModel.scanSmsInboxForUpi(smsDays)
+                        else smsPermission.launch(Manifest.permission.READ_SMS)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (smsBlocked) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "SMS access is blocked. Open App info → ⋮ → Allow restricted settings, then Permissions → SMS → Allow.",
+                        fontSize = 11.sp, color = Flow.Rose,
+                        modifier = Modifier.clickable {
+                            runCatching {
+                                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                            }
+                        }
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("Read on your phone only. Nothing is uploaded; you approve each payment.", fontSize = 11.sp, color = c.muted)
             }
         }
 

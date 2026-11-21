@@ -57,7 +57,7 @@ private data class DockItem(val tab: Int, val label: String, val icon: ImageVect
 
 private val dockItems = listOf(
     DockItem(MainActivity.TAB_HOME, "keepsake", Icons.Rounded.Dashboard),
-    DockItem(MainActivity.TAB_SNAPSAKE, "Snapsake", Icons.Rounded.CenterFocusWeak),
+    DockItem(MainActivity.TAB_SNAPSAKE, "snapsake", Icons.Rounded.CenterFocusWeak),
     DockItem(MainActivity.TAB_SPEND, "Spend", Icons.Rounded.AccountBalanceWallet),
     DockItem(MainActivity.TAB_SETTINGS, "Settings", Icons.Rounded.Tune),
 )

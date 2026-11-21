@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MindSpaceViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -217,6 +219,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun dismissPendingUpi(item: PendingUpiTransactionEntity) {
+        rememberDismissed(item)
         viewModelScope.launch { dao.deletePendingUpi(item) }
     }
 
@@ -226,16 +229,47 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun scanSmsInboxForUpi() {
+    val isScanningSms = MutableStateFlow(false)
+
+    /** Replays the SMS inbox for the last [days] days into the Pending approval queue, skipping anything already seen. */
+    fun scanSmsInboxForUpi(days: Int = 30) {
+        if (isScanningSms.value) return
         viewModelScope.launch {
-            val found = UpiSmsInboxScanner.scanRecentInbox(app)
+            isScanningSms.value = true
+            val found = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanRecentInbox(app, days) }
+            val dismissed = dismissedUpiKeys()
+            var added = 0
             found.forEach { item ->
-                if (item.utrRef == null || dao.countPendingByUtr(item.utrRef) == 0) {
+                val key = upiKey(item)
+                val seen = key in dismissed || if (item.utrRef != null) {
+                    dao.countPendingByUtr(item.utrRef) > 0 || dao.countExpensesByNote("UTR: ${item.utrRef}") > 0
+                } else {
+                    dao.countPendingByAmountTime(item.amount, item.receivedAt) > 0 ||
+                        dao.countExpensesByAmountTime(item.amount, item.receivedAt) > 0
+                }
+                if (!seen) {
                     dao.insertPendingUpi(item)
+                    added++
                 }
             }
-            statusMessage.value = "Queued ${found.size} UPI messages for review"
+            isScanningSms.value = false
+            statusMessage.value = when {
+                found.isEmpty() -> "No UPI payments found in the last $days days"
+                added == 0 -> "All ${found.size} payments already imported"
+                else -> "Found $added new payment${if (added > 1) "s" else ""} to review"
+            }
         }
+    }
+
+    private fun upiKey(item: PendingUpiTransactionEntity) = item.utrRef ?: "${item.amount}@${item.receivedAt}"
+
+    private fun dismissedUpiKeys(): Set<String> =
+        app.getSharedPreferences("upi_prefs", android.content.Context.MODE_PRIVATE)
+            .getStringSet("dismissed", emptySet()).orEmpty()
+
+    private fun rememberDismissed(item: PendingUpiTransactionEntity) {
+        val prefs = app.getSharedPreferences("upi_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("dismissed", dismissedUpiKeys() + upiKey(item)).apply()
     }
 
     fun refreshDailySuggest() {

@@ -55,6 +55,15 @@ interface MindSpaceDao {
     @Query("SELECT COUNT(*) FROM pending_upi_transactions WHERE utrRef = :utr")
     suspend fun countPendingByUtr(utr: String): Int
 
+    @Query("SELECT COUNT(*) FROM expenses WHERE notes = :note")
+    suspend fun countExpensesByNote(note: String): Int
+
+    @Query("SELECT COUNT(*) FROM pending_upi_transactions WHERE amount = :amount AND receivedAt = :receivedAt")
+    suspend fun countPendingByAmountTime(amount: Double, receivedAt: Long): Int
+
+    @Query("SELECT COUNT(*) FROM expenses WHERE amount = :amount AND timestamp = :timestamp")
+    suspend fun countExpensesByAmountTime(amount: Double, timestamp: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPendingUpi(item: PendingUpiTransactionEntity): Long
 

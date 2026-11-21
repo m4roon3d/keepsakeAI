@@ -35,4 +35,25 @@ class UpiMessageParserTest {
         val parsed = UpiMessageParser.parse("PAYTM", promo)
         assertNull(parsed)
     }
+
+    @Test
+    fun ignoresOtpMessages() {
+        val otp = "123456 is your OTP for txn of Rs.2,499.00 at AMAZON on HDFC Bank card. Do not share."
+        assertNull(UpiMessageParser.parse("HDFCBK", otp))
+    }
+
+    @Test
+    fun ignoresCollectRequests() {
+        val req = "Rs.300 will be debited from your A/c on approving the UPI collect request from merchant@ybl."
+        assertNull(UpiMessageParser.parse("ICICIB", req))
+    }
+
+    @Test
+    fun parsesPlainBankDebitWithoutUpiWord() {
+        val sms = "Rs 1,250.00 debited from A/c XX4821 on 20-11-26 at BESCOM. Avl Bal Rs 10,000."
+        val parsed = UpiMessageParser.parse("AX-SBIINB", sms)
+        assertNotNull(parsed)
+        assertEquals(1250.0, parsed!!.amount, 0.01)
+        assertEquals("Bills", parsed.category)
+    }
 }

@@ -72,6 +72,8 @@ import com.keepsakeai.app.ui.components.GlassButton
 import com.keepsakeai.app.ui.components.GlassCard
 import com.keepsakeai.app.ui.components.GlassField
 import com.keepsakeai.app.ui.components.GradientButton
+import com.keepsakeai.app.ui.components.LogoMark
+import com.keepsakeai.app.ui.components.MarkGlyph
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
@@ -172,8 +174,18 @@ fun SnapsakeScreen(
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        FlowHeader(eyebrow = "Point. Snap. Keep.", title = "Snap", gradientSuffix = "sake") {
-            Badge("On-device text", Flow.Cyan)
+        FlowHeader(
+            eyebrow = "Point. Snap. Keep.",
+            title = "snap",
+            gradientSuffix = "sake",
+            joinSuffix = true,
+            leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.LENS) }
+        ) {
+            GlassButton(
+                "Gallery",
+                onClick = { pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                icon = Icons.Rounded.PhotoLibrary
+            )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -213,20 +225,12 @@ fun SnapsakeScreen(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GradientButton(
-                text = if (photo == null) "Open camera" else "Retake",
-                onClick = { openCamera() },
-                icon = Icons.Rounded.CameraAlt,
-                modifier = Modifier.weight(1f)
-            )
-            GlassButton(
-                text = "Gallery",
-                onClick = { pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                icon = Icons.Rounded.PhotoLibrary,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        GradientButton(
+            text = if (photo == null) "Open camera" else "Retake",
+            onClick = { openCamera() },
+            icon = Icons.Rounded.CameraAlt,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         error?.let {
             Text(it, color = Flow.Rose, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 4.dp))
@@ -246,6 +250,7 @@ fun SnapsakeScreen(
                     placeholder = "Add a note about this photo…",
                     singleLine = false,
                     minLines = 4,
+                    bare = true,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -253,7 +258,7 @@ fun SnapsakeScreen(
                 text = "Save to keepsake",
                 enabled = text.isNotBlank() || photo != null,
                 onClick = {
-                    val body = text.ifBlank { "Photo snapped with Snapsake" }
+                    val body = text.ifBlank { "Photo snapped with snapsake" }
                     viewModel.captureText(mode.prefixPrompt + body, source = CaptureSource.CAMERA_SCAN, photoUri = photo)
                     photo = null
                     text = ""
@@ -263,7 +268,7 @@ fun SnapsakeScreen(
             )
         } else if (photo == null) {
             Text(
-                "Snapsake opens your phone's own camera, so you get its full quality, zoom and HDR. Text is read on your phone; only the extracted text goes to your AI for sorting.",
+                "snapsake opens your phone's own camera, so you get its full quality, zoom and HDR. Text is read on your phone; only the extracted text goes to your AI for sorting.",
                 color = c.muted,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(horizontal = 4.dp)
