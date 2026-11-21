@@ -38,7 +38,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 Analyze this captured content and return ONLY valid JSON with keys:
                 "title" (short 3-6 words),
                 "summary" (1-2 crisp sentences),
-                "collection" (one of: "Travel", "Study Notes", "Events", "Personal Projects", "Receipts", "Watch Later", "General"),
+                "collection" (one of: "Travel", "Study Notes", "Events", "Personal Projects", "Receipts", "Watch Later", "Journal", "General"),
                 "tags" (array of 2-4 short lowercase tags),
                 "expense" (null, OR object {"merchant": string, "amount": number, "currency": string, "category": one of "Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"}),
                 "thread" (2-4 word name of the ongoing trip, project, event or topic this belongs to, e.g. "Goa trip", "Home loan", "Spark course"; null if standalone),
@@ -60,6 +60,17 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             }
         }
         localHeuristicAnalyze(rawText)
+    }
+
+    /** Transcribes a voice journal (any language mix); returns null without a key or on failure. */
+    suspend fun transcribeAudio(m4a: ByteArray): String? = withContext(Dispatchers.IO) {
+        val key = keyStore.geminiKey
+        if (key.isBlank()) return@withContext null
+        val prompt = "This is the user's spoken journal entry. Transcribe it faithfully in the language(s) spoken " +
+            "(English, Tamil, Hindi, Kannada or a mix), with light punctuation and no commentary. If any of it is not in English, " +
+            "add an English translation after the transcript on a new line starting with 'English:'. If nothing intelligible was said, reply with exactly: (silence)"
+        val r = callGemini(key, prompt, feature = "voice journal", audio = m4a)
+        if (r.isError) null else r.content.trim().takeIf { it.isNotBlank() && it != "(silence)" }
     }
 
     /**
@@ -240,14 +251,15 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
         grounded: Boolean = false,
         feature: String = "ask pilot",
         imageJpeg: ByteArray? = null,
+        audio: ByteArray? = null,
     ): MindPilotResponse {
-        audit("Gemini", feature + (if (grounded) " + web search" else "") + (if (imageJpeg != null) " + photo" else ""), prompt)
+        audit("Gemini", feature + (if (grounded) " + web search" else "") + (if (imageJpeg != null) " + photo" else "") + (if (audio != null) " + audio" else ""), prompt)
         val parts = JSONArray()
-        if (imageJpeg != null) {
+        listOfNotNull(imageJpeg?.let { "image/jpeg" to it }, audio?.let { "audio/mp4" to it }).forEach { (mime, bytes) ->
             parts.put(
                 JSONObject().put(
                     "inline_data",
-                    JSONObject().put("mime_type", "image/jpeg").put("data", android.util.Base64.encodeToString(imageJpeg, android.util.Base64.NO_WRAP))
+                    JSONObject().put("mime_type", mime).put("data", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP))
                 )
             )
         }
@@ -284,7 +296,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         return@use null
                     }
                     if (!resp.isSuccessful) {
-                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false, feature = feature, imageJpeg = imageJpeg)
+                        if (grounded && resp.code == 400) return callGemini(apiKey, prompt, grounded = false, feature = feature, imageJpeg = imageJpeg, audio = audio)
                         return MindPilotResponse(AiProvider.GEMINI, "Gemini error (${resp.code}): $raw", isError = true)
                     }
                     val parts = JSONObject(raw)

@@ -85,6 +85,7 @@ fun collectionAccent(name: String): Pair<Color, Color> = when (name) {
     "Personal Projects" -> Flow.Purple to Flow.Indigo
     "Receipts" -> Flow.Emerald to Flow.Teal
     "Watch Later" -> Flow.Amber to Flow.Pink
+    "Journal" -> Flow.Pink to Flow.Indigo
     else -> Flow.Indigo to Flow.Sky
 }
 
@@ -111,6 +112,10 @@ fun HomeFeedScreen(
 
     var quickNote by remember { mutableStateOf("") }
     var hubView by rememberSaveable { mutableStateOf(HubView.KEEPSAKES) }
+    val hubReq by viewModel.hubRequest.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(hubReq) {
+        hubReq?.let { r -> HubView.entries.firstOrNull { it.name == r }?.let { hubView = it }; viewModel.hubRequest.value = null }
+    }
     val facts by viewModel.facts.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
@@ -242,6 +247,7 @@ fun HomeFeedScreen(
                             }
                             runCatching { voiceLauncher.launch(intent) }
                         }
+                        ComposerIcon(Icons.Rounded.AutoAwesome, "Voice journal", Flow.Purple) { viewModel.overlay.value = "journal" }
                         ComposerIcon(Icons.Rounded.AddPhotoAlternate, "Read text from a photo", Flow.Emerald) {
                             imagePicker.launch("image/*")
                         }
@@ -267,7 +273,9 @@ fun HomeFeedScreen(
                     onTimeline = { hubView = HubView.TIMELINE },
                     openTodos = openTodos,
                     dueToday = dueToday,
-                    onTodos = { hubView = HubView.TODOS }
+                    onTodos = { hubView = HubView.TODOS },
+                    onBrief = { viewModel.overlay.value = "brief" },
+                    onJournal = { viewModel.overlay.value = "journal" }
                 )
             }
             items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->

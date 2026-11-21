@@ -7,4 +7,6 @@
     <string name="shortcut_snap_long">Snap with camera</string>
     <string name="shortcut_pilot">ask pilot</string>
     <string name="shortcut_pilot_long">Ask keepsake Pilot</string>
+    <string name="shortcut_journal">journal</string>
+    <string name="shortcut_journal_long">Voice journal</string>
 </resources>

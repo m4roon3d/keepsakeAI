@@ -1,0 +1,228 @@
+package com.keepsakeai.app.ui.brief
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.keepsakeai.app.data.local.CaptureSource
+import com.keepsakeai.app.data.local.ExpenseEntity
+import com.keepsakeai.app.data.local.MemoryEntity
+import com.keepsakeai.app.data.preferences.KeepReminder
+import com.keepsakeai.app.data.preferences.MoneyPrefs
+import com.keepsakeai.app.data.preferences.NudgePrefs
+import com.keepsakeai.app.data.preferences.Todo
+import com.keepsakeai.app.ui.MindSpaceViewModel
+import com.keepsakeai.app.ui.components.FlowHeader
+import com.keepsakeai.app.ui.components.GlassButton
+import com.keepsakeai.app.ui.components.GlassCard
+import com.keepsakeai.app.ui.components.GradientButton
+import com.keepsakeai.app.ui.components.GradientCard
+import com.keepsakeai.app.ui.components.LogoMark
+import com.keepsakeai.app.ui.components.SectionLabel
+import com.keepsakeai.app.ui.spend.BudgetState
+import com.keepsakeai.app.ui.spend.DAY
+import com.keepsakeai.app.ui.spend.Recurring
+import com.keepsakeai.app.ui.spend.SpendPeriod
+import com.keepsakeai.app.ui.spend.budgetStatuses
+import com.keepsakeai.app.ui.spend.detectRecurring
+import com.keepsakeai.app.ui.spend.inRange
+import com.keepsakeai.app.ui.spend.periodRange
+import com.keepsakeai.app.ui.spend.startOfDay
+import com.keepsakeai.app.ui.theme.Flow
+import com.keepsakeai.app.ui.theme.LocalFlow
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+/** One line in the brief; [memoryId] or [tab] say where tapping it goes. */
+data class BriefLine(val text: String, val sub: String? = null, val memoryId: Long? = null, val tab: String? = null, val urgent: Boolean = false)
+
+data class Brief(
+    val today: List<BriefLine>,
+    val money: List<BriefLine>,
+    val revisit: List<BriefLine>,
+    val onThisDay: List<BriefLine>,
+) {
+    val isEmpty get() = today.isEmpty() && money.isEmpty() && revisit.isEmpty() && onThisDay.isEmpty()
+
+    /** One-line summary for the notification. */
+    fun summary(): String = (today.take(2) + money.take(1)).joinToString(" · ") { it.text }.ifBlank {
+        revisit.firstOrNull()?.let { "Revisit: ${it.text}" } ?: "Nothing urgent today. Enjoy it."
+    }
+}
+
+private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
+
+/** Builds the morning brief from what keepsake knows. Pure, unit-tested. */
+fun buildBrief(
+    reminders: List<KeepReminder>,
+    todos: List<Todo>,
+    memories: List<MemoryEntity>,
+    expenses: List<ExpenseEntity>,
+    pendingUpi: Int,
+    budgets: Map<String, Double>,
+    viewed: Set<Long>,
+    now: Long = System.currentTimeMillis(),
+): Brief {
+    val today = startOfDay(now)
+    val tomorrow = today + DAY
+    val fmtTime = SimpleDateFormat("h:mm a", Locale.ENGLISH)
+
+    val todayLines = mutableListOf<BriefLine>()
+    reminders.filter { it.status != "dismissed" && it.atMillis in today until tomorrow + DAY }
+        .sortedBy { it.atMillis }
+        .forEach { r ->
+            val whenText = (if (r.atMillis < tomorrow) "today" else "tomorrow") + (if (r.hasTime) " · " + fmtTime.format(Date(r.atMillis)).lowercase() else "")
+            todayLines += BriefLine(r.title, whenText, memoryId = r.memoryId.takeIf { it > 0 }, urgent = r.atMillis < tomorrow)
+        }
+    val open = todos.filter { !it.done }
+    val overdue = open.filter { it.due != null && it.due < today }
+    val dueToday = open.filter { it.due != null && it.due in today until tomorrow }
+    if (overdue.isNotEmpty()) todayLines += BriefLine("${overdue.size} overdue to-do${if (overdue.size > 1) "s" else ""}", overdue.take(2).joinToString(", ") { it.text }, tab = "todos", urgent = true)
+    dueToday.take(4).forEach { todayLines += BriefLine(it.text, "to-do due today", tab = "todos") }
+
+    val moneyLines = mutableListOf<BriefLine>()
+    if (pendingUpi > 0) moneyLines += BriefLine("$pendingUpi payment${if (pendingUpi > 1) "s" else ""} to review", "approve or dismiss in spend", tab = "spend")
+    expenses.detectRecurring(now).filter { it.daysUntilDue(now) in 0..1 }.forEach { s: Recurring ->
+        moneyLines += BriefLine("${s.name} renews ${if (s.daysUntilDue(now) == 0) "today" else "tomorrow"}", "${rupees(s.amount)} · ${s.cadenceLabel}", tab = "spend")
+    }
+    if (budgets.isNotEmpty()) {
+        val cal = Calendar.getInstance().apply { timeInMillis = now }
+        val dim = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+        val month = expenses.inRange(periodRange(SpendPeriod.THIS_MONTH, expenses, now))
+        budgetStatuses(month, budgets, dim - day + 1).filter { it.state(day, dim) != BudgetState.OK }.take(2).forEach { b ->
+            moneyLines += BriefLine(
+                if (b.spent > b.limit) "${b.name.lowercase()} budget is over" else "${b.name.lowercase()} budget at ${(b.fraction * 100).toInt()}%",
+                if (b.spent > b.limit) "over by ${rupees(-b.remaining)}" else "${rupees(b.perDayLeft)}/day for the rest of the month",
+                tab = "spend", urgent = b.spent > b.limit
+            )
+        }
+    }
+
+    // Things you saved to read/watch and never opened, oldest first.
+    val revisit = memories.filter { m ->
+        m.id !in viewed && m.createdAt < now - 2 * DAY && m.source != CaptureSource.UPI_MESSAGE &&
+            (m.collectionName == "Watch Later" || m.collectionName == "Study Notes" || m.source == CaptureSource.LINK_CAPTURE || m.sourceUrl != null)
+    }.sortedBy { it.createdAt }.take(2).map { m ->
+        val days = ((now - m.createdAt) / DAY).toInt()
+        BriefLine(m.title, "saved $days days ago, never opened", memoryId = m.id)
+    }
+
+    val echoes = com.keepsakeai.app.ui.screens.echoes(memories, expenses, now).flatMap { e ->
+        e.memories.take(1).map { BriefLine(it.title, e.label, memoryId = it.id) }
+    }
+
+    return Brief(todayLines, moneyLines, revisit, echoes)
+}
+
+@Composable
+fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpenTab: (String) -> Unit, modifier: Modifier = Modifier) {
+    val c = LocalFlow.current
+    val context = LocalContext.current
+    val reminders by viewModel.reminders.collectAsState()
+    val todos by viewModel.todos.collectAsState()
+    val memories by viewModel.allMemories.collectAsState()
+    val expenses by viewModel.expenses.collectAsState()
+    val pending by viewModel.pendingUpi.collectAsState()
+    val brief = remember(reminders, todos, memories, expenses, pending) {
+        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed)
+    }
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greet = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; else -> "good evening" }
+    val date = SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH).format(Date()).lowercase()
+
+    fun tap(l: BriefLine) {
+        when {
+            l.memoryId != null -> viewModel.openMemory(l.memoryId)
+            l.tab != null -> { onOpenTab(l.tab); onClose() }
+        }
+    }
+
+    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            FlowHeader(eyebrow = date, title = "your ", gradientSuffix = "brief", joinSuffix = true, leading = { LogoMark(size = 46.dp) }) {
+                GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
+            }
+        }
+        item {
+            GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
+                Text(greet, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    if (brief.isEmpty) "A clear day. Nothing needs you — keep something worth remembering."
+                    else brief.summary(),
+                    color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 25.sp
+                )
+            }
+        }
+        section("today", brief.today, Flow.Indigo, ::tap)
+        section("money", brief.money, Flow.Emerald, ::tap)
+        section("worth revisiting", brief.revisit, Flow.Amber, ::tap)
+        section("on this day", brief.onThisDay, Flow.Purple, ::tap)
+        item {
+            GradientButton("plan my day with pilot", brush = Flow.auroraSweep, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.fillMaxWidth(), onClick = {
+                viewModel.pilotDraft.value = "Plan my day: use my reminders, to-dos, money alerts and anything worth revisiting. Keep it short and prioritised."
+                onClose()
+            })
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String, lines: List<BriefLine>, color: Color, onTap: (BriefLine) -> Unit) {
+    if (lines.isEmpty()) return
+    item {
+        val c = LocalFlow.current
+        GlassCard(Modifier.fillMaxWidth()) {
+            SectionLabel(title)
+            Spacer(Modifier.height(4.dp))
+            lines.forEach { l ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onTap(l) }.padding(vertical = 8.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (l.urgent) Flow.Rose else color))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(l.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        l.sub?.let { Text(it, fontSize = 12.sp, color = if (l.urgent) Flow.Rose else c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                    if (l.memoryId != null || l.tab != null) Text("→", color = c.muted, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}

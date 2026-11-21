@@ -43,6 +43,8 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.CalendarViewWeek
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.runtime.collectAsState
@@ -265,6 +267,19 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                 CardTitle(Icons.Rounded.Insights, "Insights", Flow.Indigo)
                 Spacer(Modifier.height(4.dp))
+                val nudges = remember { com.keepsakeai.app.data.preferences.NudgePrefs(context) }
+                var briefOn by remember { mutableStateOf(nudges.morningBrief) }
+                var journalOn by remember { mutableStateOf(nudges.eveningJournal) }
+                SlimRow(Icons.Rounded.WbSunny, Flow.Amber, "Morning brief", "8am: today, money, worth revisiting", if (briefOn) "On" else "Off", briefOn,
+                    secondary = "open" to { viewModel.overlay.value = "brief" }) {
+                    briefOn = !briefOn; nudges.morningBrief = briefOn
+                }
+                HorizontalDivider(color = c.divider)
+                SlimRow(Icons.Rounded.Mic, Flow.Pink, "Evening journal nudge", "9:30pm: talk for a minute about your day", if (journalOn) "On" else "Off", journalOn,
+                    secondary = "record" to { viewModel.overlay.value = "journal" }) {
+                    journalOn = !journalOn; nudges.eveningJournal = journalOn
+                }
+                HorizontalDivider(color = c.divider)
                 SlimRow(Icons.Rounded.CalendarViewWeek, Flow.Indigo, "Weekly review", "Spend, highlights and one insight", "Open", null) {
                     viewModel.overlay.value = "review"
                 }

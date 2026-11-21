@@ -66,7 +66,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val collectionsList = listOf("Travel", "Study Notes", "Events", "Personal Projects", "Receipts", "Watch Later", "General")
+private val collectionsList = listOf("Journal", "Travel", "Study Notes", "Events", "Personal Projects", "Receipts", "Watch Later", "General")
 
 private fun sourceLabel(m: MemoryEntity) = when (m.source.name) {
     "SHARE_SHEET" -> "shared from an app"
@@ -93,6 +93,7 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
 
     val m = memory
     LaunchedEffect(m?.id, m?.title) { if (m != null) related = viewModel.relatedTo(m) }
+    LaunchedEffect(id) { viewModel.markViewed(id) }
     if (m == null) return
 
     if (confirmDelete) {

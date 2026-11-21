@@ -50,6 +50,7 @@ class MindSpaceApp : Application() {
         ocrProcessor = OcrProcessor(this)
 
         scheduleDailyMindSuggest()
+        com.keepsakeai.app.worker.DailyNudgeWorker.scheduleAll(this)
     }
 
     private fun scheduleDailyMindSuggest() {

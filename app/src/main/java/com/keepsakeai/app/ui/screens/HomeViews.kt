@@ -94,9 +94,9 @@ fun HubSwitcher(current: HubView, factCount: Int, onPick: (HubView) -> Unit) {
 
 // ── On this day ──────────────────────────────────────────────────────
 
-private data class Echo(val label: String, val memories: List<MemoryEntity>, val spent: Double)
+internal data class Echo(val label: String, val memories: List<MemoryEntity>, val spent: Double)
 
-private fun echoes(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, now: Long = System.currentTimeMillis()): List<Echo> {
+internal fun echoes(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, now: Long = System.currentTimeMillis()): List<Echo> {
     fun dayBack(field: Int, n: Int): Long = startOfDay(Calendar.getInstance().apply { timeInMillis = now; add(field, -n) }.timeInMillis)
     return listOf(
         "a week ago today" to dayBack(Calendar.DAY_OF_YEAR, 7),
@@ -366,6 +366,8 @@ fun TodayCard(
     openTodos: Int = 0,
     dueToday: Int = 0,
     onTodos: () -> Unit = {},
+    onBrief: () -> Unit = {},
+    onJournal: () -> Unit = {},
 ) {
     val now = System.currentTimeMillis()
     val today = startOfDay(now)
@@ -391,8 +393,9 @@ fun TodayCard(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             HomeChip("ask pilot", solid = true, onClick = onAsk)
+            if (hour < 12) HomeChip("brief", onClick = onBrief) else if (hour >= 18) HomeChip("journal", onClick = onJournal)
             if (openTodos > 0) HomeChip("$openTodos to-do${if (openTodos > 1) "s" else ""}", onClick = onTodos)
-            HomeChip("timeline", onClick = onTimeline)
+            else HomeChip("timeline", onClick = onTimeline)
         }
     }
 }

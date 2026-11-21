@@ -282,6 +282,47 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         scheduleReminder(r)
     }
 
+    // ── Morning brief & voice journal ────────────────────────────
+    private val nudgePrefs = com.keepsakeai.app.data.preferences.NudgePrefs(app)
+    fun markViewed(id: Long) = nudgePrefs.markViewed(id)
+
+    /** Asks the home hub to switch view (e.g. "TODOS" from the brief). */
+    val hubRequest = MutableStateFlow<String?>(null)
+
+    /** idle → transcribing → saved(transcript) | failed(message) */
+    val journalState = MutableStateFlow<String>("idle")
+    val journalTranscript = MutableStateFlow<String?>(null)
+
+    fun saveJournal(file: java.io.File) {
+        viewModelScope.launch {
+            journalState.value = "transcribing"
+            val bytes = withContext(Dispatchers.IO) { runCatching { file.readBytes() }.getOrNull() }
+            if (bytes == null || bytes.size < 2000) {
+                journalState.value = "failed:That was too short to hear anything."
+                return@launch
+            }
+            if (app.apiKeyStore.geminiKey.isBlank()) {
+                journalState.value = "failed:Add your Gemini key in Settings to use the voice journal."
+                return@launch
+            }
+            val text = app.mindPilotClient.transcribeAudio(bytes)
+            if (text == null) {
+                journalState.value = "failed:Couldn't make that out. Try again somewhere quieter?"
+                return@launch
+            }
+            val date = java.text.SimpleDateFormat("EEEE d MMMM, h:mm a", java.util.Locale.ENGLISH).format(java.util.Date())
+            journalTranscript.value = text
+            captureText("Voice journal · $date\n\n$text", CaptureSource.VOICE_MEMO)
+            journalState.value = "saved"
+            withContext(Dispatchers.IO) { file.delete() }
+        }
+    }
+
+    fun resetJournal() {
+        journalState.value = "idle"
+        journalTranscript.value = null
+    }
+
     // ── Pull to refresh ──────────────────────────────────────────
     val isRefreshing = MutableStateFlow(false)
 

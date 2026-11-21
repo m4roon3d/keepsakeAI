@@ -27,4 +27,17 @@
             <extra android:name="open_tab" android:value="pilot" />
         </intent>
     </shortcut>
+    <shortcut
+        android:shortcutId="journal"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_journal"
+        android:shortcutShortLabel="@string/shortcut_journal"
+        android:shortcutLongLabel="@string/shortcut_journal_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.keepsakeai.app"
+            android:targetClass="com.keepsakeai.app.MainActivity">
+            <extra android:name="open_tab" android:value="journal" />
+        </intent>
+    </shortcut>
 </shortcuts>

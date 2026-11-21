@@ -19,6 +19,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.remember
 import com.keepsakeai.app.ui.screens.EntityScreen
+import com.keepsakeai.app.ui.brief.MorningBriefScreen
+import com.keepsakeai.app.ui.journal.VoiceJournalScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.compose.runtime.mutableStateOf
 import com.keepsakeai.app.data.preferences.SecurityPrefs
@@ -196,6 +198,15 @@ class MainActivity : FragmentActivity() {
                             when (overlay) {
                                 OVERLAY_REVIEW -> WeeklyReviewScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_AI_LOG -> AiLogScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
+                                OVERLAY_BRIEF -> MorningBriefScreen(
+                                    viewModel, onClose = { viewModel.overlay.value = null },
+                                    onOpenTab = { t ->
+                                        if (t == "todos") { viewModel.hubRequest.value = "TODOS"; selectedTab = TAB_HOME }
+                                        else if (t == "spend") selectedTab = TAB_SPEND
+                                    },
+                                    modifier = m
+                                )
+                                OVERLAY_JOURNAL -> VoiceJournalScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 else -> viewModel.overlay.value = null
                             }
                         }
@@ -265,6 +276,7 @@ class MainActivity : FragmentActivity() {
             "home" -> requestedTab.intValue = TAB_HOME
             "snapsake" -> requestedTab.intValue = TAB_SNAPSAKE
             "camera" -> { requestedTab.intValue = TAB_SNAPSAKE; viewModel.autoCamera.value = true }
+            "journal" -> { requestedTab.intValue = TAB_HOME; viewModel.overlay.value = OVERLAY_JOURNAL }
             "pilot" -> requestedTab.intValue = TAB_PILOT
             "spend" -> requestedTab.intValue = TAB_SPEND
             "settings" -> requestedTab.intValue = TAB_SETTINGS
@@ -293,6 +305,8 @@ class MainActivity : FragmentActivity() {
         const val EXTRA_OPEN_OVERLAY = "open_overlay"
         const val OVERLAY_REVIEW = "review"
         const val OVERLAY_AI_LOG = "ai_log"
+        const val OVERLAY_BRIEF = "brief"
+        const val OVERLAY_JOURNAL = "journal"
         const val TAB_HOME = 0
         const val TAB_SNAPSAKE = 1
         const val TAB_PILOT = 2
