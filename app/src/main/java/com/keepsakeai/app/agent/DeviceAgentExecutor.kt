@@ -95,12 +95,12 @@ object DeviceAgentExecutor {
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, safeName)
                     put(MediaStore.Downloads.MIME_TYPE, "text/html")
-                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/keepsakeAI")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/trove")
                 }
                 val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                 if (uri != null) {
                     context.contentResolver.openOutputStream(uri)?.use { it.write(html.toByteArray()) }
-                    return@runCatching "Downloads/keepsakeAI/$safeName"
+                    return@runCatching "Downloads/trove/$safeName"
                 }
             }
             val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), safeName)

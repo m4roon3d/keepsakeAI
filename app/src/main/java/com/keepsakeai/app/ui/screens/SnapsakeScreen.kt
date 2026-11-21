@@ -185,8 +185,8 @@ fun SnapsakeScreen(
     ) {
         FlowHeader(
             eyebrow = "point. snap. keep.",
-            title = "snap",
-            gradientSuffix = "sake",
+            title = "",
+            gradientSuffix = "lens",
             joinSuffix = true,
             leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.LENS) }
         ) {

@@ -157,8 +157,7 @@ private fun Header(p: Palette, showOrb: Boolean, orb: Bitmap) {
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Image(ImageProvider(R.drawable.ic_launcher_foreground), "trove", GlanceModifier.size(40.dp))
         Spacer(GlanceModifier.width(4.dp))
-        Text("trove", style = TextStyle(color = ColorProvider(White), fontSize = 16.sp, fontWeight = FontWeight.Bold))
-        Text(" AI", style = TextStyle(color = ColorProvider(p.secondaryBright), fontSize = 16.sp, fontWeight = FontWeight.Bold))
+        Text("trove", style = TextStyle(color = ColorProvider(p.secondaryBright), fontSize = 16.sp, fontWeight = FontWeight.Bold))
         Spacer(GlanceModifier.defaultWeight())
         if (showOrb) {
             OrbButton("ask", orb, GlanceModifier.width(76.dp))

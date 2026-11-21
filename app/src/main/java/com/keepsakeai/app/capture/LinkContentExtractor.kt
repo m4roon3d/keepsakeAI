@@ -86,7 +86,7 @@ object LinkContentExtractor {
     private fun fetchArticleWithJsoup(url: String): ExtractedLinkContent? {
         return runCatching {
             val doc = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0 (Linux; Android 15) keepsakeAI/1.0")
+                .userAgent("Mozilla/5.0 (Linux; Android 15) trove/1.0")
                 .timeout(15000)
                 .get()
             val title = doc.title().ifBlank { url }
