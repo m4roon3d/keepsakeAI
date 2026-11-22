@@ -1,5 +1,6 @@
 package com.keepsakeai.app
 
+import com.keepsakeai.app.calendar.CalEvent
 import com.keepsakeai.app.data.local.CaptureSource
 import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.data.preferences.KeepReminder
@@ -41,6 +42,24 @@ class MorningBriefTest {
         assertEquals("2 payments to review", b.money.first().text)
         assertEquals(listOf("Spark tuning article"), b.revisit.map { it.text })
         assertTrue(b.summary().contains("Harris Jayaraj concert"))
+    }
+
+    @Test
+    fun calendarEventsMergeWithRemindersInTimeOrder() {
+        val day = startOfDay(now)
+        val events = listOf(
+            CalEvent(100, "Team sync", day + 16 * 3600_000L, day + 17 * 3600_000L, false, "Zoom"),
+            CalEvent(101, "Dentist", day + 10 * 3600_000L, day + 11 * 3600_000L, false, "Indiranagar"),
+            CalEvent(102, "Next week offsite", day + 7 * DAY, day + 8 * DAY, true),
+        )
+        val reminders = listOf(
+            KeepReminder(1, "dentist", day + 10 * 3600_000L, "event", 3, hasTime = true),     // already on the calendar
+            KeepReminder(2, "Harris Jayaraj concert", day + DAY + 19 * 3600_000L, "event", 5, hasTime = true),
+        )
+        val b = buildBrief(reminders, emptyList(), emptyList(), emptyList(), 0, emptyMap(), emptySet(), now, events = events)
+        assertEquals(listOf("Dentist", "Team sync", "Harris Jayaraj concert"), b.today.map { it.text })
+        assertEquals(101L, b.today.first().eventId)
+        assertEquals("calendar · 10:00 am · Indiranagar", b.today.first().sub)
     }
 
     @Test

@@ -102,6 +102,8 @@ fun HomeFeedScreen(
     val c = LocalFlow.current
     val memories by viewModel.filteredMemories.collectAsState()
     val allMemories by viewModel.allMemories.collectAsState()
+    val calendarEvents by viewModel.calendarEvents.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refreshCalendar() }
     val collections by viewModel.collections.collectAsState()
     val selectedCol by viewModel.selectedCollection.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
@@ -265,6 +267,14 @@ fun HomeFeedScreen(
             }
 
             val upcoming = reminders.filter { it.isUpcoming() }.sortedBy { it.atMillis }.take(3)
+            val nowMs = System.currentTimeMillis()
+            val dayStart = com.keepsakeai.app.ui.spend.startOfDay(nowMs)
+            val nextEvent = calendarEvents.firstOrNull { it.end > nowMs && !(it.allDay && it.begin < dayStart) }
+            // Rest of today, or tomorrow morning once the evening sets in.
+            val calendarSoon = calendarEvents.filter { e ->
+                e.end > nowMs && (e.begin < dayStart + 24L * 60 * 60 * 1000 ||
+                    (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) >= 18 && e.begin < dayStart + 36L * 60 * 60 * 1000))
+            }.take(4)
             item(span = StaggeredGridItemSpan.FullLine) {
                 TodayCard(
                     next = upcoming.firstOrNull(),
@@ -275,8 +285,12 @@ fun HomeFeedScreen(
                     dueToday = dueToday,
                     onTodos = { hubView = HubView.TODOS },
                     onBrief = { viewModel.overlay.value = "brief" },
-                    onJournal = { viewModel.overlay.value = "journal" }
+                    onJournal = { viewModel.overlay.value = "journal" },
+                    nextEvent = nextEvent
                 )
+            }
+            if (calendarSoon.isNotEmpty()) item(key = "calendar", span = StaggeredGridItemSpan.FullLine) {
+                CalendarTodayCard(calendarSoon, Modifier.animateItem())
             }
             items(upcoming, key = { "rem${it.id}" }, span = { StaggeredGridItemSpan.FullLine }) { r ->
                 ReminderSuggestionCard(r, modifier = Modifier.animateItem(), onRemind = {

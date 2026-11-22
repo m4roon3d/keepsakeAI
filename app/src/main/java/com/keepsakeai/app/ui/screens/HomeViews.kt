@@ -368,6 +368,7 @@ fun TodayCard(
     onTodos: () -> Unit = {},
     onBrief: () -> Unit = {},
     onJournal: () -> Unit = {},
+    nextEvent: com.keepsakeai.app.calendar.CalEvent? = null,
 ) {
     val now = System.currentTimeMillis()
     val today = startOfDay(now)
@@ -381,6 +382,14 @@ fun TodayCard(
         Spacer(Modifier.height(6.dp))
         val headline = when {
             memories.isEmpty() -> "Your second brain is empty. Snap, share or jot your first memory."
+            nextEvent != null && (next == null || nextEvent.begin <= next.atMillis) -> {
+                val day = when {
+                    nextEvent.begin < today + DAY -> "today"
+                    nextEvent.begin < today + 2 * DAY -> "tomorrow"
+                    else -> SimpleDateFormat("EEE d MMM", Locale.ENGLISH).format(Date(nextEvent.begin)).lowercase()
+                }
+                "Next up: ${nextEvent.title} · $day" + if (nextEvent.allDay) "" else ", ${nextEvent.timeLabel()}"
+            }
             next != null -> {
                 val whenText = SimpleDateFormat(if (next.hasTime) "EEE d MMM, h:mm a" else "EEE d MMM", Locale.ENGLISH).format(Date(next.atMillis)).lowercase()
                 "Next up: ${next.title} · $whenText"
@@ -396,6 +405,45 @@ fun TodayCard(
             if (hour < 12) HomeChip("brief", onClick = onBrief) else if (hour >= 18) HomeChip("journal", onClick = onJournal)
             if (openTodos > 0) HomeChip("$openTodos to-do${if (openTodos > 1) "s" else ""}", onClick = onTodos)
             else HomeChip("timeline", onClick = onTimeline)
+        }
+    }
+}
+
+/** What's left on the phone calendar today (and early tomorrow); tap opens the event in the calendar app. */
+@Composable
+fun CalendarTodayCard(events: List<com.keepsakeai.app.calendar.CalEvent>, modifier: Modifier = Modifier) {
+    if (events.isEmpty()) return
+    val c = LocalFlow.current
+    val context = LocalContext.current
+    com.keepsakeai.app.ui.components.GlassCard(modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.CalendarMonth, null, tint = Flow.Sky, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("ON YOUR CALENDAR", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = c.muted)
+        }
+        events.forEach { e ->
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .clickable { runCatching { context.startActivity(com.keepsakeai.app.calendar.CalendarReader.openIntent(e.id)) } }
+                    .padding(vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val now = System.currentTimeMillis()
+                val live = !e.allDay && e.begin <= now && e.end > now
+                val label = when {
+                    live -> "now"
+                    e.begin >= startOfDay(now) + DAY -> "tmrw " + e.timeLabel()
+                    else -> e.timeLabel()
+                }
+                Text(
+                    label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    color = if (live) Flow.Emerald else Flow.Sky, modifier = Modifier.width(78.dp)
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(e.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (e.location.isNotBlank()) Text(e.location, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
         }
     }
 }

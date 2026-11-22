@@ -46,6 +46,7 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.CalendarViewWeek
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.HorizontalDivider
@@ -126,6 +127,11 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
 
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         hasLocation = it.values.any { g -> g }
+    }
+    var hasCalendar by remember { mutableStateOf(com.keepsakeai.app.calendar.CalendarReader.hasPermission(context)) }
+    val calendarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        hasCalendar = granted
+        if (granted) viewModel?.refreshCalendar()
     }
 
     fun openAppInfo() = runCatching {
@@ -238,6 +244,10 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             SlimRow(Icons.Rounded.LocationOn, Flow.Pink, "Location", if (hasLocation) "Weather & nearby answers" else "Off", if (hasLocation) "On" else "Turn on", hasLocation) {
                 if (hasLocation) openAppInfo()
                 else locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+            }
+            HorizontalDivider(color = c.divider)
+            SlimRow(Icons.Rounded.CalendarMonth, Flow.Sky, "Calendar", if (hasCalendar) "Events in your brief, home and Pilot" else "Off", if (hasCalendar) "On" else "Turn on", hasCalendar) {
+                if (hasCalendar) openAppInfo() else calendarLauncher.launch(Manifest.permission.READ_CALENDAR)
             }
             HorizontalDivider(color = c.divider)
             SlimRow(Icons.Rounded.NotificationsActive, Flow.Emerald, "UPI auto-detect", "Reads bank & UPI payment alerts", "Open", null) {

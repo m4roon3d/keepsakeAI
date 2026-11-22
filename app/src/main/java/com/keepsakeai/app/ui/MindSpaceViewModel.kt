@@ -288,6 +288,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             todos.value = todoStore.all()
             entities.value = entityStore.all()
             refreshPlace()
+            refreshCalendar()
             if (emailStore.all().isNotEmpty()) com.keepsakeai.app.worker.EmailSyncWorker.runNow(app)
             if (scanSms && androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.READ_SMS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -380,7 +381,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 providers = selectedProviders.value,
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
-                deviceContext = DeviceContext.promptBlock(app),
+                deviceContext = DeviceContext.promptBlock(app) + "\n" +
+                    withContext(Dispatchers.IO) { com.keepsakeai.app.calendar.CalendarReader.promptBlock(app) },
                 todosContext = todoStore.all().filter { !it.done }.take(30).joinToString("\n") { t ->
                     "- ${t.text}" + (t.due?.let { d -> " (due " + java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.ENGLISH).format(java.util.Date(d)) + ")" } ?: "")
                 },
@@ -518,6 +520,21 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             refreshWidget()
         }
     }
+
+    // ── Phone calendar (read-only) ───────────────────────────────
+    /** Events from today to two weeks ahead, for the brief, the Today card and the home screen. */
+    val calendarEvents = MutableStateFlow<List<com.keepsakeai.app.calendar.CalEvent>>(emptyList())
+
+    fun refreshCalendar() {
+        viewModelScope.launch {
+            val start = com.keepsakeai.app.ui.spend.startOfDay(System.currentTimeMillis())
+            calendarEvents.value = withContext(Dispatchers.IO) {
+                com.keepsakeai.app.calendar.CalendarReader.events(app, start, start + 14L * 24 * 60 * 60 * 1000)
+            }
+        }
+    }
+
+    init { refreshCalendar() }
 
     // ── Email (receipts, orders, tickets, bills) ─────────────────
     private val emailStore = com.keepsakeai.app.email.EmailStore(app)

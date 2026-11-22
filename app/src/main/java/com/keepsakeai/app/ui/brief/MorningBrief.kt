@@ -20,12 +20,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +71,7 @@ import java.util.Date
 import java.util.Locale
 
 /** One line in the brief; [memoryId] or [tab] say where tapping it goes. */
-data class BriefLine(val text: String, val sub: String? = null, val memoryId: Long? = null, val tab: String? = null, val urgent: Boolean = false)
+data class BriefLine(val text: String, val sub: String? = null, val memoryId: Long? = null, val tab: String? = null, val urgent: Boolean = false, val eventId: Long? = null)
 
 data class Brief(
     val today: List<BriefLine>,
@@ -96,18 +99,31 @@ fun buildBrief(
     budgets: Map<String, Double>,
     viewed: Set<Long>,
     now: Long = System.currentTimeMillis(),
+    events: List<com.keepsakeai.app.calendar.CalEvent> = emptyList(),
 ): Brief {
     val today = startOfDay(now)
     val tomorrow = today + DAY
     val fmtTime = SimpleDateFormat("h:mm a", Locale.ENGLISH)
 
     val todayLines = mutableListOf<BriefLine>()
+    // Calendar events today, merged in time order with trove's own reminders (skipping a reminder the calendar already has).
+    val todaysEvents = events.filter { it.begin < tomorrow && it.end > today }
+    fun sameThing(a: String, b: String): Boolean {
+        val x = a.lowercase().trim(); val y = b.lowercase().trim()
+        return x == y || (x.length > 4 && y.contains(x)) || (y.length > 4 && x.contains(y))
+    }
+    val timed = mutableListOf<Pair<Long, BriefLine>>()
+    todaysEvents.forEach { e ->
+        val sub = "calendar · " + e.timeLabel() + if (e.location.isNotBlank()) " · ${e.location}" else ""
+        timed += (if (e.allDay) today else e.begin) to BriefLine(e.title, sub, eventId = e.id)
+    }
     reminders.filter { it.status != "dismissed" && it.atMillis in today until tomorrow + DAY }
-        .sortedBy { it.atMillis }
+        .filterNot { r -> events.any { e -> sameThing(e.title, r.title) && e.begin < startOfDay(r.atMillis) + DAY && e.end > startOfDay(r.atMillis) } }
         .forEach { r ->
             val whenText = (if (r.atMillis < tomorrow) "today" else "tomorrow") + (if (r.hasTime) " · " + fmtTime.format(Date(r.atMillis)).lowercase() else "")
-            todayLines += BriefLine(r.title, whenText, memoryId = r.memoryId.takeIf { it > 0 }, urgent = r.atMillis < tomorrow)
+            timed += r.atMillis to BriefLine(r.title, whenText, memoryId = r.memoryId.takeIf { it > 0 }, urgent = r.atMillis < tomorrow)
         }
+    timed.sortedBy { it.first }.forEach { todayLines += it.second }
     val open = todos.filter { !it.done }
     val overdue = open.filter { it.due != null && it.due < today }
     val dueToday = open.filter { it.due != null && it.due in today until tomorrow }
@@ -158,8 +174,14 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
     val memories by viewModel.allMemories.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
     val pending by viewModel.pendingUpi.collectAsState()
-    val brief = remember(reminders, todos, memories, expenses, pending) {
-        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed)
+    val events by viewModel.calendarEvents.collectAsState()
+    var calendarOn by remember { mutableStateOf(com.keepsakeai.app.calendar.CalendarReader.hasPermission(context)) }
+    val calendarPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+        calendarOn = granted
+        if (granted) viewModel.refreshCalendar()
+    }
+    val brief = remember(reminders, todos, memories, expenses, pending, events) {
+        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed, events = events)
     }
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greet = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; else -> "good evening" }
@@ -167,6 +189,7 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
 
     fun tap(l: BriefLine) {
         when {
+            l.eventId != null -> runCatching { context.startActivity(com.keepsakeai.app.calendar.CalendarReader.openIntent(l.eventId)) }
             l.memoryId != null -> viewModel.openMemory(l.memoryId)
             l.tab != null -> { onOpenTab(l.tab); onClose() }
         }
@@ -187,6 +210,15 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
                     else brief.summary(),
                     color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 25.sp
                 )
+            }
+        }
+        if (!calendarOn) item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("see your meetings and plans here too", color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text("Connect your phone's calendar and trove adds today's events to the brief, and Pilot can answer \"am I free on Saturday?\"", color = c.muted, fontSize = 12.sp)
+                Spacer(Modifier.height(10.dp))
+                GlassButton("connect calendar", onClick = { calendarPermission.launch(android.Manifest.permission.READ_CALENDAR) }, icon = Icons.Rounded.CalendarMonth)
             }
         }
         section("today", brief.today, Flow.Indigo, ::tap)
