@@ -28,13 +28,14 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
      * Analyzes any captured text, OCR screenshot, or voice transcript.
      * Falls back to deterministic local heuristics if no API key is configured.
      */
-    suspend fun analyzeCapture(rawText: String, imageJpeg: ByteArray? = null): AnalyzedCapture = withContext(Dispatchers.IO) {
+    suspend fun analyzeCapture(rawText: String, imageJpeg: ByteArray? = null, hint: String? = null): AnalyzedCapture = withContext(Dispatchers.IO) {
         val geminiKey = keyStore.geminiKey
         if (geminiKey.isNotBlank()) {
             val now = java.text.SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", java.util.Locale.ENGLISH).format(java.util.Date())
             val prompt = """
                 Today is $now (timezone ${java.util.TimeZone.getDefault().id}).
                 {{PHOTO}}
+                {{HINT}}
                 Analyze this captured content and return ONLY valid JSON with keys:
                 "title" (short 3-6 words),
                 "summary" (1-2 crisp sentences),
@@ -49,12 +50,12 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
 
                 Captured content:
                 {{RAW}}
-            """.trimIndent().replace("{{RAW}}", rawText.take(6000)).replace(
+            """.trimIndent().replace("{{RAW}}", rawText.take(6000)).replace("{{HINT}}", hint.orEmpty()).replace(
                 "{{PHOTO}}",
                 if (imageJpeg != null) "A photo of the capture is attached. Read ALL text in it in any language (Tamil, Hindi, Kannada, handwriting, stylised poster fonts) plus visual details, and combine it with the on-device text below, which may be incomplete or garbled. Write the title and summary in English." else ""
             )
 
-            val result = callGemini(geminiKey, prompt, feature = "sort capture", imageJpeg = imageJpeg)
+            val result = callGemini(geminiKey, prompt, feature = if (hint != null) "read email" else "sort capture", imageJpeg = imageJpeg)
             if (!result.isError) {
                 parseAnalyzedJson(result.content, rawText)?.let { return@withContext it }
             }
@@ -406,6 +407,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                         .take(3)
                 } ?: emptyList(),
                 thread = obj.optString("thread").takeIf { it.isNotBlank() && it != "null" },
+                worthKeeping = obj.optBoolean("keep", true),
                 entities = obj.optJSONArray("entities")?.let { arr ->
                     List(arr.length()) { i -> arr.optJSONObject(i) }.mapNotNull { o ->
                         o?.optString("name")?.trim()?.takeIf { it.length >= 2 }?.let { EntityMention(it, o.optString("type", "person"), o.optString("note")) }

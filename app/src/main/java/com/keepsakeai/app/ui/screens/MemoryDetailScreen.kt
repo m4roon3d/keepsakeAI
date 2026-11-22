@@ -75,6 +75,7 @@ private fun sourceLabel(m: MemoryEntity) = when (m.source.name) {
     "SCREENSHOT_OCR" -> "screen snap"
     "VOICE_MEMO" -> "voice note"
     "UPI_MESSAGE" -> "UPI payment"
+    "EMAIL" -> "from your email"
     else -> "typed note"
 }
 

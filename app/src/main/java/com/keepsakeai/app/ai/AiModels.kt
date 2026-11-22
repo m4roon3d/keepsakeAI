@@ -27,6 +27,8 @@ data class AnalyzedCapture(
     val reminder: ReminderSuggestion? = null,
     val entities: List<EntityMention> = emptyList(),
     val todos: List<TodoSuggestion> = emptyList(),
+    /** False for promos and noise (only asked for background sources like email). */
+    val worthKeeping: Boolean = true,
 )
 
 /** A person, place, project or organisation mentioned in a capture. */

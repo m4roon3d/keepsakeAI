@@ -83,6 +83,12 @@ interface MindSpaceDao {
     @Query("DELETE FROM expenses WHERE sourceMethod LIKE 'UPI (%' OR sourceMethod LIKE '% · %'")
     suspend fun deleteImportedExpenses(): Int
 
+    @Query("DELETE FROM memories WHERE source = 'EMAIL'")
+    suspend fun deleteEmailMemories(): Int
+
+    @Query("DELETE FROM expenses WHERE sourceMethod = 'Email'")
+    suspend fun deleteEmailExpenses(): Int
+
     @Query("DELETE FROM memories WHERE source = 'UPI_MESSAGE'")
     suspend fun deleteUpiMemories(): Int
 

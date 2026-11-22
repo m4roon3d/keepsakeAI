@@ -37,4 +37,11 @@ class ApiKeyStore(context: Context) {
     var biometricLockEnabled: Boolean
         get() = prefs.getBoolean("biometric_lock_enabled", false)
         set(value) = prefs.edit().putBoolean("biometric_lock_enabled", value).apply()
+
+    fun emailPassword(accountId: String): String = prefs.getString("email_pw_$accountId", "") ?: ""
+
+    fun setEmailPassword(accountId: String, password: String?) {
+        if (password == null) prefs.edit().remove("email_pw_$accountId").apply()
+        else prefs.edit().putString("email_pw_$accountId", password.trim()).apply()
+    }
 }

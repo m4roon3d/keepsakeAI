@@ -10,7 +10,8 @@ enum class CaptureSource {
     VOICE_MEMO,
     CAMERA_SCAN,
     LINK_CAPTURE,
-    UPI_MESSAGE
+    UPI_MESSAGE,
+    EMAIL
 }
 
 @Entity(tableName = "memories")

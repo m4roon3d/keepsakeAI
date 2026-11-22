@@ -81,6 +81,11 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        resources {
+            excludes += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md", "META-INF/LICENSE.txt", "META-INF/NOTICE.txt")
+        }
+    }
 }
 
 dependencies {
@@ -144,6 +149,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+    // Email receipts, orders, tickets and bills over IMAP (Gmail, Yahoo, others) with app passwords
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
     testImplementation("junit:junit:4.13.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

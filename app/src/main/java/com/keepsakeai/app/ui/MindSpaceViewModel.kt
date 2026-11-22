@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import com.keepsakeai.app.ui.spend.spendDigest
@@ -123,79 +124,31 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    private val pipeline = com.keepsakeai.app.capture.CapturePipeline(app)
+
     fun captureText(text: String, source: CaptureSource = CaptureSource.TEXT_NOTE, url: String? = null, photoUri: String? = null) {
         if (text.isBlank()) return
         viewModelScope.launch {
             isCapturing.value = true
-            // Shared links: pull the article / video title and text so the memory is useful later.
-            val link = url ?: com.keepsakeai.app.capture.LinkContentExtractor.extractFirstUrl(text)
-            val fetched = link?.let { runCatching { com.keepsakeai.app.capture.LinkContentExtractor.fetch(it) }.getOrNull() }
-            val enriched = if (fetched != null) "$text\n\n${fetched.platform}: ${fetched.title}\n${fetched.bodyText.take(3000)}" else text
-
-            // Let Gemini see the photo too (Tamil text, handwriting, posters), not just on-device OCR.
-            val jpeg = photoUri?.let { p -> withContext(Dispatchers.IO) { com.keepsakeai.app.capture.ImagePrep.jpegForAi(app, Uri.parse(p)) } }
-            val analyzed = app.mindPilotClient.analyzeCapture(enriched, jpeg)
-            val embedInput = "${analyzed.title} ${analyzed.summary} $text ${analyzed.tags.joinToString(" ")}"
-            val vector = app.vectorSearch.embedText(embedInput)
-
-            val memoryId = dao.insertMemory(
-                MemoryEntity(
-                    title = analyzed.title,
-                    rawContent = enriched,
-                    aiSummary = analyzed.summary,
-                    collectionName = analyzed.collection,
-                    source = source,
-                    sourceUrl = link,
-                    tagsCsv = analyzed.tags.joinToString(","),
-                    embeddingCsv = app.vectorSearch.encodeVector(vector),
-                    threadKey = analyzed.thread?.let { matchThread(it) } ?: analyzed.collection,
-                    photoUrisCsv = photoUri.orEmpty()
-                )
-            )
-            analyzed.detectedExpense?.let { exp ->
-                dao.insertExpense(
-                    ExpenseEntity(
-                        merchant = exp.merchant,
-                        amount = exp.amount,
-                        currency = exp.currency,
-                        category = exp.category,
-                        sourceMethod = source.name
-                    )
-                )
+            val saved = runCatching { pipeline.save(text, source, url, photoUri) }.getOrNull()
+            if (saved == null) {
+                statusMessage.value = "Couldn't save that. Try again."
+                isCapturing.value = false
+                return@launch
             }
-            // Lasting facts about the user, without duplicates.
-            if (analyzed.facts.isNotEmpty()) {
-                val known = dao.getFacts().map { it.fact.lowercase().trim() }.toSet()
-                analyzed.facts.filter { it.first.lowercase().trim() !in known }.forEach { (fact, cat) ->
-                    dao.insertFact(PersonalFactEntity(fact = fact, category = cat, sourceMemoryId = memoryId))
-                }
-            }
-            // People, places & projects, and to-dos found in the capture
-            analyzed.entities.forEach { e -> entityStore.addMention(e.type, e.name, e.note, memoryId, System.currentTimeMillis()) }
-            val newTodos = analyzed.todos.mapNotNull { t -> todoStore.add(t.text, t.due, memoryId) }
-            if (analyzed.entities.isNotEmpty()) entities.value = entityStore.all()
-            if (newTodos.isNotEmpty()) todos.value = todoStore.all()
-            analyzed.reminder?.let { r ->
-                reminderStore.add(KeepReminder(id = System.currentTimeMillis(), title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId, hasTime = r.hasTime))
-                reminders.value = reminderStore.all()
-            }
+            val analyzed = saved.analyzed
+            entities.value = entityStore.all()
+            todos.value = todoStore.all()
+            reminders.value = reminderStore.all()
             refreshWidget()
             statusMessage.value = when {
                 analyzed.reminder != null -> "Saved · found a date: ${analyzed.reminder.title}"
-                newTodos.isNotEmpty() -> "Saved · added ${newTodos.size} to-do${if (newTodos.size > 1) "s" else ""}"
+                saved.todosAdded > 0 -> "Saved · added ${saved.todosAdded} to-do${if (saved.todosAdded > 1) "s" else ""}"
                 analyzed.facts.isNotEmpty() -> "Saved · learned ${analyzed.facts.size} new thing${if (analyzed.facts.size > 1) "s" else ""} about you"
                 else -> "Saved to ${analyzed.collection}"
             }
             isCapturing.value = false
         }
-    }
-
-    /** Reuse an existing thread name when the AI words it slightly differently. */
-    private suspend fun matchThread(name: String): String {
-        val existing = dao.getRecentMemories(300).map { it.threadKey }.distinct()
-        val n = name.trim().lowercase()
-        return existing.firstOrNull { it.lowercase() == n || it.lowercase().contains(n) || n.contains(it.lowercase()) && it.length > 3 }
-            ?: name.trim().replaceFirstChar { it.uppercase() }
     }
 
     // ── Facts ────────────────────────────────────────────────────
@@ -335,6 +288,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             todos.value = todoStore.all()
             entities.value = entityStore.all()
             refreshPlace()
+            if (emailStore.all().isNotEmpty()) com.keepsakeai.app.worker.EmailSyncWorker.runNow(app)
             if (scanSms && androidx.core.content.ContextCompat.checkSelfPermission(app, android.Manifest.permission.READ_SMS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
             ) scanSmsInboxForUpi(7)
@@ -563,6 +517,69 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             statusMessage.value = "Deleted ${expense.merchant}"
             refreshWidget()
         }
+    }
+
+    // ── Email (receipts, orders, tickets, bills) ─────────────────
+    private val emailStore = com.keepsakeai.app.email.EmailStore(app)
+    val emailAccounts = MutableStateFlow(emailStore.all())
+    val emailSyncing: StateFlow<Boolean> = androidx.work.WorkManager.getInstance(app)
+        .getWorkInfosByTagFlow(com.keepsakeai.app.worker.EmailSyncWorker.TAG)
+        .map { list -> list.any { it.state == androidx.work.WorkInfo.State.RUNNING } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    init {
+        // When a sync finishes, show what it found.
+        viewModelScope.launch {
+            var was = false
+            emailSyncing.collect { now ->
+                if (was && !now) {
+                    emailAccounts.value = emailStore.all()
+                    todos.value = todoStore.all()
+                    reminders.value = reminderStore.all()
+                    entities.value = entityStore.all()
+                }
+                was = now
+            }
+        }
+    }
+
+    /** Checks the details with a real sign-in, then saves and starts the first read. Returns an error or null. */
+    suspend fun connectEmail(address: String, password: String, provider: com.keepsakeai.app.email.MailProvider, host: String, port: Int): String? {
+        val addr = address.trim().lowercase()
+        val pw = password.replace(Regex("""\s"""), "")
+        if (!addr.contains('@') || pw.isBlank()) return "Enter your email address and app password."
+        if (host.isBlank()) return "Enter your mail server (IMAP host)."
+        val err = withContext(Dispatchers.IO) {
+            runCatching { com.keepsakeai.app.email.MailReader.test(host.trim(), port, addr, pw) }.exceptionOrNull()
+        }
+        if (err != null) return err.message?.takeIf { err is com.keepsakeai.app.email.MailAuthException }
+            ?: "Couldn't connect to ${host.trim()}. Check the server and your internet."
+        val id = addr.replace(Regex("[^a-z0-9]"), "_")
+        app.apiKeyStore.setEmailPassword(id, pw)
+        emailStore.upsert(com.keepsakeai.app.email.EmailAccount(id, addr, provider, host.trim(), port))
+        emailAccounts.value = emailStore.all()
+        com.keepsakeai.app.worker.EmailSyncWorker.schedule(app)
+        com.keepsakeai.app.worker.EmailSyncWorker.runNow(app)
+        return null
+    }
+
+    fun syncEmailNow() = com.keepsakeai.app.worker.EmailSyncWorker.runNow(app)
+
+    fun disconnectEmail(id: String) {
+        emailStore.remove(id)
+        app.apiKeyStore.setEmailPassword(id, null)
+        emailAccounts.value = emailStore.all()
+        com.keepsakeai.app.worker.EmailSyncWorker.schedule(app)
+    }
+
+    /** Deletes every memory and payment that came from email. */
+    suspend fun removeEmailImports(): Int {
+        val n = dao.deleteEmailMemories()
+        dao.deleteEmailExpenses()
+        emailAccounts.value.forEach { a -> emailStore.update(a.id) { it.copy(kept = 0) } }
+        emailAccounts.value = emailStore.all()
+        refreshWidget()
+        return n
     }
 
     fun refreshWidget() {

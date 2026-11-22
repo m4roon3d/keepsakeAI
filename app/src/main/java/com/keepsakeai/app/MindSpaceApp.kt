@@ -51,6 +51,7 @@ class MindSpaceApp : Application() {
 
         scheduleDailyMindSuggest()
         com.keepsakeai.app.worker.DailyNudgeWorker.scheduleAll(this)
+        com.keepsakeai.app.worker.EmailSyncWorker.schedule(this)
     }
 
     private fun scheduleDailyMindSuggest() {

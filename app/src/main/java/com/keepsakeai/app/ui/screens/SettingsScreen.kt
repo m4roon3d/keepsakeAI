@@ -299,6 +299,9 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             }
         }
 
+        // ── Email ──────────────────────────────────────────────────
+        if (viewModel != null) EmailCard(viewModel)
+
         // ── Privacy & backup ───────────────────────────────────────
         PrivacyCard(viewModel)
 
