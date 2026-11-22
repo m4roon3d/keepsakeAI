@@ -287,15 +287,41 @@ class MainActivity : FragmentActivity() {
                 val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
                 val source = if (sharedText.contains("http")) CaptureSource.LINK_CAPTURE else CaptureSource.SHARE_SHEET
                 viewModel.captureText(sharedText, source = source)
-            } else if (type.startsWith("image/")) {
+            } else if (type.startsWith("image/") || type.startsWith("video/")) {
                 val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 } else {
                     @Suppress("DEPRECATION")
                     intent.getParcelableExtra(Intent.EXTRA_STREAM)
                 }
-                uri?.let { viewModel.captureImageUri(it, CaptureSource.SCREENSHOT_OCR) }
+                uri?.let { captureShared(listOf(it)) }
             }
+        }
+        if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris: List<Uri> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
+            }
+            captureShared(uris.take(10))
+        }
+    }
+
+    // Shared photos keep their GPS only if we can ask for the original: ask once, then save either way.
+    private var pendingShared: List<Uri> = emptyList()
+    private val mediaLocationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        viewModel.captureMediaUris(pendingShared, CaptureSource.SHARE_SHEET)
+        pendingShared = emptyList()
+    }
+
+    private fun captureShared(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        if (com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(this)) {
+            viewModel.captureMediaUris(uris, CaptureSource.SHARE_SHEET)
+        } else {
+            pendingShared = uris
+            mediaLocationPermission.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
         }
     }
 

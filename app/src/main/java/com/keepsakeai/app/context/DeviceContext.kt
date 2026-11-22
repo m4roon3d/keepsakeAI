@@ -55,6 +55,14 @@ object DeviceContext {
         place
     }
 
+    /** Phone's position right now (a fix under 10 minutes old, else a fresh one), or null. */
+    suspend fun currentLatLng(context: Context): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+        if (!hasLocationPermission(context)) return@withContext null
+        val recent = lastKnown(context)?.takeIf { System.currentTimeMillis() - it.time < 10 * 60_000L }
+        val loc = recent ?: currentFix(context) ?: lastKnown(context) ?: return@withContext null
+        loc.latitude to loc.longitude
+    }
+
     /** Block of text added to AI prompts. */
     suspend fun promptBlock(context: Context): String {
         val place = currentPlace(context)

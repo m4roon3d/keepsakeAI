@@ -20,7 +20,10 @@ object ImagePrep {
     fun importToSnaps(context: Context, source: Uri): Uri? = runCatching {
         if (source.scheme == "file") return source
         val dest = newSnapFile(context)
-        context.contentResolver.openInputStream(source)?.use { input -> dest.outputStream().use { input.copyTo(it) } } ?: return null
+        // Prefer the unredacted original so the copy keeps the photo's GPS location.
+        val from = MediaMeta.originalUri(context, source)
+        val stream = runCatching { context.contentResolver.openInputStream(from) }.getOrNull() ?: context.contentResolver.openInputStream(source)
+        stream?.use { input -> dest.outputStream().use { input.copyTo(it) } } ?: return null
         Uri.fromFile(dest)
     }.getOrNull()
 

@@ -11,7 +11,9 @@ import com.keepsakeai.app.data.preferences.EntityStore
 import com.keepsakeai.app.data.preferences.KeepReminder
 import com.keepsakeai.app.data.preferences.ReminderStore
 import com.keepsakeai.app.data.preferences.TodoStore
+import com.keepsakeai.app.context.DeviceContext
 import kotlinx.coroutines.Dispatchers
+import java.io.File
 import kotlinx.coroutines.withContext
 
 /**
@@ -37,15 +39,23 @@ class CapturePipeline(private val app: MindSpaceApp) {
         at: Long? = null,
         hint: String? = null,
         skipIfNotWorthKeeping: Boolean = false,
+        geo: GeoTag? = null,
     ): Saved {
         // Shared links: pull the article / video title and text so the memory is useful later.
         val link = url ?: if (source == CaptureSource.EMAIL) null else LinkContentExtractor.extractFirstUrl(text)
         val fetched = link?.let { runCatching { LinkContentExtractor.fetch(it) }.getOrNull() }
         val enriched = if (fetched != null) "$text\n\n${fetched.platform}: ${fetched.title}\n${fetched.bodyText.take(3000)}" else text
 
+        // Where and when the photo or video was taken, so Gemini can name the café or place.
+        val tag = withContext(Dispatchers.IO) { locate(photoUri, source, geo) }
+        val metaText = tag?.let { MediaMeta.describe(it) }.orEmpty()
+        val withMeta = if (metaText.isNotBlank()) "$enriched\n\n$metaText" else enriched
+        val placeHint = if (tag?.hasLocation == true) PLACE_HINT else null
+        val fullHint = listOfNotNull(hint, placeHint).joinToString("\n").ifBlank { null }
+
         // Let Gemini see the photo too (Tamil text, handwriting, posters), not just on-device OCR.
         val jpeg = photoUri?.let { p -> withContext(Dispatchers.IO) { ImagePrep.jpegForAi(app, Uri.parse(p)) } }
-        val analyzed = app.mindPilotClient.analyzeCapture(enriched, jpeg, hint)
+        val analyzed = app.mindPilotClient.analyzeCapture(withMeta, jpeg, fullHint, grounded = placeHint != null)
         if (skipIfNotWorthKeeping) {
             // Background sources need the AI's judgement: without it (no key, rate limit) try again later.
             if ("local-capture" in analyzed.tags) return Saved(null, analyzed, 0, false, aiFailed = true)
@@ -60,7 +70,7 @@ class CapturePipeline(private val app: MindSpaceApp) {
         val memoryId = dao.insertMemory(
             MemoryEntity(
                 title = analyzed.title,
-                rawContent = enriched,
+                rawContent = withMeta,
                 aiSummary = analyzed.summary,
                 collectionName = analyzed.collection,
                 source = source,
@@ -110,6 +120,19 @@ class CapturePipeline(private val app: MindSpaceApp) {
         return Saved(memoryId, analyzed, newTodos.size, expenseAdded)
     }
 
+    /** GPS from the photo itself; for a photo taken just now with no GPS, the phone's current location. */
+    private suspend fun locate(photoUri: String?, source: CaptureSource, given: GeoTag?): GeoTag? {
+        var tag = given ?: photoUri?.let { Uri.parse(it) }?.takeIf { it.scheme == "file" }?.path?.let { File(it) }
+            ?.takeIf { it.exists() }?.let { MediaMeta.readPhoto(it) }
+        val justTaken = tag?.takenAt?.let { System.currentTimeMillis() - it in 0..10 * 60_000L } == true
+        if (tag?.hasLocation != true && source == CaptureSource.CAMERA_SCAN && justTaken) {
+            DeviceContext.currentLatLng(app)?.let { (lat, lng) -> tag = (tag ?: GeoTag(null, null, null)).copy(lat = lat, lng = lng) }
+        }
+        val t = tag ?: return null
+        if (t.hasLocation && t.place == null) return t.copy(place = MediaMeta.address(app, t.lat!!, t.lng!!))
+        return t
+    }
+
     /** Reuse an existing thread name when the AI words it slightly differently. */
     private suspend fun matchThread(name: String): String {
         val existing = dao.getRecentMemories(300).map { it.threadKey }.distinct()
@@ -120,6 +143,13 @@ class CapturePipeline(private val app: MindSpaceApp) {
 
     companion object {
         const val EMAIL_METHOD = "Email"
+        private val PLACE_HINT = """
+            The capture has the GPS location where it was taken (see "Location:"). Use Google Search to work out the specific
+            restaurant, café, shop or venue at or right next to those coordinates, especially when it shows food, drinks, a menu,
+            a bill or a storefront. Name it in the title and summary (say "likely" if you aren't sure), name the dish or item if
+            you can recognise it, and add the venue as an entity of type "place" with a note like "had filter coffee here".
+            If it's not at a venue, use the neighbourhood instead.
+        """.trimIndent()
         private const val DAY = 24L * 60 * 60 * 1000
     }
 }

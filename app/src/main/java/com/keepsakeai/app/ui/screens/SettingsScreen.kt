@@ -47,6 +47,7 @@ import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.CalendarViewWeek
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.HorizontalDivider
@@ -128,6 +129,8 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         hasLocation = it.values.any { g -> g }
     }
+    var hasMediaLocation by remember { mutableStateOf(com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(context)) }
+    val mediaLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasMediaLocation = it }
     var hasCalendar by remember { mutableStateOf(com.keepsakeai.app.calendar.CalendarReader.hasPermission(context)) }
     val calendarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCalendar = granted
@@ -248,6 +251,10 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             HorizontalDivider(color = c.divider)
             SlimRow(Icons.Rounded.CalendarMonth, Flow.Sky, "Calendar", if (hasCalendar) "Events in your brief, home and Pilot" else "Off", if (hasCalendar) "On" else "Turn on", hasCalendar) {
                 if (hasCalendar) openAppInfo() else calendarLauncher.launch(Manifest.permission.READ_CALENDAR)
+            }
+            HorizontalDivider(color = c.divider)
+            SlimRow(Icons.Rounded.Place, Flow.Amber, "Photo locations", if (hasMediaLocation) "Names the café or place in your photos" else "Off", if (hasMediaLocation) "On" else "Turn on", hasMediaLocation) {
+                if (hasMediaLocation) openAppInfo() else mediaLocationLauncher.launch(Manifest.permission.ACCESS_MEDIA_LOCATION)
             }
             HorizontalDivider(color = c.divider)
             SlimRow(Icons.Rounded.NotificationsActive, Flow.Emerald, "UPI auto-detect", "Reads bank & UPI payment alerts", "Open", null) {

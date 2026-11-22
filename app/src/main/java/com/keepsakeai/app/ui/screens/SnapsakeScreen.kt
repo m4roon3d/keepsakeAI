@@ -149,13 +149,16 @@ fun SnapsakeScreen(
         if (ok && path != null) runOcr(Uri.fromFile(File(path)))
         else path?.let { File(it).delete() }
     }
-    val pickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+    val pickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 val local = withContext(Dispatchers.IO) { importToSnaps(context, uri) }
                 runOcr(local ?: uri)
             }
         }
+    }
+    val mediaLocationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        pickerLauncher.launch(arrayOf("image/*"))
     }
 
     fun openCamera() {
@@ -192,7 +195,10 @@ fun SnapsakeScreen(
         ) {
             GlassButton(
                 "gallery",
-                onClick = { pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onClick = {
+                    if (com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(context)) pickerLauncher.launch(arrayOf("image/*"))
+                    else mediaLocationPermission.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
+                },
                 icon = Icons.Rounded.PhotoLibrary
             )
         }

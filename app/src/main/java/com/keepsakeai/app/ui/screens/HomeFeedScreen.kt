@@ -128,8 +128,16 @@ fun HomeFeedScreen(
         pendingReminder = null
     }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { viewModel.captureImageUri(it, CaptureSource.CAMERA_SCAN) }
+    // Gallery documents (not the photo picker) so trove can read where each photo or video was taken.
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+        viewModel.captureMediaUris(uris.take(10), CaptureSource.SHARE_SHEET)
+    }
+    val mediaLocationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        imagePicker.launch(arrayOf("image/*", "video/*"))
+    }
+    fun pickMedia() {
+        if (com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(context)) imagePicker.launch(arrayOf("image/*", "video/*"))
+        else mediaLocationPermission.launch(android.Manifest.permission.ACCESS_MEDIA_LOCATION)
     }
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -251,7 +259,7 @@ fun HomeFeedScreen(
                         }
                         ComposerIcon(Icons.Rounded.AutoAwesome, "Voice journal", Flow.Purple) { viewModel.overlay.value = "journal" }
                         ComposerIcon(Icons.Rounded.AddPhotoAlternate, "Read text from a photo", Flow.Emerald) {
-                            imagePicker.launch("image/*")
+                            pickMedia()
                         }
                         Spacer(Modifier.weight(1f))
                         GradientButton(

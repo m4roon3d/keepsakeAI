@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -193,6 +194,25 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 if (m.tagsCsv.isNotBlank()) {
                     Spacer(Modifier.height(10.dp))
                     Text(m.tagsCsv.split(",").filter { it.isNotBlank() }.joinToString("  ") { "#${it.trim()}" }, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
+                }
+            }
+        }
+        // Where a photo or video was taken: open it on the map.
+        Regex("""Location: (-?\d+\.\d+), (-?\d+\.\d+)(?: \(near ([^)]+)\))?""").find(m.rawContent)?.let { loc ->
+            val (lat, lng, near) = loc.destructured
+            item {
+                GlassCard(Modifier.fillMaxWidth(), onClick = {
+                    val label = Uri.encode(m.title)
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng($label)"))) }
+                }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Place, null, tint = Flow.Pink, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(near.ifBlank { "$lat, $lng" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text("where this was taken · open in maps", fontSize = 11.sp, color = c.muted)
+                        }
+                    }
                 }
             }
         }

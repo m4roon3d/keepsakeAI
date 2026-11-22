@@ -128,27 +128,32 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun captureText(text: String, source: CaptureSource = CaptureSource.TEXT_NOTE, url: String? = null, photoUri: String? = null) {
         if (text.isBlank()) return
-        viewModelScope.launch {
-            isCapturing.value = true
-            val saved = runCatching { pipeline.save(text, source, url, photoUri) }.getOrNull()
-            if (saved == null) {
-                statusMessage.value = "Couldn't save that. Try again."
-                isCapturing.value = false
-                return@launch
-            }
-            val analyzed = saved.analyzed
-            entities.value = entityStore.all()
-            todos.value = todoStore.all()
-            reminders.value = reminderStore.all()
-            refreshWidget()
-            statusMessage.value = when {
-                analyzed.reminder != null -> "Saved · found a date: ${analyzed.reminder.title}"
-                saved.todosAdded > 0 -> "Saved · added ${saved.todosAdded} to-do${if (saved.todosAdded > 1) "s" else ""}"
-                analyzed.facts.isNotEmpty() -> "Saved · learned ${analyzed.facts.size} new thing${if (analyzed.facts.size > 1) "s" else ""} about you"
-                else -> "Saved to ${analyzed.collection}"
-            }
-            isCapturing.value = false
+        viewModelScope.launch { saveCapture(text, source, url, photoUri) }
+    }
+
+    private suspend fun saveCapture(
+        text: String, source: CaptureSource, url: String? = null, photoUri: String? = null,
+        geo: com.keepsakeai.app.capture.GeoTag? = null, quiet: Boolean = false,
+    ): Boolean {
+        isCapturing.value = true
+        val saved = runCatching { pipeline.save(text, source, url, photoUri, geo = geo) }.getOrNull()
+        isCapturing.value = false
+        if (saved == null) {
+            statusMessage.value = "Couldn't save that. Try again."
+            return false
         }
+        val analyzed = saved.analyzed
+        entities.value = entityStore.all()
+        todos.value = todoStore.all()
+        reminders.value = reminderStore.all()
+        refreshWidget()
+        if (!quiet) statusMessage.value = when {
+            analyzed.reminder != null -> "Saved · found a date: ${analyzed.reminder.title}"
+            saved.todosAdded > 0 -> "Saved · added ${saved.todosAdded} to-do${if (saved.todosAdded > 1) "s" else ""}"
+            analyzed.facts.isNotEmpty() -> "Saved · learned ${analyzed.facts.size} new thing${if (analyzed.facts.size > 1) "s" else ""} about you"
+            else -> "Saved to ${analyzed.collection}"
+        }
+        return true
     }
 
     // ── Facts ────────────────────────────────────────────────────
@@ -318,15 +323,41 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         reminders.value = reminderStore.all()
     }
 
-    fun captureImageUri(uri: Uri, source: CaptureSource = CaptureSource.CAMERA_SCAN) {
+    fun captureImageUri(uri: Uri, source: CaptureSource = CaptureSource.CAMERA_SCAN) = captureMediaUris(listOf(uri), source)
+
+    /** Photos and videos from the gallery or share sheet, one after another (keeps Gemini under its rate limit). */
+    fun captureMediaUris(uris: List<Uri>, source: CaptureSource = CaptureSource.CAMERA_SCAN) {
+        if (uris.isEmpty()) return
         viewModelScope.launch {
-            isCapturing.value = true
-            val local = withContext(Dispatchers.IO) { com.keepsakeai.app.capture.ImagePrep.importToSnaps(app, uri) } ?: uri
-            val ocrText = runCatching { app.ocrProcessor.extractTextFromUri(local) }.getOrDefault("")
-            // Even with no readable (Latin) text, Gemini can still read the photo itself.
-            captureText(ocrText.ifBlank { "Photo" }, source, photoUri = local.toString())
-            isCapturing.value = false
+            var ok = 0
+            uris.forEachIndexed { i, uri ->
+                if (uris.size > 1) statusMessage.value = "Saving ${i + 1} of ${uris.size}…"
+                if (saveMedia(uri, source, quiet = uris.size > 1)) ok++
+            }
+            if (uris.size > 1) statusMessage.value = "Saved $ok of ${uris.size}"
         }
+    }
+
+    private suspend fun saveMedia(uri: Uri, source: CaptureSource, quiet: Boolean): Boolean {
+        val type = runCatching { app.contentResolver.getType(uri) }.getOrNull().orEmpty()
+        if (type.startsWith("video/")) {
+            isCapturing.value = true
+            val (tag, durationMs) = withContext(Dispatchers.IO) { com.keepsakeai.app.capture.MediaMeta.readVideo(app, uri) }
+            val strip = withContext(Dispatchers.IO) { com.keepsakeai.app.capture.MediaMeta.videoStrip(app, uri) }
+            if (strip == null) {
+                isCapturing.value = false
+                statusMessage.value = "Couldn't read that video."
+                return false
+            }
+            val length = durationMs?.let { val sec = it / 1000; " · %d:%02d".format(sec / 60, sec % 60) }.orEmpty()
+            return saveCapture("Video$length (the photo shows three frames: start, middle and end)", source,
+                photoUri = Uri.fromFile(strip).toString(), geo = tag, quiet = quiet)
+        }
+        isCapturing.value = true
+        val local = withContext(Dispatchers.IO) { com.keepsakeai.app.capture.ImagePrep.importToSnaps(app, uri) } ?: uri
+        val ocrText = runCatching { app.ocrProcessor.extractTextFromUri(local) }.getOrDefault("")
+        // Even with no readable (Latin) text, Gemini can still read the photo itself.
+        return saveCapture(ocrText.ifBlank { "Photo" }, source, photoUri = local.toString(), quiet = quiet)
     }
 
     /** Set by the widget / app shortcut so lens opens the camera straight away. */

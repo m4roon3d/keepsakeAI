@@ -28,7 +28,7 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
      * Analyzes any captured text, OCR screenshot, or voice transcript.
      * Falls back to deterministic local heuristics if no API key is configured.
      */
-    suspend fun analyzeCapture(rawText: String, imageJpeg: ByteArray? = null, hint: String? = null): AnalyzedCapture = withContext(Dispatchers.IO) {
+    suspend fun analyzeCapture(rawText: String, imageJpeg: ByteArray? = null, hint: String? = null, grounded: Boolean = false): AnalyzedCapture = withContext(Dispatchers.IO) {
         val geminiKey = keyStore.geminiKey
         if (geminiKey.isNotBlank()) {
             val now = java.text.SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", java.util.Locale.ENGLISH).format(java.util.Date())
@@ -55,7 +55,16 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 if (imageJpeg != null) "A photo of the capture is attached. Read ALL text in it in any language (Tamil, Hindi, Kannada, handwriting, stylised poster fonts) plus visual details, and combine it with the on-device text below, which may be incomplete or garbled. Write the title and summary in English." else ""
             )
 
-            val result = callGemini(geminiKey, prompt, feature = if (hint != null) "read email" else "sort capture", imageJpeg = imageJpeg)
+            val feature = when {
+                grounded -> "sort capture + find place"
+                hint != null -> "read email"
+                else -> "sort capture"
+            }
+            var result = callGemini(geminiKey, prompt, grounded = grounded, feature = feature, imageJpeg = imageJpeg)
+            // Search grounding isn't available on every model: fall back to a plain read.
+            if (grounded && (result.isError || parseAnalyzedJson(result.content, rawText) == null)) {
+                result = callGemini(geminiKey, prompt, feature = "sort capture", imageJpeg = imageJpeg)
+            }
             if (!result.isError) {
                 parseAnalyzedJson(result.content, rawText)?.let { return@withContext it }
             }
