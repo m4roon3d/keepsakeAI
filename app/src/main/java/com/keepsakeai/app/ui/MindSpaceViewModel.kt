@@ -570,8 +570,24 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     fun setExpenseTransfer(expense: ExpenseEntity, transfer: Boolean) {
         viewModelScope.launch {
             dao.setExpenseType(expense.id, if (transfer) TxnType.TRANSFER else TxnType.EXPENSE)
+            var alsoMoved = 0
+            if (transfer) {
+                // Remember the payee, and move its other imported payments too.
+                guard.rememberTransferPayee(expense.merchant)
+                val key = com.keepsakeai.app.finance.TransferMatcher.payeeKey(expense.merchant)
+                dao.getAllExpenses().filter {
+                    it.id != expense.id && it.type == TxnType.EXPENSE && !it.sourceMethod.equals("Manual", true) &&
+                        com.keepsakeai.app.finance.TransferMatcher.payeeKey(it.merchant) == key
+                }.forEach { dao.setExpenseType(it.id, TxnType.TRANSFER); alsoMoved++ }
+            } else {
+                guard.forgetTransferPayee(expense.merchant)
+            }
             refreshWidget()
-            statusMessage.value = if (transfer) "Moved ${expense.merchant} to transfers" else "${expense.merchant} counts as spending again"
+            statusMessage.value = when {
+                transfer && alsoMoved > 0 -> "Moved ${expense.merchant} and $alsoMoved more to transfers. Future ones will go there too."
+                transfer -> "Moved ${expense.merchant} to transfers. Future ones will go there too."
+                else -> "${expense.merchant} counts as spending again"
+            }
         }
     }
 
@@ -607,6 +623,10 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     dao.markPendingTransferByAmount(item.amount, from, to, 0)
                 }
             }
+            // Own name or payees you marked: bank emails and receipts carry no account details to match on.
+            dao.getAllExpenses().filter { it.type == TxnType.EXPENSE && !it.sourceMethod.equals("Manual", true) }
+                .filter { guard.typeForMerchant(it.merchant) == TxnType.TRANSFER }
+                .forEach { dao.setExpenseType(it.id, TxnType.TRANSFER) }
             val moved = (dao.countTransfers() - before).coerceAtLeast(0)
             val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses())
             isCleaning.value = false

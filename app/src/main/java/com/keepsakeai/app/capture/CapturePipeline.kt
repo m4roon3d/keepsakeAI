@@ -86,9 +86,8 @@ class CapturePipeline(private val app: MindSpaceApp) {
         var expenseAdded = false
         analyzed.detectedExpense?.let { exp ->
             // The same payment often arrives by SMS and by email: skip if one is already within a day.
-            val dupe = source == CaptureSource.EMAIL &&
-                com.keepsakeai.app.finance.FinanceGuard(dao, com.keepsakeai.app.data.preferences.MoneyPrefs(app))
-                    .isDuplicate(exp.amount, null, time, wide = true)
+            val guard = com.keepsakeai.app.finance.FinanceGuard(dao, com.keepsakeai.app.data.preferences.MoneyPrefs(app))
+            val dupe = source == CaptureSource.EMAIL && guard.isDuplicate(exp.amount, null, time, wide = true)
             if (!dupe) {
                 dao.insertExpense(
                     ExpenseEntity(
@@ -97,7 +96,8 @@ class CapturePipeline(private val app: MindSpaceApp) {
                         currency = exp.currency,
                         category = exp.category,
                         sourceMethod = if (source == CaptureSource.EMAIL) EMAIL_METHOD else source.name,
-                        timestamp = time
+                        timestamp = time,
+                        type = guard.typeForMerchant(exp.merchant)
                     )
                 )
                 expenseAdded = true
