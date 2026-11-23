@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Place
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -362,6 +363,15 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
                         }
                     }
                 }
+            }
+        }
+        if (e.type == "place") {
+            item {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                GradientButton(
+                    "directions to ${e.name}", brush = Flow.spendGradient, icon = Icons.Rounded.Place, modifier = Modifier.fillMaxWidth(),
+                    onClick = { com.keepsakeai.app.maps.Directions.open(ctx, e.name) }
+                )
             }
         }
         item {
