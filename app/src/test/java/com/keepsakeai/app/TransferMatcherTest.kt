@@ -107,4 +107,12 @@ class TransferMatcherTest {
         assertNull(UpiMessageParser.parseCredit("PAYTM", "Get Rs.500 cashback credited to your wallet on next UPI payment!"))
         assertNull(UpiMessageParser.parseCredit("ICICIB", "OTP 123456 for Rs 5000 credited to A/c XX456 via UPI"))
     }
+
+    @Test
+    fun payeesTheUserMarkedAreRecognisedWhateverTheCase() {
+        val saved = setOf(TransferMatcher.payeeKey("RAMANAN SRINIVASAN VENKAT"))
+        assertTrue(TransferMatcher.isKnownTransferPayee("Ramanan Srinivasan Venkat", saved))
+        assertTrue(TransferMatcher.isKnownTransferPayee("  ramanan srinivasan venkat ", saved))
+        assertFalse(TransferMatcher.isKnownTransferPayee("Swiggy", saved))
+    }
 }

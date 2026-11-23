@@ -27,8 +27,19 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         val debit = TransferMatcher.Debit(p.amount, p.utrRef, p.account, p.toAccount, p.merchant, at)
         val own = prefs.ownAccounts
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
-        return if (TransferMatcher.isTransfer(debit, credits, own, names)) TxnType.TRANSFER else TxnType.EXPENSE
+        val transfer = TransferMatcher.isTransfer(debit, credits, own, names) ||
+            TransferMatcher.isKnownTransferPayee(p.merchant, prefs.transferPayees)
+        return if (transfer) TxnType.TRANSFER else TxnType.EXPENSE
     }
+
+    /** For payments with no account details to go on (bank emails, receipts): the user's own name, or a payee they marked. */
+    fun typeForMerchant(merchant: String): String {
+        val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
+        return if (TransferMatcher.isOwnPayee(merchant, names) || TransferMatcher.isKnownTransferPayee(merchant, prefs.transferPayees)) TxnType.TRANSFER else TxnType.EXPENSE
+    }
+
+    fun rememberTransferPayee(merchant: String) { prefs.transferPayees = prefs.transferPayees + TransferMatcher.payeeKey(merchant) }
+    fun forgetTransferPayee(merchant: String) { prefs.transferPayees = prefs.transferPayees - TransferMatcher.payeeKey(merchant) }
 
     /**
      * Records a credit and, if a debit it pairs with is already saved or waiting for review, turns that debit

@@ -48,6 +48,11 @@ object TransferMatcher {
         }
     }
 
+    /** Payees the user has told trove are their own accounts or otherwise transfers (stored as lowercase keys). */
+    fun isKnownTransferPayee(merchant: String, payees: Set<String>): Boolean = merchant.trim().lowercase() in payees
+
+    fun payeeKey(merchant: String) = merchant.trim().lowercase()
+
     fun isTransfer(d: Debit, credits: List<Credit>, ownAccounts: Set<String>, ownNames: Collection<String>): Boolean =
         creditMatches(d, credits) || namesOwnAccount(d, ownAccounts) || isOwnPayee(d.merchant, ownNames)
 

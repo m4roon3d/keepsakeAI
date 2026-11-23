@@ -34,6 +34,11 @@ class MoneyPrefs(context: Context) {
         get() = prefs.getStringSet("own_accounts", emptySet()).orEmpty()
         set(v) = prefs.edit().putStringSet("own_accounts", v).apply()
 
+    /** Payees the user marked as transfers (lowercase merchant names). Later payments to them are filed as transfers. */
+    var transferPayees: Set<String>
+        get() = prefs.getStringSet("transfer_payees", emptySet()).orEmpty()
+        set(v) = prefs.edit().putStringSet("transfer_payees", v).apply()
+
     var renewalReminders: Boolean
         get() = prefs.getBoolean("renewal_reminders", true)
         set(v) = prefs.edit().putBoolean("renewal_reminders", v).apply()
