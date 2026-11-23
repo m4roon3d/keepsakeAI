@@ -212,6 +212,12 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                             Text(near.ifBlank { "$lat, $lng" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text("where this was taken · open in maps", fontSize = 11.sp, color = c.muted)
                         }
+                        Text(
+                            "directions", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
+                                .clickable { com.keepsakeai.app.maps.Directions.open(context, "$lat,$lng") }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                     }
                 }
             }

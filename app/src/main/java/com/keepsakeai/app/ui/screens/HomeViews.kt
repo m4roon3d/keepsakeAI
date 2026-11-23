@@ -443,6 +443,14 @@ fun CalendarTodayCard(events: List<com.keepsakeai.app.calendar.CalEvent>, modifi
                     Text(e.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (e.location.isNotBlank()) Text(e.location, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                if (e.location.isNotBlank()) {
+                    Text(
+                        "directions", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
+                            .clickable { com.keepsakeai.app.maps.Directions.open(context, e.location) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }
