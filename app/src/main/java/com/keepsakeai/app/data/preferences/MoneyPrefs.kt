@@ -29,6 +29,11 @@ class MoneyPrefs(context: Context) {
         get() = prefs.getString("payee_name", "").orEmpty()
         set(v) = prefs.edit().putString("payee_name", v.trim()).apply()
 
+    /** Last digits of the user's own bank accounts, learned from their debit and credit messages. */
+    var ownAccounts: Set<String>
+        get() = prefs.getStringSet("own_accounts", emptySet()).orEmpty()
+        set(v) = prefs.edit().putStringSet("own_accounts", v).apply()
+
     var renewalReminders: Boolean
         get() = prefs.getBoolean("renewal_reminders", true)
         set(v) = prefs.edit().putBoolean("renewal_reminders", v).apply()

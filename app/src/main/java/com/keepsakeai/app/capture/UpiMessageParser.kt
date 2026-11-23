@@ -12,6 +12,17 @@ data class ParsedUpiTransaction(
     val utrRef: String?,
     val rawSnippet: String,
     val channel: String = "UPI",
+    /** Last digits of the account the money left from ("A/c *4821"), when the message says. */
+    val account: String? = null,
+    /** Last digits of a second account named in the message, usually where the money went. */
+    val toAccount: String? = null,
+)
+
+/** A credit message. Never saved as an expense; only used to recognise transfers between the user's own accounts. */
+data class ParsedCredit(
+    val amount: Double,
+    val utrRef: String?,
+    val account: String?,
 )
 
 /**
@@ -90,8 +101,45 @@ object UpiMessageParser {
             bankOrApp = "$channel · $bank",
             utrRef = utr,
             rawSnippet = body.trim().take(200),
-            channel = channel
+            channel = channel,
+            account = accounts(core).firstOrNull(),
+            toAccount = accounts(core).drop(1).firstOrNull { it != accounts(core).firstOrNull() }
         )
+    }
+
+    private val creditKeywords = listOf("credited", "received", "deposited")
+    private val notRealCredit = listOf(
+        "otp", "one time password", "verification code", "will be credited", "to be credited", "cashback", "offer", "win ",
+        "request", "loan", "failed", "declined", "unsuccessful"
+    )
+    private val debitWords = listOf("debited", "sent ", "paid ", "spent", "withdrawn", "purchase", "transferred to")
+
+    /**
+     * Reads a "credited" message: amount, UPI ref and the account it landed in. A debit alert that merely says
+     * "NAME credited" is not a credit, so messages with debit wording are skipped.
+     */
+    fun parseCredit(sender: String, body: String): ParsedCredit? {
+        val lower = body.lowercase(Locale.US)
+        if (creditKeywords.none { it in lower }) return null
+        if (debitWords.any { it in lower }) return null
+        if (notRealCredit.any { it in lower }) return null
+        if (moneyIndicators.none { it in lower } && !sender.lowercase(Locale.US).contains("upi")) return null
+        val core = cutTail(body)
+        val amount = debitAmount(core) ?: debitAmount(body) ?: return null
+        if (amount <= 0.0 || amount > 10_000_000) return null
+        return ParsedCredit(amount, utrRegex.find(body)?.groupValues?.getOrNull(1), accounts(core).firstOrNull())
+    }
+
+    private val accountMarked = Regex("""(?:a/c|acct?|account)\s*(?:no\.?)?\s*[:.]?\s*(?:x+|\*+)?\s*([0-9]{3,4})\b""", RegexOption.IGNORE_CASE)
+    private val accountStarred = Regex("""(?<![A-Za-z0-9])(?:x+|\*+)\s*([0-9]{3,4})\b""", RegexOption.IGNORE_CASE)
+
+    /** Last digits of every account mentioned, in the order they appear. */
+    fun accounts(text: String): List<String> {
+        val found = (accountMarked.findAll(text) + accountStarred.findAll(text))
+            .sortedBy { it.range.first }
+            .map { it.groupValues[1] }
+            .toList()
+        return found.distinct()
     }
 
     private fun cutTail(body: String): String {

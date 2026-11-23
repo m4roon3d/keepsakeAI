@@ -233,12 +233,23 @@ fun SubscriptionsCard(subs: List<Recurring>, remindersOn: Boolean, onToggleRemin
 
 /** Long-press menu for a payment. */
 @Composable
-fun PaymentActionsDialog(title: String, onSplit: () -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+fun PaymentActionsDialog(
+    title: String,
+    onSplit: () -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+    onTransfer: (() -> Unit)? = null,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text("What would you like to do with this payment?") },
         confirmButton = { GradientButton("split bill", onClick = onSplit, brush = Flow.spendGradient) },
-        dismissButton = { TextButton(onClick = onDelete) { Text("delete", color = Flow.Rose, fontWeight = FontWeight.Bold) } }
+        dismissButton = {
+            Row {
+                if (onTransfer != null) TextButton(onClick = onTransfer) { Text("it's a transfer", fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onDelete) { Text("delete", color = Flow.Rose, fontWeight = FontWeight.Bold) }
+            }
+        }
     )
 }

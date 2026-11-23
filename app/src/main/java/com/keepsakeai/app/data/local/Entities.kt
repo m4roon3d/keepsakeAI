@@ -14,6 +14,15 @@ enum class CaptureSource {
     EMAIL
 }
 
+/** What a money event is. Only EXPENSE is summed as spending. */
+object TxnType {
+    const val EXPENSE = "EXPENSE"
+    const val TRANSFER = "TRANSFER"
+    const val INCOME = "INCOME"
+    const val INVESTMENT = "INVESTMENT"
+    const val STATEMENT = "STATEMENT"
+}
+
 @Entity(tableName = "memories")
 data class MemoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -39,7 +48,9 @@ data class ExpenseEntity(
     val category: String,
     val notes: String = "",
     val sourceMethod: String = "Manual",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /** See [TxnType]. Only EXPENSE counts towards spending; transfers are kept but left out of totals. */
+    val type: String = TxnType.EXPENSE
 )
 
 @Entity(tableName = "pending_upi_transactions")
@@ -52,6 +63,17 @@ data class PendingUpiTransactionEntity(
     val bankOrApp: String,
     val utrRef: String? = null,
     val rawMessage: String,
+    val receivedAt: Long = System.currentTimeMillis(),
+    val type: String = TxnType.EXPENSE
+)
+
+/** Credit messages seen on this phone. Used only to spot a debit whose money landed in the user's own account. */
+@Entity(tableName = "observed_credits")
+data class ObservedCreditEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amount: Double,
+    val utrRef: String? = null,
+    val account: String? = null,
     val receivedAt: Long = System.currentTimeMillis()
 )
 

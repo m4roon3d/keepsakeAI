@@ -45,8 +45,42 @@ interface MindSpaceDao {
     suspend fun deleteMemory(memory: MemoryEntity)
 
     // Expenses
-    @Query("SELECT * FROM expenses ORDER BY timestamp DESC")
+    /** Spending only: transfers between own accounts are kept in the table but never shown here. */
+    @Query("SELECT * FROM expenses WHERE type = 'EXPENSE' ORDER BY timestamp DESC")
     fun observeAllExpenses(): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM expenses WHERE type = 'TRANSFER' ORDER BY timestamp DESC")
+    fun observeTransfers(): Flow<List<ExpenseEntity>>
+
+    @Query("UPDATE expenses SET type = :type WHERE id = :id")
+    suspend fun setExpenseType(id: Long, type: String)
+
+    @Query("UPDATE pending_upi_transactions SET type = :type WHERE id = :id")
+    suspend fun setPendingType(id: Long, type: String)
+
+    // Transfer matching
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCredit(credit: ObservedCreditEntity): Long
+
+    @Query("SELECT * FROM observed_credits WHERE receivedAt >= :since")
+    suspend fun creditsSince(since: Long): List<ObservedCreditEntity>
+
+    @Query("DELETE FROM observed_credits WHERE receivedAt < :before")
+    suspend fun pruneCredits(before: Long)
+
+    @Query("UPDATE pending_upi_transactions SET type = 'TRANSFER' WHERE utrRef = :utr AND type = 'EXPENSE'")
+    suspend fun markPendingTransferByUtr(utr: String): Int
+
+    /** [anyUtr] = 1 matches debits that carry a UPI ref too; 0 only those without one. */
+    @Query("UPDATE pending_upi_transactions SET type = 'TRANSFER' WHERE (:anyUtr = 1 OR utrRef IS NULL) AND type = 'EXPENSE' AND amount = :amount AND receivedAt BETWEEN :from AND :to")
+    suspend fun markPendingTransferByAmount(amount: Double, from: Long, to: Long, anyUtr: Int): Int
+
+    @Query("UPDATE expenses SET type = 'TRANSFER' WHERE notes = :note AND type = 'EXPENSE'")
+    suspend fun markExpenseTransferByNote(note: String): Int
+
+    /** Message-sourced expenses only (sourceMethod "Channel · Bank"), never receipts or manual entries. */
+    @Query("UPDATE expenses SET type = 'TRANSFER' WHERE type = 'EXPENSE' AND sourceMethod LIKE '% · %' AND (:anyUtr = 1 OR notes NOT LIKE 'UTR: %') AND amount = :amount AND timestamp BETWEEN :from AND :to")
+    suspend fun markExpenseTransferByAmount(amount: Double, from: Long, to: Long, anyUtr: Int): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: ExpenseEntity): Long
@@ -64,7 +98,7 @@ interface MindSpaceDao {
     @Query("SELECT COUNT(*) FROM pending_upi_transactions")
     suspend fun countPendingUpi(): Int
 
-    @Query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE timestamp >= :since")
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE type = 'EXPENSE' AND timestamp >= :since")
     suspend fun sumExpensesSince(since: Long): Double
 
     @Query("SELECT COUNT(*) FROM memories")
@@ -78,6 +112,10 @@ interface MindSpaceDao {
 
     @Query("SELECT COUNT(*) FROM expenses WHERE amount = :amount AND timestamp BETWEEN :from AND :to")
     suspend fun countExpensesByAmountWindow(amount: Double, from: Long, to: Long): Int
+
+    /** Same amount in a window, ignoring expenses that carry their own UPI ref (those are told apart by the ref). */
+    @Query("SELECT COUNT(*) FROM expenses WHERE amount = :amount AND notes NOT LIKE 'UTR: %' AND timestamp BETWEEN :from AND :to")
+    suspend fun countExpensesByAmountWindowNoUtr(amount: Double, from: Long, to: Long): Int
 
     /** Expenses that came from UPI / bank messages (old "UPI (Bank)" and new "Channel · Bank" formats). */
     @Query("DELETE FROM expenses WHERE sourceMethod LIKE 'UPI (%' OR sourceMethod LIKE '% · %'")

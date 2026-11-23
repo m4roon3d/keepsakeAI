@@ -6,6 +6,7 @@ import androidx.room.withTransaction
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.data.local.CaptureSource
 import com.keepsakeai.app.data.local.ExpenseEntity
+import com.keepsakeai.app.data.local.TxnType
 import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
 import com.keepsakeai.app.data.local.PersonalFactEntity
@@ -117,21 +118,23 @@ object BackupManager {
     )
 
     private fun expToJson(e: ExpenseEntity) = JSONObject().put("id", e.id).put("merchant", e.merchant).put("amount", e.amount)
-        .put("currency", e.currency).put("category", e.category).put("notes", e.notes).put("source", e.sourceMethod).put("at", e.timestamp)
+        .put("currency", e.currency).put("category", e.category).put("notes", e.notes).put("source", e.sourceMethod).put("at", e.timestamp).put("type", e.type)
 
     private fun expFromJson(o: JSONObject) = ExpenseEntity(
         id = o.optLong("id"), merchant = o.optString("merchant"), amount = o.optDouble("amount"), currency = o.optString("currency", "INR"),
-        category = o.optString("category", "Other"), notes = o.optString("notes"), sourceMethod = o.optString("source", "Manual"), timestamp = o.optLong("at")
+        category = o.optString("category", "Other"), notes = o.optString("notes"), sourceMethod = o.optString("source", "Manual"), timestamp = o.optLong("at"),
+        type = o.optString("type", TxnType.EXPENSE)
     )
 
     private fun pendToJson(p: PendingUpiTransactionEntity) = JSONObject().put("id", p.id).put("merchant", p.merchant).put("amount", p.amount)
         .put("currency", p.currency).put("category", p.suggestedCategory).put("bank", p.bankOrApp).put("utr", p.utrRef ?: "")
-        .put("raw", p.rawMessage).put("at", p.receivedAt)
+        .put("raw", p.rawMessage).put("at", p.receivedAt).put("type", p.type)
 
     private fun pendFromJson(o: JSONObject) = PendingUpiTransactionEntity(
         id = o.optLong("id"), merchant = o.optString("merchant"), amount = o.optDouble("amount"), currency = o.optString("currency", "INR"),
         suggestedCategory = o.optString("category", "Other"), bankOrApp = o.optString("bank"), utrRef = o.optString("utr").ifBlank { null },
-        rawMessage = o.optString("raw"), receivedAt = o.optLong("at")
+        rawMessage = o.optString("raw"), receivedAt = o.optLong("at"),
+        type = o.optString("type", TxnType.EXPENSE)
     )
 
     private fun factToJson(f: PersonalFactEntity) = JSONObject().put("id", f.id).put("fact", f.fact).put("category", f.category)
