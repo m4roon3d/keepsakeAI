@@ -575,6 +575,67 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** What a tidy-up found. Transfers are already moved (reversible); duplicates wait here for the user's go-ahead. */
+    data class CleanupPlan(val duplicates: List<com.keepsakeai.app.finance.DuplicateFinder.Dupe>, val transfersMoved: Int)
+
+    val cleanupPlan = MutableStateFlow<CleanupPlan?>(null)
+    val isCleaning = MutableStateFlow(false)
+
+    /**
+     * One pass over what's already saved: re-read the SMS inbox to learn credits and own accounts, move payments that
+     * were transfers between own accounts out of spending, and list payments saved twice.
+     */
+    fun startCleanup(days: Int = 90) {
+        if (isCleaning.value) return
+        viewModelScope.launch {
+            isCleaning.value = true
+            val before = dao.countTransfers()
+            val scan = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanInbox(app, days) }
+            guard.learnAccounts(scan.accounts)
+            scan.credits.forEach { (credit, at) -> guard.noteCredit(credit, at) }
+            scan.debits.forEach { sd ->
+                val item = sd.item
+                if (guard.classify(sd.parsed, item.receivedAt) != TxnType.TRANSFER) return@forEach
+                val from = item.receivedAt - 5 * 60_000
+                val to = item.receivedAt + 5 * 60_000
+                val utr = item.utrRef
+                if (utr != null) {
+                    dao.markExpenseTransferByNote("UTR: $utr")
+                    dao.markPendingTransferByUtr(utr)
+                } else {
+                    dao.markExpenseTransferByAmount(item.amount, from, to, 0)
+                    dao.markPendingTransferByAmount(item.amount, from, to, 0)
+                }
+            }
+            val moved = (dao.countTransfers() - before).coerceAtLeast(0)
+            val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses())
+            isCleaning.value = false
+            refreshWidget()
+            if (dupes.isEmpty()) {
+                statusMessage.value = if (moved > 0) "Tidy-up done: $moved moved to transfers, no duplicates found" else "Tidy-up done: nothing to fix"
+            } else {
+                cleanupPlan.value = CleanupPlan(dupes, moved)
+            }
+        }
+    }
+
+    fun applyCleanup() {
+        val plan = cleanupPlan.value ?: return
+        cleanupPlan.value = null
+        viewModelScope.launch {
+            plan.duplicates.forEach { dao.deleteExpense(it.remove) }
+            refreshWidget()
+            statusMessage.value = "Removed ${plan.duplicates.size} duplicate${if (plan.duplicates.size == 1) "" else "s"}" +
+                if (plan.transfersMoved > 0) " and moved ${plan.transfersMoved} to transfers" else ""
+        }
+    }
+
+    fun dismissCleanup() {
+        val plan = cleanupPlan.value
+        cleanupPlan.value = null
+        if (plan != null && plan.transfersMoved > 0) statusMessage.value = "Moved ${plan.transfersMoved} to transfers. Duplicates kept."
+    }
+
     fun setPendingTransfer(item: PendingUpiTransactionEntity, transfer: Boolean) {
         viewModelScope.launch { dao.setPendingType(item.id, if (transfer) TxnType.TRANSFER else TxnType.EXPENSE) }
     }

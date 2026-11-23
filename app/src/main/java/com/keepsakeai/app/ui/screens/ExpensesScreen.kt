@@ -195,6 +195,8 @@ fun ExpensesScreen(
     val expenses by viewModel.expenses.collectAsState()
     val pendingUpi by viewModel.pendingUpi.collectAsState()
     val transfers by viewModel.transfers.collectAsState()
+    val cleaning by viewModel.isCleaning.collectAsState()
+    val cleanupPlan by viewModel.cleanupPlan.collectAsState()
     val currency = (context.applicationContext as MindSpaceApp).apiKeyStore.defaultCurrency.ifBlank { "INR" }
 
     // Dashboard state
@@ -293,6 +295,25 @@ fun ExpensesScreen(
         )
     }
 
+    cleanupPlan?.let { plan ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissCleanup() },
+            title = { Text("Remove ${plan.duplicates.size} duplicate${if (plan.duplicates.size == 1) "" else "s"}?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (plan.transfersMoved > 0) Text("${plan.transfersMoved} already moved to transfers.")
+                    Text("The same payment was saved more than once. The best copy (bank message first) stays.")
+                    plan.duplicates.take(6).forEach { d ->
+                        Text("${d.remove.merchant} · ${money(d.remove.currency, d.remove.amount)} · ${dayLabel(startOfDay(d.remove.timestamp))}", fontSize = 12.sp, color = LocalFlow.current.muted)
+                    }
+                    if (plan.duplicates.size > 6) Text("and ${plan.duplicates.size - 6} more", fontSize = 12.sp, color = LocalFlow.current.muted)
+                }
+            },
+            confirmButton = { TextButton(onClick = { viewModel.applyCleanup() }) { Text("Remove", color = Flow.Rose, fontWeight = FontWeight.Bold) } },
+            dismissButton = { TextButton(onClick = { viewModel.dismissCleanup() }) { Text("Keep all") } }
+        )
+    }
+
     actionFor?.let { exp ->
         PaymentActionsDialog(
             title = "${exp.merchant} · ${money(exp.currency, exp.amount)}",
@@ -370,7 +391,12 @@ fun ExpensesScreen(
                         onOpenAppInfo = {
                             runCatching { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }
                         },
-                        onRemoveAll = { confirmRemoveAll = true }
+                        onRemoveAll = { confirmRemoveAll = true },
+                        cleaning = cleaning,
+                        onTidy = {
+                            if (hasSmsPermission(context)) viewModel.startCleanup(smsDays)
+                            else smsPermission.launch(Manifest.permission.READ_SMS)
+                        }
                     )
                 }
             }
@@ -783,6 +809,7 @@ private fun ImportCard(
     smsDays: Int, onDays: (Int) -> Unit,
     scanning: Boolean, blocked: Boolean, canRemove: Boolean,
     onScan: () -> Unit, onOpenAppInfo: () -> Unit, onRemoveAll: () -> Unit,
+    cleaning: Boolean = false, onTidy: () -> Unit = {},
 ) {
     val c = LocalFlow.current
     GlassCard(Modifier.fillMaxWidth()) {
@@ -807,6 +834,11 @@ private fun ImportCard(
                 fontSize = 11.sp, color = Flow.Rose, modifier = Modifier.clickable(onClick = onOpenAppInfo)
             )
         }
+        Text(
+            if (cleaning) "Tidying up…" else "Tidy up: find duplicates and transfers",
+            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+            modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable(enabled = !cleaning, onClick = onTidy).padding(horizontal = 8.dp, vertical = 6.dp)
+        )
         if (canRemove) {
             Text(
                 "Remove imported", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,

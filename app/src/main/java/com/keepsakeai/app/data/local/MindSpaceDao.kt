@@ -52,6 +52,9 @@ interface MindSpaceDao {
     @Query("SELECT * FROM expenses WHERE type = 'TRANSFER' ORDER BY timestamp DESC")
     fun observeTransfers(): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT COUNT(*) FROM expenses WHERE type = 'TRANSFER'")
+    suspend fun countTransfers(): Int
+
     @Query("UPDATE expenses SET type = :type WHERE id = :id")
     suspend fun setExpenseType(id: Long, type: String)
 
