@@ -17,6 +17,8 @@ import com.keepsakeai.app.context.DeviceContext
 import com.keepsakeai.app.data.local.MemoryEntity
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
 import com.keepsakeai.app.data.local.PersonalFactEntity
+import com.keepsakeai.app.data.local.TxnType
+import com.keepsakeai.app.finance.FinanceGuard
 import com.keepsakeai.app.data.preferences.KeepReminder
 import com.keepsakeai.app.widget.MindSpaceWidget
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +58,12 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     val expenses: StateFlow<List<ExpenseEntity>> = dao.observeAllExpenses()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    /** Money that only moved between own accounts. Kept, but never counted as spending. */
+    val transfers: StateFlow<List<ExpenseEntity>> = dao.observeTransfers()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val guard by lazy { FinanceGuard(dao, com.keepsakeai.app.data.preferences.MoneyPrefs(app)) }
 
     val pendingUpi: StateFlow<List<PendingUpiTransactionEntity>> = dao.observePendingUpi()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -441,6 +449,12 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun approvePendingUpi(item: PendingUpiTransactionEntity, categoryOverride: String = item.suggestedCategory) {
         viewModelScope.launch {
+            // An email or another message may have saved this payment while it waited for review.
+            if (guard.expenseExists(item.amount, item.utrRef, item.receivedAt)) {
+                dao.deletePendingUpi(item)
+                refreshWidget()
+                return@launch
+            }
             dao.insertExpense(
                 ExpenseEntity(
                     merchant = item.merchant,
@@ -449,9 +463,16 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     category = categoryOverride,
                     notes = item.utrRef?.let { "UTR: $it" } ?: item.bankOrApp,
                     sourceMethod = if (" · " in item.bankOrApp) item.bankOrApp else "UPI · ${item.bankOrApp}",
-                    timestamp = item.receivedAt
+                    timestamp = item.receivedAt,
+                    type = item.type
                 )
             )
+            if (item.type == TxnType.TRANSFER) {
+                // A transfer is bookkeeping, not something to remember: no receipt memory and no card.
+                dao.deletePendingUpi(item)
+                refreshWidget()
+                return@launch
+            }
             val embed = app.vectorSearch.embedText("UPI receipt ${item.merchant} ${item.currency} ${item.amount} $categoryOverride ${item.rawMessage}")
             dao.insertMemory(
                 MemoryEntity(
@@ -488,21 +509,18 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         if (isScanningSms.value) return
         viewModelScope.launch {
             isScanningSms.value = true
-            val found = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanRecentInbox(app, days) }
+            val scan = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanInbox(app, days) }
+            val found = scan.debits.map { it.item }
             val dismissed = dismissedUpiKeys()
             var added = 0
             val fresh = mutableListOf<PendingUpiTransactionEntity>()
-            found.forEach { item ->
-                val key = upiKey(item)
-                val seen = key in dismissed || if (item.utrRef != null) {
-                    dao.countPendingByUtr(item.utrRef) > 0 || dao.countExpensesByNote("UTR: ${item.utrRef}") > 0
-                } else {
-                    val from = item.receivedAt - 5 * 60_000
-                    val to = item.receivedAt + 5 * 60_000
-                    dao.countPendingByAmountWindow(item.amount, from, to) > 0 ||
-                        dao.countExpensesByAmountWindow(item.amount, from, to) > 0
-                }
-                if (!seen) fresh.add(item)
+            // Learn the user's own accounts and record credits first, so a debit can be matched to its credit.
+            guard.learnAccounts(scan.accounts)
+            scan.credits.forEach { (credit, at) -> guard.noteCredit(credit, at) }
+            scan.debits.forEach { sd ->
+                val item = sd.item
+                val seen = upiKey(item) in dismissed || guard.isDuplicate(item.amount, item.utrRef, item.receivedAt)
+                if (!seen) fresh.add(item.copy(type = guard.classify(sd.parsed, item.receivedAt)))
             }
             // Let AI sort payees the keyword rules couldn't place.
             val unknown = fresh.filter { it.suggestedCategory == "Other" && !it.merchant.endsWith(" payment") }
@@ -517,7 +535,11 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             statusMessage.value = when {
                 found.isEmpty() -> "No UPI payments found in the last $days days"
                 added == 0 -> "All ${found.size} payments already imported"
-                else -> "Found $added new payment${if (added > 1) "s" else ""} to review"
+                else -> {
+                    val moved = fresh.count { it.type == TxnType.TRANSFER }
+                    "Found $added new payment${if (added > 1) "s" else ""} to review" +
+                        if (moved > 0) " ($moved looked like transfers between your accounts)" else ""
+                }
             }
         }
     }
@@ -542,6 +564,19 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             pendingUpi.value.forEach { rememberDismissed(it) }
             dao.clearPendingUpi()
         }
+    }
+
+    /** Move a payment out of spending (or back in). The change sticks; transfers stay listed under Transfers. */
+    fun setExpenseTransfer(expense: ExpenseEntity, transfer: Boolean) {
+        viewModelScope.launch {
+            dao.setExpenseType(expense.id, if (transfer) TxnType.TRANSFER else TxnType.EXPENSE)
+            refreshWidget()
+            statusMessage.value = if (transfer) "Moved ${expense.merchant} to transfers" else "${expense.merchant} counts as spending again"
+        }
+    }
+
+    fun setPendingTransfer(item: PendingUpiTransactionEntity, transfer: Boolean) {
+        viewModelScope.launch { dao.setPendingType(item.id, if (transfer) TxnType.TRANSFER else TxnType.EXPENSE) }
     }
 
     fun deleteExpense(expense: ExpenseEntity) {

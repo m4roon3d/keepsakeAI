@@ -109,7 +109,8 @@ class EmailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
             This capture is an email from the user's inbox. Add a key "keep": false when it is marketing, a newsletter, a promotion,
             an OTP or security notice, or holds nothing the user would want to remember later; otherwise "keep": true.
             Only fill "expense" when the email confirms money the user actually paid or was charged (receipt, invoice, order payment,
-            card or UPI debit, subscription renewal charge). Never for offers, quotes, refunds, balances or amounts still due.
+            card or UPI debit, subscription renewal charge). Never for offers, quotes, refunds, balances or amounts still due,
+            and never for money the user moved between their own accounts (transfers, credit card bill payments, mutual fund or stock purchases).
             Use the plain brand as merchant, e.g. "Netflix", "Amazon", "IRCTC", "Airtel", so repeat charges match.
             Bills and card statements with a due date: add a todo with that due date and a "due" reminder.
             Tickets and bookings: add an "event" reminder at the travel or show time, with the venue or PNR in the summary.

@@ -5,6 +5,8 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
+import com.keepsakeai.app.data.preferences.MoneyPrefs
+import com.keepsakeai.app.finance.FinanceGuard
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -39,13 +41,23 @@ class UpiNotificationListenerService : NotificationListenerService() {
         val text = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
             ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
 
-        val parsed = UpiMessageParser.parse(title, text) ?: return
         val app = application as? MindSpaceApp ?: return
+        val parsed = UpiMessageParser.parse(title, text)
+        if (parsed == null) {
+            // A credit is never saved, but it can reveal that a debit was a transfer between own accounts.
+            val credit = UpiMessageParser.parseCredit(title, text) ?: return
+            scope.launch { FinanceGuard(app.database.dao(), MoneyPrefs(app)).noteCredit(credit, System.currentTimeMillis()) }
+            return
+        }
 
         scope.launch {
             val dao = app.database.dao()
-            // Deduplicate by UTR or identical recent snippet
-            if (parsed.utrRef != null && dao.countPendingByUtr(parsed.utrRef) > 0) return@launch
+            val guard = FinanceGuard(dao, MoneyPrefs(app))
+            val now = System.currentTimeMillis()
+            // Same payment already saved or waiting (UTR, or same amount within minutes, from SMS or email).
+            if (guard.isDuplicate(parsed.amount, parsed.utrRef, now)) return@launch
+            guard.learnAccounts(listOf(parsed.account))
+            val type = guard.classify(parsed, now)
 
             dao.insertPendingUpi(
                 PendingUpiTransactionEntity(
@@ -55,7 +67,8 @@ class UpiNotificationListenerService : NotificationListenerService() {
                     suggestedCategory = parsed.category,
                     bankOrApp = parsed.bankOrApp,
                     utrRef = parsed.utrRef,
-                    rawMessage = parsed.rawSnippet
+                    rawMessage = parsed.rawSnippet,
+                    type = type
                 )
             )
         }

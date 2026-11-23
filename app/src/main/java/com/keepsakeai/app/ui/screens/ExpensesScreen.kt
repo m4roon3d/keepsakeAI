@@ -194,6 +194,7 @@ fun ExpensesScreen(
     val c = LocalFlow.current
     val expenses by viewModel.expenses.collectAsState()
     val pendingUpi by viewModel.pendingUpi.collectAsState()
+    val transfers by viewModel.transfers.collectAsState()
     val currency = (context.applicationContext as MindSpaceApp).apiKeyStore.defaultCurrency.ifBlank { "INR" }
 
     // Dashboard state
@@ -297,7 +298,8 @@ fun ExpensesScreen(
             title = "${exp.merchant} · ${money(exp.currency, exp.amount)}",
             onSplit = { splitFor = exp; actionFor = null },
             onDelete = { confirmDelete = exp; actionFor = null },
-            onDismiss = { actionFor = null }
+            onDismiss = { actionFor = null },
+            onTransfer = { viewModel.setExpenseTransfer(exp, true); actionFor = null }
         )
     }
     splitFor?.let { exp -> SplitDialog(exp) { splitFor = null } }
@@ -376,6 +378,10 @@ fun ExpensesScreen(
 
         if (pendingUpi.isNotEmpty()) {
             item { PendingCard(viewModel, currencyFallback = currency) }
+        }
+
+        if (transfers.isNotEmpty()) {
+            item { TransfersCard(transfers, viewModel, currency) }
         }
 
         // Period
@@ -810,6 +816,36 @@ private fun ImportCard(
     }
 }
 
+/** Payments that only moved between the user's own accounts: listed here, left out of every spending total. */
+@Composable
+private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceViewModel, currency: String) {
+    val c = LocalFlow.current
+    var open by remember { mutableStateOf(false) }
+    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp)) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "transfers between your accounts (${transfers.size}) · not counted as spending",
+                style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f)
+            )
+            Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.size(18.dp).rotate(if (open) 180f else 0f))
+        }
+        if (open) {
+            transfers.take(40).forEach { t ->
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(t.merchant, color = c.text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${money(t.currency.ifBlank { currency }, t.amount)} · ${dayLabel(startOfDay(t.timestamp))}", fontSize = 11.sp, color = c.muted)
+                    }
+                    Text(
+                        "not a transfer", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setExpenseTransfer(t, false) }.padding(8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String) {
     val c = LocalFlow.current
@@ -852,6 +888,13 @@ private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String)
                         Text(money(item.currency.ifBlank { currencyFallback }, item.amount), style = MaterialTheme.typography.titleSmall, color = Flow.Indigo)
                     }
                     Text("${item.bankOrApp} · ${dayLabel(startOfDay(item.receivedAt))}", fontSize = 11.sp, color = c.muted)
+                    val isTransfer = item.type == com.keepsakeai.app.data.local.TxnType.TRANSFER
+                    Text(
+                        if (isTransfer) "looks like a transfer between your accounts · tap if it's spending" else "tap if this is a transfer between your accounts",
+                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        color = if (isTransfer) Flow.Amber else c.muted,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setPendingTransfer(item, !isTransfer) }.padding(vertical = 4.dp)
+                    )
                     Spacer(Modifier.height(4.dp))
                     Text("“${item.rawMessage}”", fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(8.dp))

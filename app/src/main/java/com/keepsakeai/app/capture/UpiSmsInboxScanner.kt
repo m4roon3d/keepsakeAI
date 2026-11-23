@@ -10,10 +10,21 @@ import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
  */
 object UpiSmsInboxScanner {
 
+    /** A debit ready for the review queue, with what the parser read from it (accounts, payee) for transfer checks. */
+    data class ScannedDebit(val item: PendingUpiTransactionEntity, val parsed: ParsedUpiTransaction)
+
+    /** Debits to review, plus the credit messages seen (used to spot transfers between own accounts). */
+    data class InboxScan(val debits: List<ScannedDebit>, val credits: List<Pair<ParsedCredit, Long>>, val accounts: List<String>)
+
     /** Reads inbox SMS from the last [days] days (newest first) and parses UPI/bank debits. Call off the main thread. */
-    fun scanRecentInbox(context: Context, days: Int = 30, maxMessages: Int = 5000): List<PendingUpiTransactionEntity> {
+    fun scanRecentInbox(context: Context, days: Int = 30, maxMessages: Int = 5000): List<PendingUpiTransactionEntity> =
+        scanInbox(context, days, maxMessages).debits.map { it.item }
+
+    fun scanInbox(context: Context, days: Int = 30, maxMessages: Int = 5000): InboxScan {
         val since = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
-        val results = mutableListOf<PendingUpiTransactionEntity>()
+        val results = mutableListOf<ScannedDebit>()
+        val credits = mutableListOf<Pair<ParsedCredit, Long>>()
+        val accounts = mutableListOf<String>()
         val projection = arrayOf(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
@@ -39,8 +50,16 @@ object UpiSmsInboxScanner {
                     // Banks and UPI apps send from short codes (e.g. AX-ICICIT); skip personal numbers.
                     if (Regex("""^\+?[0-9 ()-]{7,}$""").matches(sender.trim())) continue
                     val parsed = UpiMessageParser.parse(sender, body)
-                    if (parsed != null) {
-                        results.add(
+                    if (parsed == null) {
+                        UpiMessageParser.parseCredit(sender, body)?.let { credit ->
+                            credits.add(credit to ts)
+                            credit.account?.let(accounts::add)
+                        }
+                        continue
+                    }
+                    parsed.account?.let(accounts::add)
+                    results.add(
+                        ScannedDebit(
                             PendingUpiTransactionEntity(
                                 merchant = parsed.merchant,
                                 amount = parsed.amount,
@@ -50,13 +69,14 @@ object UpiSmsInboxScanner {
                                 utrRef = parsed.utrRef,
                                 rawMessage = parsed.rawSnippet,
                                 receivedAt = ts
-                            )
+                            ),
+                            parsed
                         )
-                    }
+                    )
                 }
             }
         }
-        return dedupe(results)
+        return InboxScan(dedupe(results), credits, accounts)
     }
 
     /**
@@ -64,14 +84,14 @@ object UpiSmsInboxScanner {
      * sometimes send a debit alert twice. Collapse by UPI ref, else by same amount
      * within five minutes.
      */
-    private fun dedupe(items: List<PendingUpiTransactionEntity>): List<PendingUpiTransactionEntity> {
-        val out = mutableListOf<PendingUpiTransactionEntity>()
+    private fun dedupe(items: List<ScannedDebit>): List<ScannedDebit> {
+        val out = mutableListOf<ScannedDebit>()
         val refs = HashSet<String>()
         for (it in items) {
-            val ref = it.utrRef
+            val ref = it.item.utrRef
             if (ref != null) {
                 if (!refs.add(ref)) continue
-            } else if (out.any { o -> o.utrRef == null && o.amount == it.amount && kotlin.math.abs(o.receivedAt - it.receivedAt) < 5 * 60_000 }) {
+            } else if (out.any { o -> o.item.utrRef == null && o.item.amount == it.item.amount && kotlin.math.abs(o.item.receivedAt - it.item.receivedAt) < 5 * 60_000 }) {
                 continue
             }
             out.add(it)
