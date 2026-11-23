@@ -147,8 +147,19 @@ fun HomeFeedScreen(
     }
 
     val searching = searchQuery.isNotBlank()
+    val todosNow by viewModel.todos.collectAsState()
+    // Imports (email, SMS) only get a card when new or relevant; picking a collection or searching shows everything.
+    val relevantIds = remember(reminders, todosNow) {
+        reminders.filter { it.isUpcoming() }.map { it.memoryId }.toSet() + todosNow.filter { !it.done }.mapNotNull { it.memoryId }
+    }
+    val curated = !searching && selectedCol == null
+    val visibleMemories = if (curated) {
+        val now = System.currentTimeMillis()
+        memories.filter { com.keepsakeai.app.finance.ImportSections.showInFeed(it, now, relevantIds) }
+    } else memories
+    val tuckedAway = memories.size - visibleMemories.size
     val cards: List<Pair<MemoryEntity, Float?>> =
-        if (searching) semantic.map { it.memory to it.similarity } else memories.map { it to null }
+        if (searching) semantic.map { it.memory to it.similarity } else visibleMemories.map { it to null }
 
     val refreshing by viewModel.isRefreshing.collectAsState()
     val todos by viewModel.todos.collectAsState()
@@ -230,6 +241,7 @@ fun HomeFeedScreen(
                 )
                 HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
+                HubView.IMPORTS -> importItems(allMemories, onOpen = { viewModel.openMemory(it) })
                 HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() }, onOpen = { viewModel.openMemory(it) })
                 else -> {}
             }
@@ -350,6 +362,20 @@ fun HomeFeedScreen(
         } else {
             item(span = StaggeredGridItemSpan.FullLine) {
                 SectionLabel("Closest matches", trailing = "${cards.size} found")
+            }
+        }
+
+        if (tuckedAway > 0) {
+            item(key = "tucked", span = StaggeredGridItemSpan.FullLine) {
+                GlassCard(Modifier.fillMaxWidth(), onClick = { hubView = HubView.IMPORTS }) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("$tuckedAway older imports from email and SMS", style = MaterialTheme.typography.titleSmall, color = c.text)
+                            Text("kept out of your feed. Search finds them, or browse by type.", fontSize = 12.sp, color = c.muted)
+                        }
+                        Text("browse →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                    }
+                }
             }
         }
 

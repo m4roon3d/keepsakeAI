@@ -65,7 +65,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class HubView(val label: String) {
-    KEEPSAKES("finds"), TODOS("to-dos"), PEOPLE("people & places"), THREADS("threads"), TIMELINE("timeline"), FACTS("about me")
+    KEEPSAKES("finds"), TODOS("to-dos"), PEOPLE("people & places"), THREADS("threads"), TIMELINE("timeline"), FACTS("about me"), IMPORTS("imports")
 }
 
 private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
