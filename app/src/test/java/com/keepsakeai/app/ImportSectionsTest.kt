@@ -68,4 +68,15 @@ class ImportSectionsTest {
         assertTrue(ImportSections.showInFeed(mem("train ticket", ageHours = 500, id = 7), now, setOf(7L)))
         assertFalse(ImportSections.showInFeed(mem("other", ageHours = 500, id = 8), now, setOf(7L)))
     }
+
+    @Test
+    fun onlyNearTodosAndRemindersKeepAnImportOnTheFeed() {
+        val day = 24 * hour
+        val ids = ImportSections.relevantIds(
+            todos = listOf(1L to now + 2 * day, 2L to now - 5 * day, 3L to now + 30 * day, 4L to null, null to now),
+            reminders = listOf(5L to now + 3 * day, 6L to now + 20 * day),
+            now = now
+        )
+        assertEquals(setOf(1L, 2L, 5L), ids)
+    }
 }

@@ -21,6 +21,19 @@ object ImportSections {
     private val upi = Regex("""\bupi\b|\bvpa\b|gpay|google pay|phonepe|paytm|\bbhim\b""")
     private val bank = Regex("""\bbank\b|a/c|\bacct\b|account statement|bank statement|credit card|debit card|card statement|statement of account|\bneft\b|\bimps\b|\brtgs\b|net ?banking|\bemi\b""")
 
+    const val SOON_MS = 7L * 24 * 60 * 60 * 1000
+
+    /**
+     * Imports worth a card right now: the memory behind a to-do that is overdue or due within a week, or behind a
+     * reminder that is coming up within a week. To-dos with no date, and anything further out, stay in Imports.
+     * [todos] are (memoryId, due) of open to-dos; [reminders] are (memoryId, time) of upcoming reminders.
+     */
+    fun relevantIds(todos: List<Pair<Long?, Long?>>, reminders: List<Pair<Long, Long>>, now: Long): Set<Long> {
+        val fromTodos = todos.mapNotNull { (id, due) -> if (id != null && due != null && due <= now + SOON_MS) id else null }
+        val fromReminders = reminders.mapNotNull { (id, at) -> if (at <= now + SOON_MS) id else null }
+        return (fromTodos + fromReminders).toSet()
+    }
+
     /** Memories that came in through a mailbox or the SMS listener rather than being captured by hand. */
     fun isImport(m: MemoryEntity) = m.source == CaptureSource.EMAIL || m.source == CaptureSource.UPI_MESSAGE
 

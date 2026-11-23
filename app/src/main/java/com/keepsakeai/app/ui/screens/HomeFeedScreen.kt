@@ -150,7 +150,11 @@ fun HomeFeedScreen(
     val todosNow by viewModel.todos.collectAsState()
     // Imports (email, SMS) only get a card when new or relevant; picking a collection or searching shows everything.
     val relevantIds = remember(reminders, todosNow) {
-        reminders.filter { it.isUpcoming() }.map { it.memoryId }.toSet() + todosNow.filter { !it.done }.mapNotNull { it.memoryId }
+        com.keepsakeai.app.finance.ImportSections.relevantIds(
+            todos = todosNow.filter { !it.done }.map { it.memoryId to it.due },
+            reminders = reminders.filter { it.isUpcoming() }.map { it.memoryId to it.atMillis },
+            now = System.currentTimeMillis()
+        )
     }
     val curated = !searching && selectedCol == null
     val visibleMemories = if (curated) {
