@@ -53,7 +53,7 @@ object TransferMatcher {
 
     fun payeeKey(merchant: String) = merchant.trim().lowercase()
 
-    private val cardBill = Regex("""credit\s*card\s*(?:bill\s*)?(?:payment|pymt|bill)|\bcc\s*(?:payment|bill)|card\s*bill|cred\s*club|\bbillpay\b.*card""")
+    private val cardBill = Regex("""credit\s*card\s*(?:bill\s*)?(?:payment|pymt|bill)|\bcc\s*(?:payment|bill)|card\s*bill|cred\s*club|\bbillpay\b.*card|received\s+(?:on|in|towards|for)\s+(?:your\s+)?(?:[a-z]+\s+){0,3}card\b|towards\s+your\s+(?:[a-z]+\s+){0,3}card\b|card\s+(?:outstanding|dues?)\b""")
 
     /** A payment that settles a credit card bill. The spending is already counted when the card was used. */
     fun isCardBill(text: String): Boolean = cardBill.containsMatchIn(text.lowercase())

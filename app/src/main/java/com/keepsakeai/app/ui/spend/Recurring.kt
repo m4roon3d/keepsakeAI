@@ -119,11 +119,13 @@ fun budgetStatuses(monthExpenses: List<ExpenseEntity>, limits: Map<String, Doubl
  * questions accurately (totals are computed here, not by the model).
  */
 fun spendDigest(
-    all: List<ExpenseEntity>,
+    allExpenses: List<ExpenseEntity>,
     limits: Map<String, Double>,
     includeRows: Boolean,
     now: Long = System.currentTimeMillis(),
 ): String {
+    // Paying a credit card bill is not spending: the card purchases are already counted.
+    val all = allExpenses.filterNot { com.keepsakeai.app.finance.TransferMatcher.isCardBill("${it.merchant} ${it.category} ${it.notes}") }
     if (all.isEmpty()) return "No payments recorded yet."
     val tz = java.util.TimeZone.getDefault()
     val fmtMonth = java.text.SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
