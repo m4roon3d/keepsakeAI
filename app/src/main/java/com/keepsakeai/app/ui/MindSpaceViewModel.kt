@@ -116,6 +116,24 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
     val pilotDraft = MutableStateFlow<String?>(null)
 
+    /** Memories kept within a few hundred metres of where the phone is now. */
+    val nearHere = MutableStateFlow<List<com.keepsakeai.app.places.NearHere.Hit>>(emptyList())
+
+    fun refreshNearHere() {
+        viewModelScope.launch {
+            if (!DeviceContext.hasLocationPermission(app)) { nearHere.value = emptyList(); return@launch }
+            val here = DeviceContext.currentLatLng(app) ?: return@launch
+            val hits = withContext(Dispatchers.IO) {
+                // Older memories only carry GPS inside their saved text: fill the columns in once.
+                dao.getAllMemories().filter { it.lat == null && "Location:" in it.rawContent }.forEach { m ->
+                    com.keepsakeai.app.places.NearHere.parseCoords(m.rawContent)?.let { dao.setMemoryCoords(m.id, it.first, it.second) }
+                }
+                com.keepsakeai.app.places.NearHere.nearby(dao.getAllMemories(), here.first, here.second)
+            }
+            nearHere.value = hits
+        }
+    }
+
     fun refreshPlace() {
         viewModelScope.launch { currentPlace.value = DeviceContext.currentPlace(app) }
     }

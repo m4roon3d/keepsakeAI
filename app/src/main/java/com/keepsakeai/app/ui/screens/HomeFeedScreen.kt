@@ -103,6 +103,8 @@ fun HomeFeedScreen(
     val memories by viewModel.filteredMemories.collectAsState()
     val allMemories by viewModel.allMemories.collectAsState()
     val calendarEvents by viewModel.calendarEvents.collectAsState()
+    val near by viewModel.nearHere.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refreshNearHere() }
     androidx.compose.runtime.LaunchedEffect(Unit) { viewModel.refreshCalendar() }
     val collections by viewModel.collections.collectAsState()
     val selectedCol by viewModel.selectedCollection.collectAsState()
@@ -312,6 +314,12 @@ fun HomeFeedScreen(
                     onJournal = { viewModel.overlay.value = "journal" },
                     nextEvent = nextEvent
                 )
+            }
+            if (near.isNotEmpty()) item(key = "near_here", span = StaggeredGridItemSpan.FullLine) {
+                GlassCard(Modifier.fillMaxWidth().animateItem(), onClick = { viewModel.overlay.value = "near" }) {
+                    Text("Near here · ${near.size} saved within ${com.keepsakeai.app.places.NearHere.RADIUS_M.toInt()} m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = c.text)
+                    Text(near.first().memory.title, fontSize = 12.sp, color = c.muted, maxLines = 1)
+                }
             }
             if (calendarSoon.isNotEmpty()) item(key = "calendar", span = StaggeredGridItemSpan.FullLine) {
                 CalendarTodayCard(calendarSoon, Modifier.animateItem())

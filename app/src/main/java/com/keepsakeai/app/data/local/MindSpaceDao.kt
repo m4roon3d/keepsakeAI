@@ -252,4 +252,10 @@ interface MindSpaceDao {
 
     @Query("DELETE FROM place_visits")
     suspend fun deleteAllVisits()
+
+    @Query("UPDATE memories SET lat = :lat, lng = :lng WHERE id = :id")
+    suspend fun setMemoryCoords(id: Long, lat: Double, lng: Double)
+
+    @Query("SELECT * FROM place_visits WHERE arrivedAt <= :t AND lastSeenAt >= :t ORDER BY arrivedAt DESC LIMIT 1")
+    suspend fun visitAt(t: Long): PlaceVisitEntity?
 }

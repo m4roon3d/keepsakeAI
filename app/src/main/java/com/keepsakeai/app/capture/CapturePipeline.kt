@@ -67,6 +67,9 @@ class CapturePipeline(private val app: MindSpaceApp) {
         val now = System.currentTimeMillis()
         val time = at ?: now
 
+        // Where it was kept: the photo's GPS, else the stay the phone was in at that moment.
+        val spot = tag?.takeIf { it.hasLocation }?.let { it.lat!! to it.lng!! }
+            ?: dao.visitAt(time)?.let { it.lat to it.lng }
         val memoryId = dao.insertMemory(
             MemoryEntity(
                 title = analyzed.title,
@@ -79,7 +82,9 @@ class CapturePipeline(private val app: MindSpaceApp) {
                 embeddingCsv = app.vectorSearch.encodeVector(vector),
                 threadKey = analyzed.thread?.let { matchThread(it) } ?: analyzed.collection,
                 photoUrisCsv = photoUri.orEmpty(),
-                createdAt = time
+                createdAt = time,
+                lat = spot?.first,
+                lng = spot?.second
             )
         )
 
