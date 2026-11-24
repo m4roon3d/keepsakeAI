@@ -32,6 +32,14 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+/** 8 → 9: where a memory was kept, for "near here" recall. */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE memories ADD COLUMN lat REAL")
+        db.execSQL("ALTER TABLE memories ADD COLUMN lng REAL")
+    }
+}
+
 class Converters {
     @TypeConverter
     fun fromSource(value: CaptureSource): String = value.name
@@ -52,7 +60,7 @@ class Converters {
         ObservedCreditEntity::class,
         PlaceVisitEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -70,7 +78,7 @@ abstract class MindSpaceDatabase : RoomDatabase() {
                     MindSpaceDatabase::class.java,
                     "keepsake_ai.db"
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -36,7 +36,10 @@ data class MemoryEntity(
     val embeddingCsv: String = "",
     val threadKey: String = "General",
     val photoUrisCsv: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** Where it was kept or taken, when known. Used for "saved near here". */
+    val lat: Double? = null,
+    val lng: Double? = null
 )
 
 @Entity(tableName = "expenses")
