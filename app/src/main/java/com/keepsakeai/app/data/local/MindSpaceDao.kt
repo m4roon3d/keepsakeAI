@@ -223,4 +223,33 @@ interface MindSpaceDao {
 
     @Delete
     suspend fun deletePersonalFact(fact: PersonalFactEntity)
+
+    // Places visited
+    @Insert
+    suspend fun insertVisit(visit: PlaceVisitEntity): Long
+
+    @androidx.room.Update
+    suspend fun updateVisit(visit: PlaceVisitEntity)
+
+    @Query("SELECT * FROM place_visits ORDER BY lastSeenAt DESC LIMIT 1")
+    suspend fun latestVisit(): PlaceVisitEntity?
+
+    @Query("SELECT * FROM place_visits ORDER BY arrivedAt DESC")
+    fun observeVisits(): kotlinx.coroutines.flow.Flow<List<PlaceVisitEntity>>
+
+    @Query("SELECT * FROM place_visits ORDER BY arrivedAt DESC")
+    suspend fun allVisits(): List<PlaceVisitEntity>
+
+    @Query("DELETE FROM place_visits WHERE id = :id")
+    suspend fun deleteVisit(id: Long)
+
+    @Query("DELETE FROM place_visits WHERE lastSeenAt < :before")
+    suspend fun pruneVisits(before: Long)
+
+    /** Short blips (under the minimum stay) are dropped once they are closed. */
+    @Query("DELETE FROM place_visits WHERE id = :id AND lastSeenAt - arrivedAt < :minStay")
+    suspend fun dropIfShort(id: Long, minStay: Long)
+
+    @Query("DELETE FROM place_visits")
+    suspend fun deleteAllVisits()
 }

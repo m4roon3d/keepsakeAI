@@ -52,6 +52,7 @@ class MindSpaceApp : Application() {
         scheduleDailyMindSuggest()
         com.keepsakeai.app.worker.DailyNudgeWorker.scheduleAll(this)
         com.keepsakeai.app.worker.EmailSyncWorker.schedule(this)
+        if (com.keepsakeai.app.places.LocationPrefs(this).enabled) com.keepsakeai.app.worker.VisitWorker.schedule(this)
     }
 
     private fun scheduleDailyMindSuggest() {

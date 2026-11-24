@@ -21,6 +21,17 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+/** 7 → 8: places visited. */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS place_visits (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "lat REAL NOT NULL, lng REAL NOT NULL, arrivedAt INTEGER NOT NULL, lastSeenAt INTEGER NOT NULL, " +
+                "name TEXT, confirmed INTEGER NOT NULL DEFAULT 0)"
+        )
+    }
+}
+
 class Converters {
     @TypeConverter
     fun fromSource(value: CaptureSource): String = value.name
@@ -38,9 +49,10 @@ class Converters {
         DigestSuggestionEntity::class,
         AiCallAuditEntity::class,
         PersonalFactEntity::class,
-        ObservedCreditEntity::class
+        ObservedCreditEntity::class,
+        PlaceVisitEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -58,7 +70,7 @@ abstract class MindSpaceDatabase : RoomDatabase() {
                     MindSpaceDatabase::class.java,
                     "keepsake_ai.db"
                 )
-                    .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
