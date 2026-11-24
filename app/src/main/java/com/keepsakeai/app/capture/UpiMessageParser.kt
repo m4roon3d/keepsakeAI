@@ -77,8 +77,7 @@ object UpiMessageParser {
     fun parse(sender: String, body: String): ParsedUpiTransaction? {
         val lower = body.lowercase(Locale.US)
         if (debitKeywords.none { it in lower }) return null
-        val isMoneyMsg = moneyIndicators.any { it in lower } || sender.lowercase(Locale.US).contains("upi")
-        if (!isMoneyMsg) return null
+        if (!looksLikeMoney(lower, sender)) return null
         if (ignoreKeywords.any { it in lower }) return null
 
         val core = cutTail(body)
@@ -107,6 +106,12 @@ object UpiMessageParser {
         )
     }
 
+    /** ICICI writes "Acc XX029", which none of the longer markers above (acct, account) contain. */
+    private val shortAccount = Regex("""\bacc\b""")
+
+    private fun looksLikeMoney(lower: String, sender: String) =
+        moneyIndicators.any { it in lower } || shortAccount.containsMatchIn(lower) || sender.lowercase(Locale.US).contains("upi")
+
     private val creditKeywords = listOf("credited", "received", "deposited")
     private val notRealCredit = listOf(
         "otp", "one time password", "verification code", "will be credited", "to be credited", "cashback", "offer", "win ",
@@ -123,7 +128,7 @@ object UpiMessageParser {
         if (creditKeywords.none { it in lower }) return null
         if (debitWords.any { it in lower }) return null
         if (notRealCredit.any { it in lower }) return null
-        if (moneyIndicators.none { it in lower } && !sender.lowercase(Locale.US).contains("upi")) return null
+        if (!looksLikeMoney(lower, sender)) return null
         val core = cutTail(body)
         val amount = debitAmount(core) ?: debitAmount(body) ?: return null
         if (amount <= 0.0 || amount > 10_000_000) return null

@@ -58,6 +58,9 @@ interface MindSpaceDao {
     @Query("UPDATE expenses SET type = :type WHERE id = :id")
     suspend fun setExpenseType(id: Long, type: String)
 
+    @Query("SELECT * FROM pending_upi_transactions WHERE type = 'TRANSFER'")
+    suspend fun pendingTransfers(): List<PendingUpiTransactionEntity>
+
     @Query("UPDATE pending_upi_transactions SET type = :type WHERE id = :id")
     suspend fun setPendingType(id: Long, type: String)
 
