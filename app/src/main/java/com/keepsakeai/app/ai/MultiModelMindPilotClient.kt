@@ -179,8 +179,10 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             Saved Context:
             {{CONTEXT}}
             
+            {{PLACERULE}}
+
             Goal: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{PLACERULE}}", PlaceMarkers.PROMPT_RULE).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
         } else {
             """
             You are trove Pilot, the user's personal assistant. Answer concisely.
@@ -205,8 +207,10 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             Saved Context:
             {{CONTEXT}}
             
+            {{PLACERULE}}
+
             Question: {{QUERY}}
-            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
+            """.trimIndent().replace("{{DEVICE}}", deviceContext).replace("{{CONTEXT}}", contextBlock).replace("{{PLACERULE}}", PlaceMarkers.PROMPT_RULE).replace("{{QUERY}}", query).replace("{{MONEY}}", moneyContext.ifBlank { "No payments recorded." }).replace("{{FACTS}}", factsContext.ifBlank { "None yet." }).replace("{{TODOS}}", todosContext.ifBlank { "None." })
         }
 
         providers.map { provider ->

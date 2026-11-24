@@ -13,7 +13,7 @@ data class MapPoint(
     val lng: Double,
     val memoryId: Long? = null
 ) {
-    enum class Kind { MEMORY, STAY }
+    enum class Kind { MEMORY, STAY, TRIP }
 }
 
 object MapPoints {
@@ -25,6 +25,10 @@ object MapPoints {
     fun stays(list: List<PlaceVisitEntity>): List<MapPoint> = list.filter { VisitTracker.isVisit(it) }.map { v ->
         val mins = ((v.lastSeenAt - v.arrivedAt) / 60_000L).toInt()
         MapPoint("v${v.id}", MapPoint.Kind.STAY, v.name ?: "Unnamed place", "stayed ${if (mins >= 60) "${mins / 60}h ${mins % 60}m" else "${mins}m"}", v.lat, v.lng)
+    }
+
+    fun trip(places: List<Triple<String, Double, Double>>): List<MapPoint> = places.mapIndexed { i, (name, lat, lng) ->
+        MapPoint("t$i", MapPoint.Kind.TRIP, name, "from Pilot", lat, lng)
     }
 
     /** south, west, north, east */

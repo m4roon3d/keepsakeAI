@@ -116,6 +116,24 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
     val pilotDraft = MutableStateFlow<String?>(null)
 
+    /** Places from a Pilot answer, shown on the map as the trip. */
+    val tripPins = MutableStateFlow<List<com.keepsakeai.app.places.MapPoint>>(emptyList())
+    val tripLoading = MutableStateFlow(false)
+
+    fun showTripOnMap(places: List<com.keepsakeai.app.ai.PlaceMarkers.Place>) {
+        viewModelScope.launch {
+            tripLoading.value = true
+            val found = withContext(Dispatchers.IO) {
+                places.mapNotNull { p ->
+                    DeviceContext.coordsFor(app, p.query)?.let { Triple(p.name, it.first, it.second) }
+                }
+            }
+            tripPins.value = com.keepsakeai.app.places.MapPoints.trip(found)
+            tripLoading.value = false
+            overlay.value = "map"
+        }
+    }
+
     /** Memories kept within a few hundred metres of where the phone is now. */
     val nearHere = MutableStateFlow<List<com.keepsakeai.app.places.NearHere.Hit>>(emptyList())
 
