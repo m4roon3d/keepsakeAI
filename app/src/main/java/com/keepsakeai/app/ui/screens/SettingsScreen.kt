@@ -301,6 +301,35 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
                     viewModel.overlay.value = "review"
                 }
                 HorizontalDivider(color = c.divider)
+                val places = remember { com.keepsakeai.app.places.LocationPrefs(context) }
+                var placesOn by remember { mutableStateOf(places.enabled) }
+                var bgOk by remember { mutableStateOf(hasBackgroundLocation(context)) }
+                val placesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+                    hasLocation = r.values.any { g -> g }
+                    if (hasLocation) {
+                        places.enabled = true; placesOn = true
+                        com.keepsakeai.app.worker.VisitWorker.schedule(context)
+                        bgOk = hasBackgroundLocation(context)
+                    }
+                }
+                SlimRow(
+                    Icons.Rounded.Place, Flow.Rose, "Places visited",
+                    if (placesOn && !bgOk) "Needs “Allow all the time”: tap here to set it" else "Stays of 10+ minutes, on your phone only",
+                    if (placesOn) "On" else "Off", placesOn,
+                    secondary = "open" to { viewModel.overlay.value = "places" }
+                ) {
+                    if (placesOn && !bgOk) openAppInfo()
+                    else if (placesOn) {
+                        places.enabled = false; placesOn = false
+                        com.keepsakeai.app.worker.VisitWorker.cancel(context)
+                    } else if (hasLocation) {
+                        places.enabled = true; placesOn = true
+                        com.keepsakeai.app.worker.VisitWorker.schedule(context)
+                        bgOk = hasBackgroundLocation(context)
+                        if (!bgOk) openAppInfo()
+                    } else placesLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+                }
+                HorizontalDivider(color = c.divider)
                 SlimRow(Icons.Rounded.Visibility, Flow.Sky, "AI activity", "${logs.size} calls logged · see exactly what was sent", "Open", null) {
                     viewModel.overlay.value = "ai_log"
                 }
@@ -478,3 +507,8 @@ private fun SlimRow(
         Text(action, style = MaterialTheme.typography.labelMedium, color = if (on == true) Flow.Emerald else Flow.Indigo)
     }
 }
+
+private fun hasBackgroundLocation(context: android.content.Context): Boolean =
+    android.os.Build.VERSION.SDK_INT < 29 ||
+        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) ==
+        android.content.pm.PackageManager.PERMISSION_GRANTED

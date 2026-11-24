@@ -63,6 +63,12 @@ object DeviceContext {
         loc.latitude to loc.longitude
     }
 
+    /** Street or area name for a point, or null when the phone's geocoder has nothing. */
+    suspend fun placeNameAt(context: Context, lat: Double, lng: Double): String? = withContext(Dispatchers.IO) {
+        val loc = Location("visit").apply { latitude = lat; longitude = lng }
+        reverseGeocode(context, loc)
+    }
+
     /** Block of text added to AI prompts. */
     suspend fun promptBlock(context: Context): String {
         val place = currentPlace(context)
