@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Generated from logo SVG (tools/svg2vd.py). trove aurora capsule. -->
+<!-- Generated from logo SVG (tools/svg2vd.py). trove lagoon capsule. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -10,9 +10,9 @@
         android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient android:type="radial" android:centerX="30" android:centerY="22" android:gradientRadius="80">
-                <item android:offset="0.0" android:color="#FF2A2470"/>
-                <item android:offset="0.55" android:color="#FF121735"/>
-                <item android:offset="1.0" android:color="#FF070A18"/>
+                <item android:offset="0.0" android:color="#FF0B3A40"/>
+                <item android:offset="0.55" android:color="#FF061417"/>
+                <item android:offset="1.0" android:color="#FF040E10"/>
             </gradient>
         </aapt:attr>
     </path>
@@ -20,8 +20,8 @@
         android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient android:type="radial" android:centerX="22" android:centerY="20" android:gradientRadius="46">
-                <item android:offset="0.0" android:color="#8CA855F7"/>
-                <item android:offset="1.0" android:color="#00A855F7"/>
+                <item android:offset="0.0" android:color="#8C2DD4BF"/>
+                <item android:offset="1.0" android:color="#002DD4BF"/>
             </gradient>
         </aapt:attr>
     </path>
@@ -29,8 +29,8 @@
         android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient android:type="radial" android:centerX="90" android:centerY="92" android:gradientRadius="50">
-                <item android:offset="0.0" android:color="#7322D3EE"/>
-                <item android:offset="1.0" android:color="#0022D3EE"/>
+                <item android:offset="0.0" android:color="#7338BDF8"/>
+                <item android:offset="1.0" android:color="#0038BDF8"/>
             </gradient>
         </aapt:attr>
     </path>

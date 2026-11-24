@@ -45,26 +45,6 @@ data class Palette(
 )
 
 object Palettes {
-    val Aurora = Palette(
-        "aurora", "Aurora", "Indigo, sky & orchid",
-        primary = Color(0xFF6366F1), primaryDeep = Color(0xFF4F46E5),
-        secondary = Color(0xFF38BDF8), secondaryBright = Color(0xFF22D3EE),
-        tertiary = Color(0xFFC084FC), tertiaryLight = Color(0xFFA78BFA),
-        accent = Color(0xFFF472B6), titleEnd = Color(0xFFD946EF),
-        lightBase = Color(0xFFF6F8FF), lightBaseBottom = Color(0xFFEEF2FB),
-        darkBase = Color(0xFF0B1020), darkBaseBottom = Color(0xFF090D1A),
-        glows = listOf(Color(0xFFA78BFA), Color(0xFF38BDF8), Color(0xFFF472B6)),
-    )
-    val Sunset = Palette(
-        "sunset", "Sunset", "Coral, saffron & magenta",
-        primary = Color(0xFFF43F5E), primaryDeep = Color(0xFFE11D48),
-        secondary = Color(0xFFFB923C), secondaryBright = Color(0xFFFBBF24),
-        tertiary = Color(0xFFD946EF), tertiaryLight = Color(0xFFF0ABFC),
-        accent = Color(0xFFF59E0B), titleEnd = Color(0xFFFB7185),
-        lightBase = Color(0xFFFFF7F3), lightBaseBottom = Color(0xFFFDEEE8),
-        darkBase = Color(0xFF1A0B12), darkBaseBottom = Color(0xFF12070D),
-        glows = listOf(Color(0xFFFB923C), Color(0xFFF43F5E), Color(0xFFD946EF)),
-    )
     val Lagoon = Palette(
         "lagoon", "Lagoon", "Teal, aqua & ocean blue",
         primary = Color(0xFF0D9488), primaryDeep = Color(0xFF0F766E),
@@ -75,28 +55,19 @@ object Palettes {
         darkBase = Color(0xFF061417), darkBaseBottom = Color(0xFF040E10),
         glows = listOf(Color(0xFF2DD4BF), Color(0xFF38BDF8), Color(0xFF3B82F6)),
     )
-    val Orchid = Palette(
-        "orchid", "Orchid", "Violet, fuchsia & rose",
-        primary = Color(0xFF8B5CF6), primaryDeep = Color(0xFF7C3AED),
-        secondary = Color(0xFFEC4899), secondaryBright = Color(0xFFF9A8D4),
-        tertiary = Color(0xFFD946EF), tertiaryLight = Color(0xFFC4B5FD),
-        accent = Color(0xFFF472B6), titleEnd = Color(0xFF6366F1),
-        lightBase = Color(0xFFFAF5FF), lightBaseBottom = Color(0xFFF3EAFD),
-        darkBase = Color(0xFF120A1F), darkBaseBottom = Color(0xFF0C0716),
-        glows = listOf(Color(0xFFC084FC), Color(0xFFF472B6), Color(0xFF8B5CF6)),
+    /** Lagoon's calmer sibling: muted teal and slate with a touch of brass. */
+    val Harbour = Palette(
+        "harbour", "Harbour", "Deep teal, slate & brass",
+        primary = Color(0xFF2F6F73), primaryDeep = Color(0xFF245A5E),
+        secondary = Color(0xFF5B9AA0), secondaryBright = Color(0xFF9CC5C8),
+        tertiary = Color(0xFF5F7A99), tertiaryLight = Color(0xFFA9B9CC),
+        accent = Color(0xFFB8A27A), titleEnd = Color(0xFF7FB0B3),
+        lightBase = Color(0xFFF4F7F7), lightBaseBottom = Color(0xFFE9EFEF),
+        darkBase = Color(0xFF0A1315), darkBaseBottom = Color(0xFF070E10),
+        glows = listOf(Color(0xFF3F7F83), Color(0xFF5F7A99), Color(0xFFB8A27A)),
     )
-    val Noir = Palette(
-        "noir", "Noir", "Graphite & gold",
-        primary = Color(0xFFCA8A04), primaryDeep = Color(0xFFA16207),
-        secondary = Color(0xFFF59E0B), secondaryBright = Color(0xFFFCD34D),
-        tertiary = Color(0xFF78716C), tertiaryLight = Color(0xFFD6D3D1),
-        accent = Color(0xFFF97316), titleEnd = Color(0xFFFDE68A),
-        lightBase = Color(0xFFF8F7F4), lightBaseBottom = Color(0xFFEFEDE7),
-        darkBase = Color(0xFF0E0E10), darkBaseBottom = Color(0xFF08080A),
-        glows = listOf(Color(0xFFFBBF24), Color(0xFF78716C), Color(0xFFF59E0B)),
-    )
-    val all = listOf(Aurora, Sunset, Lagoon, Orchid, Noir)
-    fun byId(id: String?) = all.firstOrNull { it.id == id } ?: Aurora
+    val all = listOf(Lagoon, Harbour)
+    fun byId(id: String?) = all.firstOrNull { it.id == id } ?: Lagoon
 }
 
 enum class ThemeMode(val label: String) { SYSTEM("Auto"), LIGHT("Light"), DARK("Dark") }
@@ -104,7 +75,7 @@ enum class ThemeMode(val label: String) { SYSTEM("Auto"), LIGHT("Light"), DARK("
 /** App-wide, persisted theme choice. Reading it inside composition recomposes on change. */
 object ThemeStore {
     private const val PREFS = "theme_prefs"
-    var palette by mutableStateOf(Palettes.Aurora)
+    var palette by mutableStateOf(Palettes.Lagoon)
         private set
     var mode by mutableStateOf(ThemeMode.SYSTEM)
         private set
@@ -206,7 +177,7 @@ private fun flowColors(p: Palette, dark: Boolean) = if (dark) FlowColors(
     divider = Color(0x33CBD5E1),
 )
 
-val LocalFlow = staticCompositionLocalOf { flowColors(Palettes.Aurora, false) }
+val LocalFlow = staticCompositionLocalOf { flowColors(Palettes.Lagoon, false) }
 
 private val FlowTypography = Typography(
     displaySmall = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp),
