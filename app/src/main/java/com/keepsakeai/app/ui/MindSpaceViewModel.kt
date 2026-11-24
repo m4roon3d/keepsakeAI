@@ -421,7 +421,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
                 deviceContext = DeviceContext.promptBlock(app) + "\n" +
-                    withContext(Dispatchers.IO) { com.keepsakeai.app.calendar.CalendarReader.promptBlock(app) },
+                    withContext(Dispatchers.IO) { com.keepsakeai.app.calendar.CalendarReader.promptBlock(app) } + "\n" +
+                    com.keepsakeai.app.places.PlacesPrompt.block(dao.allVisits(), com.keepsakeai.app.places.LocationPrefs(app).enabled),
                 todosContext = todoStore.all().filter { !it.done }.take(30).joinToString("\n") { t ->
                     "- ${t.text}" + (t.due?.let { d -> " (due " + java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.ENGLISH).format(java.util.Date(d)) + ")" } ?: "")
                 },
