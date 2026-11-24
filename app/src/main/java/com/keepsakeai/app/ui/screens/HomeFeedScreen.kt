@@ -353,9 +353,6 @@ fun HomeFeedScreen(
             item(span = StaggeredGridItemSpan.FullLine) {
                 ThreadsCarousel(allMemories, onOpen = { hubView = HubView.THREADS })
             }
-            item(span = StaggeredGridItemSpan.FullLine) {
-                MoneyRow(expenses, pendingUpi.size, onOpen = onOpenSpend)
-            }
 
             item(span = StaggeredGridItemSpan.FullLine) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -388,6 +385,13 @@ fun HomeFeedScreen(
                         Text("browse →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
                     }
                 }
+            }
+        }
+
+        // The spend card stays out of the feed; it only appears when you search about money ("what did I spend today").
+        if (searching && com.keepsakeai.app.ui.spend.isMoneyQuestion(searchQuery)) {
+            item(key = "spend_answer", span = StaggeredGridItemSpan.FullLine) {
+                SpendAnswerCard(expenses, pendingUpi.size, onOpen = onOpenSpend)
             }
         }
 

@@ -518,3 +518,37 @@ fun MoneyRow(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> Unit) {
         }
     }
 }
+
+/** Shown only when the search is about money: today, this week and this month at a glance. */
+@Composable
+fun SpendAnswerCard(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> Unit) {
+    val c = LocalFlow.current
+    val cal = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }
+    val todayStart = cal.timeInMillis
+    val weekStart = todayStart - 6L * 24 * 60 * 60 * 1000
+    cal.set(Calendar.DAY_OF_MONTH, 1)
+    val monthStart = cal.timeInMillis
+    val today = expenses.filter { it.timestamp >= todayStart }
+    val todayTotal = today.sumOf { it.amount }
+    val week = expenses.filter { it.timestamp >= weekStart }.sumOf { it.amount }
+    val month = expenses.filter { it.timestamp >= monthStart }.sumOf { it.amount }
+    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                Text("₹", fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (today.isEmpty()) "Nothing spent today" else "${rupees(todayTotal)} today · ${today.size} payment${if (today.size > 1) "s" else ""}",
+                    style = MaterialTheme.typography.titleSmall, color = c.text
+                )
+                Text(
+                    "${rupees(week)} this week · ${rupees(month)} this month" + if (pending > 0) " · $pending to review" else "",
+                    fontSize = 11.sp, color = c.muted
+                )
+            }
+            Text("spend →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
+        }
+    }
+}
