@@ -2,7 +2,9 @@ package com.keepsakeai.app.finance
 
 import com.keepsakeai.app.capture.ParsedCredit
 import com.keepsakeai.app.capture.ParsedUpiTransaction
+import com.keepsakeai.app.data.local.ExpenseEntity
 import com.keepsakeai.app.data.local.MindSpaceDao
+import com.keepsakeai.app.data.local.PendingUpiTransactionEntity
 import com.keepsakeai.app.data.local.ObservedCreditEntity
 import com.keepsakeai.app.data.local.TxnType
 import com.keepsakeai.app.data.preferences.MoneyPrefs
@@ -27,13 +29,34 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         val debit = TransferMatcher.Debit(p.amount, p.utrRef, p.account, p.toAccount, p.merchant, at)
         val own = prefs.ownAccounts
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
-        val transfer = TransferMatcher.isTransfer(debit, credits, own, names) ||
+        val transfer = TransferMatcher.isTransfer(debit, credits, own, names) || p.category == "Card bill" ||
             TransferMatcher.isKnownTransferPayee(p.merchant, prefs.transferPayees)
         return if (transfer) TxnType.TRANSFER else TxnType.EXPENSE
     }
 
+    /**
+     * Files a debit already recognised as a transfer between own accounts straight into Transfers, without sending it
+     * through review. It stays visible in the Transfers card, where "not a transfer" puts it back.
+     */
+    suspend fun saveTransfer(item: PendingUpiTransactionEntity) {
+        val merchant = if (item.merchant.endsWith(" payment") || item.merchant == "Bank transfer") "Own account transfer" else item.merchant
+        dao.insertExpense(
+            ExpenseEntity(
+                merchant = merchant,
+                amount = item.amount,
+                currency = item.currency,
+                category = item.suggestedCategory,
+                notes = item.utrRef?.let { "UTR: $it" } ?: item.bankOrApp,
+                sourceMethod = if (" · " in item.bankOrApp) item.bankOrApp else "UPI · ${item.bankOrApp}",
+                timestamp = item.receivedAt,
+                type = TxnType.TRANSFER
+            )
+        )
+    }
+
     /** For payments with no account details to go on (bank emails, receipts): the user's own name, or a payee they marked. */
-    fun typeForMerchant(merchant: String): String {
+    fun typeForMerchant(merchant: String, category: String = ""): String {
+        if (TransferMatcher.isCardBill("$merchant $category")) return TxnType.TRANSFER
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
         return if (TransferMatcher.isOwnPayee(merchant, names) || TransferMatcher.isKnownTransferPayee(merchant, prefs.transferPayees)) TxnType.TRANSFER else TxnType.EXPENSE
     }
@@ -63,6 +86,8 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         val anyUtr = if (c.utrRef == null) 1 else 0
         dao.markPendingTransferByAmount(c.amount, from, to, anyUtr)
         dao.markExpenseTransferByAmount(c.amount, from, to, anyUtr)
+        // A debit that was waiting for review and has now been paired with this credit goes straight to Transfers.
+        dao.pendingTransfers().forEach { saveTransfer(it); dao.deletePendingUpi(it) }
     }
 
     /** True if an expense for this payment is already saved. Transfers count too, so they don't come back as spending. */

@@ -94,10 +94,10 @@ class CapturePipeline(private val app: MindSpaceApp) {
                         merchant = exp.merchant,
                         amount = exp.amount,
                         currency = exp.currency,
-                        category = exp.category,
+                        category = if (com.keepsakeai.app.finance.TransferMatcher.isCardBill("${exp.merchant} ${exp.category}")) "Card bill" else exp.category,
                         sourceMethod = if (source == CaptureSource.EMAIL) EMAIL_METHOD else source.name,
                         timestamp = time,
-                        type = guard.typeForMerchant(exp.merchant)
+                        type = guard.typeForMerchant(exp.merchant, exp.category)
                     )
                 )
                 expenseAdded = true

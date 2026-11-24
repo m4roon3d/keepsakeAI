@@ -517,10 +517,19 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             // Learn the user's own accounts and record credits first, so a debit can be matched to its credit.
             guard.learnAccounts(scan.accounts)
             scan.credits.forEach { (credit, at) -> guard.noteCredit(credit, at) }
+            var filedAsTransfers = 0
             scan.debits.forEach { sd ->
                 val item = sd.item
                 val seen = upiKey(item) in dismissed || guard.isDuplicate(item.amount, item.utrRef, item.receivedAt)
-                if (!seen) fresh.add(item.copy(type = guard.classify(sd.parsed, item.receivedAt)))
+                if (seen) return@forEach
+                val type = guard.classify(sd.parsed, item.receivedAt)
+                if (type == TxnType.TRANSFER) {
+                    // Money between your own accounts needs no review: file it under Transfers.
+                    guard.saveTransfer(item.copy(type = type))
+                    filedAsTransfers++
+                } else {
+                    fresh.add(item.copy(type = type))
+                }
             }
             // Let AI sort payees the keyword rules couldn't place.
             val unknown = fresh.filter { it.suggestedCategory == "Other" && !it.merchant.endsWith(" payment") }
@@ -532,14 +541,12 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             }
             isScanningSms.value = false
             refreshWidget()
+            val transferNote = if (filedAsTransfers > 0) "$filedAsTransfers moved to transfers" else ""
             statusMessage.value = when {
                 found.isEmpty() -> "No UPI payments found in the last $days days"
-                added == 0 -> "All ${found.size} payments already imported"
-                else -> {
-                    val moved = fresh.count { it.type == TxnType.TRANSFER }
-                    "Found $added new payment${if (added > 1) "s" else ""} to review" +
-                        if (moved > 0) " ($moved looked like transfers between your accounts)" else ""
-                }
+                added == 0 && filedAsTransfers == 0 -> "All ${found.size} payments already imported"
+                added == 0 -> "Nothing new to review. $transferNote"
+                else -> "Found $added new payment${if (added > 1) "s" else ""} to review" + if (transferNote.isNotEmpty()) " · $transferNote" else ""
             }
         }
     }
@@ -615,6 +622,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 val from = item.receivedAt - 5 * 60_000
                 val to = item.receivedAt + 5 * 60_000
                 val utr = item.utrRef
+                // Not saved yet (for example the bank email never arrived)? File it as a transfer now.
+                if (!guard.isDuplicate(item.amount, utr, item.receivedAt)) guard.saveTransfer(item.copy(type = TxnType.TRANSFER))
                 if (utr != null) {
                     dao.markExpenseTransferByNote("UTR: $utr")
                     dao.markPendingTransferByUtr(utr)
@@ -625,7 +634,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             }
             // Own name or payees you marked: bank emails and receipts carry no account details to match on.
             dao.getAllExpenses().filter { it.type == TxnType.EXPENSE && !it.sourceMethod.equals("Manual", true) }
-                .filter { guard.typeForMerchant(it.merchant) == TxnType.TRANSFER }
+                .filter { guard.typeForMerchant(it.merchant, it.category) == TxnType.TRANSFER }
                 .forEach { dao.setExpenseType(it.id, TxnType.TRANSFER) }
             val moved = (dao.countTransfers() - before).coerceAtLeast(0)
             val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses())

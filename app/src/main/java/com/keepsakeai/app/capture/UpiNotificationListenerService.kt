@@ -59,18 +59,18 @@ class UpiNotificationListenerService : NotificationListenerService() {
             guard.learnAccounts(listOf(parsed.account))
             val type = guard.classify(parsed, now)
 
-            dao.insertPendingUpi(
-                PendingUpiTransactionEntity(
-                    merchant = parsed.merchant,
-                    amount = parsed.amount,
-                    currency = parsed.currency,
-                    suggestedCategory = parsed.category,
-                    bankOrApp = parsed.bankOrApp,
-                    utrRef = parsed.utrRef,
-                    rawMessage = parsed.rawSnippet,
-                    type = type
-                )
+            val item = PendingUpiTransactionEntity(
+                merchant = parsed.merchant,
+                amount = parsed.amount,
+                currency = parsed.currency,
+                suggestedCategory = parsed.category,
+                bankOrApp = parsed.bankOrApp,
+                utrRef = parsed.utrRef,
+                rawMessage = parsed.rawSnippet,
+                type = type
             )
+            // Between your own accounts: file under Transfers. Anything else waits for review.
+            if (type == com.keepsakeai.app.data.local.TxnType.TRANSFER) guard.saveTransfer(item) else dao.insertPendingUpi(item)
         }
     }
 }
