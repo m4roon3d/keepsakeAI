@@ -671,7 +671,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             }
             // Own name or payees you marked: bank emails and receipts carry no account details to match on.
             dao.getAllExpenses().filter { it.type == TxnType.EXPENSE && !it.sourceMethod.equals("Manual", true) }
-                .filter { guard.typeForMerchant(it.merchant, it.category) == TxnType.TRANSFER }
+                .filter { guard.typeForMerchant(it.merchant, it.category + " " + it.notes) == TxnType.TRANSFER }
                 .forEach { dao.setExpenseType(it.id, TxnType.TRANSFER) }
             val moved = (dao.countTransfers() - before).coerceAtLeast(0)
             val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses())

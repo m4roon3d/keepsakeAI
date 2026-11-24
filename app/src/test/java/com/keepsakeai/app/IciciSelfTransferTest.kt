@@ -66,4 +66,17 @@ class IciciSelfTransferTest {
         assertTrue(!TransferMatcher.isCardBill("Amazon Pay"))
         assertTrue(!TransferMatcher.isCardBill("Debit card replaced"))
     }
+
+    @Test
+    fun bankCardPaymentReceiptsAreCardBills() {
+        assertTrue(TransferMatcher.isCardBill("Payment of Rs 67999.00 received on your Axis Bank Credit Card XX3092"))
+        assertTrue(TransferMatcher.isCardBill("Thank you. Amount credited towards your HDFC credit card"))
+        assertTrue(TransferMatcher.isCardBill("Your card outstanding is Rs 12,000"))
+    }
+
+    @Test
+    fun ordinaryPaymentsAreNotCardBills() {
+        assertTrue(!TransferMatcher.isCardBill("Payment of Rs. 5,306.46 for JioHome was successfully received via credit card"))
+        assertTrue(!TransferMatcher.isCardBill("Linto Coffe paid via UPI"))
+    }
 }

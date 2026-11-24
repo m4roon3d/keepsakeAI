@@ -173,7 +173,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{TODOS}}
 
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
-            and say when the data doesn't cover what was asked):
+            and say when the data doesn't cover what was asked.
+            Paying off a credit card bill is not spending: never list it as a spend):
             {{MONEY}}
 
             Saved Context:
@@ -201,7 +202,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             {{TODOS}}
 
             The user's spending (computed by the app; trust these totals, quote amounts in ₹,
-            and say when the data doesn't cover what was asked):
+            and say when the data doesn't cover what was asked.
+            Paying off a credit card bill is not spending: never list it as a spend):
             {{MONEY}}
 
             Saved Context:
