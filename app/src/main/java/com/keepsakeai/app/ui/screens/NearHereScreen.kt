@@ -43,7 +43,12 @@ fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier:
                 gradientSuffix = "here",
                 joinSuffix = true,
                 leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.ORBIT) }
-            ) { GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close) }
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GlassButton("map", onClick = { viewModel.overlay.value = "map" })
+                    GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
+                }
+            }
         }
         if (hits.isEmpty()) item { SectionLabel("nothing saved around here yet") }
         items(hits, key = { it.memory.id }) { h ->

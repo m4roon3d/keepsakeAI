@@ -247,7 +247,8 @@ fun HomeFeedScreen(
                     unscanned = (allMemories.count { it.source != com.keepsakeai.app.data.local.CaptureSource.UPI_MESSAGE } - viewModel.backfilledCount()).coerceAtLeast(0),
                     backfilling = backfilling,
                     onBackfill = { viewModel.backfillEntities() },
-                    onOpen = { viewModel.openEntityKey.value = it }
+                    onOpen = { viewModel.openEntityKey.value = it },
+                    onOpenMap = { viewModel.overlay.value = "map" }
                 )
                 HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })

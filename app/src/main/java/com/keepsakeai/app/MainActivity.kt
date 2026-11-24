@@ -206,6 +206,7 @@ class MainActivity : FragmentActivity() {
                                     },
                                     modifier = m
                                 )
+                                OVERLAY_MAP -> com.keepsakeai.app.ui.screens.MapScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_NEAR -> com.keepsakeai.app.ui.screens.NearHereScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_PLACES -> com.keepsakeai.app.ui.screens.PlacesVisitedScreen(onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_JOURNAL -> VoiceJournalScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
@@ -337,6 +338,7 @@ class MainActivity : FragmentActivity() {
         const val OVERLAY_JOURNAL = "journal"
         const val OVERLAY_PLACES = "places"
         const val OVERLAY_NEAR = "near"
+        const val OVERLAY_MAP = "map"
         const val TAB_HOME = 0
         const val TAB_SNAPSAKE = 1
         const val TAB_PILOT = 2
