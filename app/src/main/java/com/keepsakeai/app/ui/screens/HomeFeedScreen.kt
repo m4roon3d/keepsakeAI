@@ -161,7 +161,11 @@ fun HomeFeedScreen(
     val curated = !searching && selectedCol == null
     val visibleMemories = if (curated) {
         val now = System.currentTimeMillis()
-        memories.filter { com.keepsakeai.app.finance.ImportSections.showInFeed(it, now, relevantIds) }
+        // Receipts stay out of the feed (they live in Spend); a bill with a due date or reminder still shows.
+        memories.filter {
+            (it.collectionName != "Receipts" || it.id in relevantIds) &&
+                com.keepsakeai.app.finance.ImportSections.showInFeed(it, now, relevantIds)
+        }
     } else memories
     val tuckedAway = memories.size - visibleMemories.size
     val cards: List<Pair<MemoryEntity, Float?>> =
@@ -379,8 +383,8 @@ fun HomeFeedScreen(
                 GlassCard(Modifier.fillMaxWidth(), onClick = { hubView = HubView.IMPORTS }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("$tuckedAway older imports from email and SMS", style = MaterialTheme.typography.titleSmall, color = c.text)
-                            Text("kept out of your feed. Search finds them, or browse by type.", fontSize = 12.sp, color = c.muted)
+                            Text("$tuckedAway receipts and older imports kept out of your feed", style = MaterialTheme.typography.titleSmall, color = c.text)
+                            Text("Search finds them, or browse by type.", fontSize = 12.sp, color = c.muted)
                         }
                         Text("browse →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
                     }
