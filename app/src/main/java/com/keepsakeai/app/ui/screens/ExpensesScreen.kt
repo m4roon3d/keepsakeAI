@@ -133,7 +133,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val categories = listOf("Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Cash", "Other")
+private val categories = listOf("Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Cash", "Card bill", "Other")
 
 internal fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Food" -> Icons.Rounded.Restaurant to Flow.Amber
@@ -143,6 +143,7 @@ internal fun categoryIcon(cat: String): Pair<ImageVector, Color> = when (cat) {
     "Entertainment" -> Icons.Rounded.Theaters to Flow.Purple
     "Health" -> Icons.Rounded.LocalHospital to Flow.Rose
     "Cash" -> Icons.Rounded.Payments to Flow.Emerald
+    "Card bill" -> Icons.Rounded.Payments to Flow.Indigo
     else -> Icons.Rounded.Receipt to Color(0xFF94A3B8)
 }
 

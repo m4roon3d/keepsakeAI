@@ -29,7 +29,7 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         val debit = TransferMatcher.Debit(p.amount, p.utrRef, p.account, p.toAccount, p.merchant, at)
         val own = prefs.ownAccounts
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
-        val transfer = TransferMatcher.isTransfer(debit, credits, own, names) ||
+        val transfer = TransferMatcher.isTransfer(debit, credits, own, names) || p.category == "Card bill" ||
             TransferMatcher.isKnownTransferPayee(p.merchant, prefs.transferPayees)
         return if (transfer) TxnType.TRANSFER else TxnType.EXPENSE
     }
@@ -55,7 +55,8 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
     }
 
     /** For payments with no account details to go on (bank emails, receipts): the user's own name, or a payee they marked. */
-    fun typeForMerchant(merchant: String): String {
+    fun typeForMerchant(merchant: String, category: String = ""): String {
+        if (TransferMatcher.isCardBill("$merchant $category")) return TxnType.TRANSFER
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
         return if (TransferMatcher.isOwnPayee(merchant, names) || TransferMatcher.isKnownTransferPayee(merchant, prefs.transferPayees)) TxnType.TRANSFER else TxnType.EXPENSE
     }

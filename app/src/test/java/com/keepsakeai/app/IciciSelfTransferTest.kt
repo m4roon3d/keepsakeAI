@@ -45,4 +45,25 @@ class IciciSelfTransferTest {
         val creditSide = TransferMatcher.Credit(c.amount, c.utrRef, c.account, t)
         assertTrue(TransferMatcher.isTransfer(debitSide, listOf(creditSide), emptySet(), emptyList()))
     }
+
+    private val axisCardBill = "Debit INR 45701.06\nAxis Bank A/c XX0284\n19-11-26 17:01:15\nCreditCard Payment XX 3092\nWhatsApp BAL to 917036165000\nNot You? SMS BLOCKALL CustID to 919951860002"
+
+    @Test
+    fun axisCreditCardBillPaymentIsReadAsACardBill() {
+        val p = UpiMessageParser.parse("JK-AXISBK-S", axisCardBill)
+        assertNotNull(p)
+        assertEquals(45701.06, p!!.amount, 0.001)
+        assertEquals("Card bill", p.category)
+        assertEquals("Credit card bill XX3092", p.merchant)
+        assertEquals("0284", p.account)
+        assertEquals("3092", p.toAccount)
+    }
+
+    @Test
+    fun cardBillWordingIsRecognisedInEmailsToo() {
+        assertTrue(TransferMatcher.isCardBill("HDFC Bank Credit Card Payment received"))
+        assertTrue(TransferMatcher.isCardBill("ICICI credit card bill"))
+        assertTrue(!TransferMatcher.isCardBill("Amazon Pay"))
+        assertTrue(!TransferMatcher.isCardBill("Debit card replaced"))
+    }
 }

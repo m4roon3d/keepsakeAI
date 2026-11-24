@@ -76,7 +76,7 @@ object UpiMessageParser {
 
     fun parse(sender: String, body: String): ParsedUpiTransaction? {
         val lower = body.lowercase(Locale.US)
-        if (debitKeywords.none { it in lower }) return null
+        if (debitKeywords.none { it in lower } && !debitInr.containsMatchIn(lower)) return null
         if (!looksLikeMoney(lower, sender)) return null
         if (ignoreKeywords.any { it in lower }) return null
 
@@ -86,23 +86,28 @@ object UpiMessageParser {
             ?: return null
         if (amount <= 0.0 || amount > 10_000_000) return null
 
-        val payee = findPayee(core)
+        val accountsInMsg = accounts(core)
+        val cardBill = com.keepsakeai.app.finance.TransferMatcher.isCardBill(lower)
+        val payee = if (cardBill) null else findPayee(core)
         val utr = utrRegex.find(body)?.groupValues?.getOrNull(1)
-        val channel = detectChannel(lower)
+        val channel = if (cardBill) "Bank transfer" else detectChannel(lower)
         val bank = detectBank(sender, lower)
-        val merchant = payee ?: fallbackMerchant(channel, bank)
+        val merchant = when {
+            cardBill -> "Credit card bill" + (accountsInMsg.getOrNull(1)?.let { " XX$it" } ?: "")
+            else -> payee ?: fallbackMerchant(channel, bank)
+        }
 
         return ParsedUpiTransaction(
             merchant = merchant,
             amount = amount,
             currency = "INR",
-            category = inferCategory(merchant, lower),
+            category = if (cardBill) "Card bill" else inferCategory(merchant, lower),
             bankOrApp = "$channel · $bank",
             utrRef = utr,
             rawSnippet = body.trim().take(200),
             channel = channel,
-            account = accounts(core).firstOrNull(),
-            toAccount = accounts(core).drop(1).firstOrNull { it != accounts(core).firstOrNull() }
+            account = accountsInMsg.firstOrNull(),
+            toAccount = accountsInMsg.drop(1).firstOrNull { it != accountsInMsg.firstOrNull() }
         )
     }
 
@@ -111,6 +116,9 @@ object UpiMessageParser {
 
     private fun looksLikeMoney(lower: String, sender: String) =
         moneyIndicators.any { it in lower } || shortAccount.containsMatchIn(lower) || sender.lowercase(Locale.US).contains("upi")
+
+    /** Axis writes "Debit INR 45701.06 ..." with no "debited". */
+    private val debitInr = Regex("""\bdebit\s+(?:inr|rs\.?|of)\b""")
 
     private val creditKeywords = listOf("credited", "received", "deposited")
     private val notRealCredit = listOf(
