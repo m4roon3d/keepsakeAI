@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Place
+import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -251,7 +252,21 @@ fun LazyStaggeredGridScope.peopleItems(
     backfilling: Boolean,
     onBackfill: () -> Unit,
     onOpen: (String) -> Unit,
+    onOpenMap: () -> Unit = {},
 ) {
+    item(span = StaggeredGridItemSpan.FullLine, key = "mapEntry") {
+        val c = LocalFlow.current
+        GlassCard(Modifier.fillMaxWidth(), onClick = onOpenMap) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Map, null, tint = Flow.Sky, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("see it on the map", style = MaterialTheme.typography.titleSmall, color = c.text)
+                    Text("everything you kept with a location, and where you stayed", fontSize = 11.sp, color = c.muted)
+                }
+            }
+        }
+    }
     if (unscanned > 0 || backfilling) {
         item(span = StaggeredGridItemSpan.FullLine, key = "backfill") {
             val c = LocalFlow.current

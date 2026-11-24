@@ -147,6 +147,9 @@ dependencies {
 
     // UPI QR codes for bill splitting
     implementation("com.google.zxing:core:3.5.3")
+
+    // Free OpenStreetMap map view (no API key)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Email receipts, orders, tickets and bills over IMAP (Gmail, Yahoo, others) with app passwords
