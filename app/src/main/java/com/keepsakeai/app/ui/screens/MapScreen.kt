@@ -1,7 +1,6 @@
 package com.keepsakeai.app.ui.screens
 
 import android.graphics.Color as AColor
-import android.graphics.drawable.GradientDrawable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Text
@@ -19,10 +17,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -39,16 +37,30 @@ import com.keepsakeai.app.ui.components.GlassCard
 import com.keepsakeai.app.ui.components.Pill
 import com.keepsakeai.app.ui.theme.Flow
 import com.keepsakeai.app.ui.theme.LocalFlow
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import java.io.File
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.Point
 
-/** Pins for everything you kept with a location, and everywhere you stayed. Free OpenStreetMap tiles, no key. */
+private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+private const val SOURCE_ID = "trove-pins"
+private const val MEMORY_LAYER = "trove-pins-memory"
+private const val STAY_LAYER = "trove-pins-stay"
+
+/**
+ * Pins for everything you kept with a location, and everywhere you stayed.
+ * Vector map from MapLibre using free OpenFreeMap tiles (OpenStreetMap data): no key, no account.
+ */
 @Composable
 fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
@@ -60,6 +72,7 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
     var showMemories by remember { mutableStateOf(true) }
     var showStays by remember { mutableStateOf(true) }
     var selected by remember { mutableStateOf<MapPoint?>(null) }
+    var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var fitKey by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -67,66 +80,82 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
         stayPins = MapPoints.stays(dao.allVisits())
     }
     val points = (if (showMemories) memoryPins else emptyList()) + (if (showStays) stayPins else emptyList())
-
-    val mapView = remember {
-        Configuration.getInstance().apply {
-            userAgentValue = context.packageName
-            osmdroidBasePath = File(context.cacheDir, "osmdroid")
-            osmdroidTileCache = File(context.cacheDir, "osmdroid/tiles")
-        }
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            controller.setZoom(5.0)
-            controller.setCenter(GeoPoint(20.5937, 78.9629))
-        }
-    }
-    DisposableEffect(Unit) {
-        mapView.onResume()
-        onDispose { mapView.onPause(); mapView.onDetach() }
-    }
+    val latestPoints by rememberUpdatedState(points)
 
     val memoryColor = Flow.Indigo.toArgb()
     val stayColor = Flow.Amber.toArgb()
 
-    Box(modifier) {
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize(),
-            update = { map ->
-                map.overlays.clear()
-                points.forEach { p ->
-                    val marker = Marker(map).apply {
-                        position = GeoPoint(p.lat, p.lng)
-                        title = p.title
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                        icon = GradientDrawable().apply {
-                            shape = GradientDrawable.OVAL
-                            setColor(if (p.kind == MapPoint.Kind.MEMORY) memoryColor else stayColor)
-                            setStroke(4, AColor.WHITE)
-                            setSize(40, 40)
-                        }
-                        setOnMarkerClickListener { _, _ -> selected = p; true }
+    val mapView = remember {
+        MapLibre.getInstance(context)
+        MapView(context).also { mv ->
+            mv.onCreate(null)
+            mv.onStart()
+            mv.onResume()
+            mv.getMapAsync { m ->
+                m.setStyle(Style.Builder().fromUri(STYLE_URL)) { style ->
+                    style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList<Feature>())))
+                    style.addLayer(
+                        CircleLayer(MEMORY_LAYER, SOURCE_ID)
+                            .withFilter(Expression.eq(Expression.get("kind"), Expression.literal("MEMORY")))
+                            .withProperties(
+                                PropertyFactory.circleColor(memoryColor),
+                                PropertyFactory.circleRadius(9f),
+                                PropertyFactory.circleStrokeColor(AColor.WHITE),
+                                PropertyFactory.circleStrokeWidth(2.5f)
+                            )
+                    )
+                    style.addLayer(
+                        CircleLayer(STAY_LAYER, SOURCE_ID)
+                            .withFilter(Expression.eq(Expression.get("kind"), Expression.literal("STAY")))
+                            .withProperties(
+                                PropertyFactory.circleColor(stayColor),
+                                PropertyFactory.circleRadius(9f),
+                                PropertyFactory.circleStrokeColor(AColor.WHITE),
+                                PropertyFactory.circleStrokeWidth(2.5f)
+                            )
+                    )
+                    m.addOnMapClickListener { latLng ->
+                        val hit = m.queryRenderedFeatures(m.projection.toScreenLocation(latLng), MEMORY_LAYER, STAY_LAYER)
+                            .firstOrNull()?.getStringProperty("key")
+                        val found = hit?.let { k -> latestPoints.firstOrNull { it.key == k } }
+                        if (found != null) { selected = found; true } else false
                     }
-                    map.overlays.add(marker)
+                    map = m
                 }
-                val key = "${points.size}"
-                val b = MapPoints.bounds(points)
-                if (b != null && key != fitKey) {
-                    fitKey = key
-                    val fit = {
-                        if (b[0] == b[2] && b[1] == b[3]) {
-                            map.controller.setZoom(16.0); map.controller.setCenter(GeoPoint(b[0], b[1]))
-                        } else {
-                            map.zoomToBoundingBox(BoundingBox(b[2], b[3], b[0], b[1]).increaseByScale(1.4f), false)
-                        }
-                    }
-                    if (map.width > 0) fit() else map.addOnFirstLayoutListener { _, _, _, _, _ -> fit() }
-                }
-                map.invalidate()
             }
-        )
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose { mapView.onPause(); mapView.onStop(); mapView.onDestroy() }
+    }
+
+    // Push the pins into the map whenever they or the filters change, and zoom to fit them.
+    LaunchedEffect(map, points) {
+        val m = map ?: return@LaunchedEffect
+        m.getStyle { style ->
+            val features = points.map { p ->
+                Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {
+                    addStringProperty("key", p.key)
+                    addStringProperty("kind", p.kind.name)
+                }
+            }
+            style.getSourceAs<GeoJsonSource>(SOURCE_ID)?.setGeoJson(FeatureCollection.fromFeatures(features))
+        }
+        val key = "${points.size}"
+        if (points.isNotEmpty() && key != fitKey) {
+            fitKey = key
+            val b = MapPoints.bounds(points)!!
+            if (b[0] == b[2] && b[1] == b[3]) {
+                m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(b[0], b[1]), 15.0))
+            } else {
+                val bounds = LatLngBounds.Builder().include(LatLng(b[0], b[1])).include(LatLng(b[2], b[3])).build()
+                m.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120))
+            }
+        }
+    }
+
+    Box(modifier) {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
