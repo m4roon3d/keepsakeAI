@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ private const val STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 private const val SOURCE_ID = "trove-pins"
 private const val MEMORY_LAYER = "trove-pins-memory"
 private const val STAY_LAYER = "trove-pins-stay"
+private const val TRIP_LAYER = "trove-pins-trip"
 
 /**
  * Pins for everything you kept with a location, and everywhere you stayed.
@@ -71,6 +73,7 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
     var stayPins by remember { mutableStateOf<List<MapPoint>>(emptyList()) }
     var showMemories by remember { mutableStateOf(true) }
     var showStays by remember { mutableStateOf(true) }
+    val tripPins by viewModel.tripPins.collectAsState()
     var selected by remember { mutableStateOf<MapPoint?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var fitKey by remember { mutableStateOf("") }
@@ -79,11 +82,12 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
         memoryPins = MapPoints.memories(dao.getAllMemories())
         stayPins = MapPoints.stays(dao.allVisits())
     }
-    val points = (if (showMemories) memoryPins else emptyList()) + (if (showStays) stayPins else emptyList())
+    val points = tripPins + (if (showMemories) memoryPins else emptyList()) + (if (showStays) stayPins else emptyList())
     val latestPoints by rememberUpdatedState(points)
 
     val memoryColor = Flow.Indigo.toArgb()
     val stayColor = Flow.Amber.toArgb()
+    val tripColor = Flow.Rose.toArgb()
 
     val mapView = remember {
         MapLibre.getInstance(context)
@@ -114,8 +118,18 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
                                 PropertyFactory.circleStrokeWidth(2.5f)
                             )
                     )
+                    style.addLayer(
+                        CircleLayer(TRIP_LAYER, SOURCE_ID)
+                            .withFilter(Expression.eq(Expression.get("kind"), Expression.literal("TRIP")))
+                            .withProperties(
+                                PropertyFactory.circleColor(tripColor),
+                                PropertyFactory.circleRadius(11f),
+                                PropertyFactory.circleStrokeColor(AColor.WHITE),
+                                PropertyFactory.circleStrokeWidth(3f)
+                            )
+                    )
                     m.addOnMapClickListener { latLng ->
-                        val hit = m.queryRenderedFeatures(m.projection.toScreenLocation(latLng), MEMORY_LAYER, STAY_LAYER)
+                        val hit = m.queryRenderedFeatures(m.projection.toScreenLocation(latLng), MEMORY_LAYER, STAY_LAYER, TRIP_LAYER)
                             .firstOrNull()?.getStringProperty("key")
                         val found = hit?.let { k -> latestPoints.firstOrNull { it.key == k } }
                         if (found != null) { selected = found; true } else false
@@ -159,6 +173,7 @@ fun MapScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modi
 
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (tripPins.isNotEmpty()) Pill("Trip (${tripPins.size})", true, { viewModel.tripPins.value = emptyList(); selected = null })
                 Pill("Kept (${memoryPins.size})", showMemories, { showMemories = !showMemories; selected = null })
                 Pill("Stays (${stayPins.size})", showStays, { showStays = !showStays; selected = null })
                 Box(Modifier.weight(1f))

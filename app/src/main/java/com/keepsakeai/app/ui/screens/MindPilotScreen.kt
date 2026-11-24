@@ -251,11 +251,38 @@ fun MindPilotScreen(
                     Text(resp.provider.displayName, fontSize = 11.sp, color = c.muted)
                 }
                 Spacer(Modifier.height(8.dp))
+                val parsed = remember(resp.content) { com.keepsakeai.app.ai.PlaceMarkers.parse(resp.content) }
                 SelectionContainer {
                     Text(
-                        if (resp.isError) AnnotatedString(resp.content) else simpleMarkdown(resp.content, citeColor = Flow.Indigo),
+                        if (resp.isError) AnnotatedString(resp.content) else simpleMarkdown(parsed.text, citeColor = Flow.Indigo),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (resp.isError) Flow.Rose else c.text
+                    )
+                }
+                if (!resp.isError && parsed.places.isNotEmpty()) {
+                    val tripLoading by viewModel.tripLoading.collectAsState()
+                    Spacer(Modifier.height(10.dp))
+                    Text("PLACES", style = MaterialTheme.typography.labelSmall, color = c.muted)
+                    Spacer(Modifier.height(6.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        parsed.places.forEach { place ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flow.Sky.copy(alpha = 0.10f))
+                                    .clickable { com.keepsakeai.app.maps.Directions.open(context, place.query) }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(place.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("directions →", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Sky)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    GlassButton(
+                        if (tripLoading) "placing pins…" else "see all on the map",
+                        onClick = { viewModel.showTripOnMap(parsed.places) },
+                        enabled = !tripLoading,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 if (resp.cited.isNotEmpty()) {

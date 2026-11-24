@@ -69,6 +69,15 @@ object DeviceContext {
         reverseGeocode(context, loc)
     }
 
+    /** Coordinates for "Name, Area, City" from the phone's geocoder, or null when it can't find the place. */
+    @Suppress("DEPRECATION")
+    suspend fun coordsFor(context: Context, query: String): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+        runCatching {
+            if (!Geocoder.isPresent()) return@runCatching null
+            Geocoder(context, Locale.ENGLISH).getFromLocationName(query, 1)?.firstOrNull()?.let { it.latitude to it.longitude }
+        }.getOrNull()
+    }
+
     /** Block of text added to AI prompts. */
     suspend fun promptBlock(context: Context): String {
         val place = currentPlace(context)
