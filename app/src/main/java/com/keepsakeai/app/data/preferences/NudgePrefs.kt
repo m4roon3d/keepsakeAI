@@ -18,5 +18,12 @@ class NudgePrefs(context: Context) {
         get() = prefs.getStringSet("viewed", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
         private set(v) = prefs.edit().putStringSet("viewed", v.map { it.toString() }.toSet()).apply()
 
+    /** Memories already decided on in the daily review (kept, turned into a to-do). */
+    var reviewed: Set<Long>
+        get() = prefs.getStringSet("reviewed", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+        private set(v) = prefs.edit().putStringSet("reviewed", v.map { it.toString() }.toSet()).apply()
+
+    fun markReviewed(id: Long) { if (id !in reviewed) reviewed = (reviewed + id).let { if (it.size > 2000) it.drop(500).toSet() else it } }
+
     fun markViewed(id: Long) { if (id !in viewed) viewed = (viewed + id).let { if (it.size > 2000) it.drop(500).toSet() else it } }
 }

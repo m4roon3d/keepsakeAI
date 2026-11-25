@@ -123,6 +123,8 @@ fun HomeFeedScreen(
     val facts by viewModel.facts.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
     val expiryScanning by viewModel.expiryScanning.collectAsState()
+    val reviewedIds by viewModel.reviewed.collectAsState()
+    val reviewPending = remember(allMemories, reviewedIds) { com.keepsakeai.app.review.DailyReview.pending(allMemories, reviewedIds, System.currentTimeMillis()) }
     val expenses by viewModel.expenses.collectAsState()
     val context = LocalContext.current
     var pendingReminder by remember { mutableStateOf<com.keepsakeai.app.data.preferences.KeepReminder?>(null) }
@@ -229,7 +231,7 @@ fun HomeFeedScreen(
 
         if (!searching) {
             item(span = StaggeredGridItemSpan.FullLine) {
-                HubPills(hubView, openTodos, entities.count { !it.hidden }, facts.size, com.keepsakeai.app.expiry.Expiries.list(reminders, System.currentTimeMillis()).size) { hubView = it }
+                HubPills(hubView, openTodos, entities.count { !it.hidden }, facts.size, com.keepsakeai.app.expiry.Expiries.list(reminders, System.currentTimeMillis()).size, reviewPending.size) { hubView = it }
             }
         }
         if (!searching && hubView != HubView.KEEPSAKES) {
@@ -257,6 +259,13 @@ fun HomeFeedScreen(
                 )
                 HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
+                HubView.REVIEW -> reviewItems(
+                    reviewPending,
+                    onKeep = { viewModel.reviewKeep(it) },
+                    onToDo = { viewModel.reviewToDo(it) },
+                    onDelete = { viewModel.reviewDelete(it) },
+                    onOpen = { viewModel.openMemory(it) }
+                )
                 HubView.EXPIRIES -> expiryItems(
                     reminders, scanning = expiryScanning,
                     onScan = { viewModel.scanForExpiries() },
