@@ -29,6 +29,19 @@ class LocationPrefs(context: Context) {
         }
         set(v) = prefs.edit().putStringSet("excluded", v.map { "${it.first},${it.second}" }.toSet()).apply()
 
+    /** When on, a stay's approximate position is sent to OpenStreetMap's free place lookup to name the venue. */
+    var venueLookup: Boolean
+        get() = prefs.getBoolean("venue_lookup", true)
+        set(v) = prefs.edit().putBoolean("venue_lookup", v).apply()
+
+    /** Stays whose venue has already been looked up, so each is asked once. */
+    fun isVenueChecked(id: Long): Boolean = prefs.getStringSet("venue_checked", emptySet()).orEmpty().contains(id.toString())
+
+    fun markVenueChecked(id: Long) {
+        val now = prefs.getStringSet("venue_checked", emptySet()).orEmpty()
+        prefs.edit().putStringSet("venue_checked", now + id.toString()).apply()
+    }
+
     fun isExcluded(lat: Double, lng: Double): Boolean =
         excluded.any { VisitTracker.distanceMeters(it.first, it.second, lat, lng) <= VisitTracker.EXCLUDE_RADIUS_M }
 }

@@ -23,6 +23,28 @@ class OsmPlacesTest {
         assertTrue(v.first().meters < 5)
     }
 
+    private val mixed = """{"elements":[
+        {"type":"way","center":{"lat":12.90001,"lon":77.58501},"tags":{"name":"Sri Residency Block","building":"apartments"}},
+        {"type":"node","lat":12.90020,"lon":77.58520,"tags":{"name":"Meghana Foods","amenity":"restaurant"}},
+        {"type":"node","lat":12.90030,"lon":77.58530,"tags":{"name":"City Hospital","healthcare":"hospital"}},
+        {"type":"node","lat":12.90040,"lon":77.58540,"tags":{"name":"Old Gate","historic":"monument"}},
+        {"type":"way","center":{"lat":12.90002,"lon":77.58502},"tags":{"name":"Clock Tower","man_made":"tower"}},
+        {"type":"way","center":{"lat":12.90003,"lon":77.58503},"tags":{"name":"House 12","building":"yes"}}
+    ]}"""
+
+    @Test fun businessesAndLandmarksAllCountAndBusinessesRankFirst() {
+        val v = OsmPlaces.parse(mixed, 12.9, 77.585)
+        assertEquals(listOf("Meghana Foods", "City Hospital", "Old Gate", "Sri Residency Block", "Clock Tower", "House 12"), v.map { it.name })
+        assertEquals(listOf("restaurant", "hospital", "monument", "apartments", "tower", "building"), v.map { it.kind })
+        assertEquals(listOf(false, false, false, true, true, true), v.map { it.landmark })
+    }
+
+    @Test fun queryAsksForEveryPlaceKind() {
+        val q = OsmPlaces.query(12.9, 77.585, 75)
+        listOf("amenity", "shop", "historic", "healthcare", "building", "man_made", "railway").forEach { assertTrue(it, q.contains("[\"$it\"]")) }
+        assertTrue(q.contains("around:75,"))
+    }
+
     @Test fun badJsonIsEmpty() = assertTrue(OsmPlaces.parse("oops", 0.0, 0.0).isEmpty())
 
     @Test fun setsPlaceOnLocationLine() {
