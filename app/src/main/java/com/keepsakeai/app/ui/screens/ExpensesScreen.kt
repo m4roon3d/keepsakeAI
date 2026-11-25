@@ -255,6 +255,11 @@ fun ExpensesScreen(
     val merchants = remember(inPeriod, filter) { inPeriod.applyFilter(filter.copy(merchant = null)).topMerchants(5) }
     val groups = remember(shown, groupBy) { shown.grouped(groupBy) }
     val subs = remember(expenses) { expenses.detectRecurring() }
+    val reminders by viewModel.reminders.collectAsState()
+    val todosAll by viewModel.todos.collectAsState()
+    val comingUp = remember(reminders, todosAll, subs) {
+        com.keepsakeai.app.ui.spend.ComingUp.build(reminders, todosAll, subs, System.currentTimeMillis())
+    }
     val budgetRows = remember(expenses, budgets) {
         val cal = java.util.Calendar.getInstance()
         val daysLeft = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH) - cal.get(java.util.Calendar.DAY_OF_MONTH) + 1
@@ -468,6 +473,24 @@ fun ExpensesScreen(
         item { BudgetsCard(budgetRows, onEdit = { editBudgets = true }) }
         if (expenses.isNotEmpty()) {
             item { AskMoneyCard(onAsk = onAskPilot) }
+        }
+        if (comingUp.isNotEmpty()) {
+            item {
+                com.keepsakeai.app.ui.spend.ComingUpCard(
+                    comingUp,
+                    onOpen = { d ->
+                        if (d.memoryId != null) viewModel.openMemory(d.memoryId)
+                        else if (d.kind == com.keepsakeai.app.ui.spend.DueKind.RENEWAL) { filter = SpendFilter(merchant = d.title); period = SpendPeriod.ALL; groupBy = GroupBy.DAY }
+                    },
+                    onDone = { d ->
+                        when (d.kind) {
+                            com.keepsakeai.app.ui.spend.DueKind.BILL -> reminders.firstOrNull { it.id == d.refId }?.let { viewModel.dismissReminder(it) }
+                            com.keepsakeai.app.ui.spend.DueKind.TODO -> viewModel.toggleTodo(d.refId)
+                            else -> {}
+                        }
+                    }
+                )
+            }
         }
         if (subs.isNotEmpty()) {
             item {

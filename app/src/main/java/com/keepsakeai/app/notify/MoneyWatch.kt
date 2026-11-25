@@ -45,14 +45,29 @@ object MoneyWatch {
         }
 
         if (prefs.renewalReminders) {
-            all.detectRecurring(now).filter { it.daysUntilDue(now) in 0..1 }.forEach { s ->
+            fun whenText(days: Int) = when (days) { 0 -> "today"; 1 -> "tomorrow"; else -> "in $days days" }
+            // A heads-up three days out, and again on the day.
+            all.detectRecurring(now).filter { it.daysUntilDue(now) in 0..3 }.forEach { s ->
+                val d = s.daysUntilDue(now)
                 val dueKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(s.nextDue))
-                if (prefs.firstTime("renew:${s.name.lowercase()}:$dueKey")) {
-                    val whenText = if (s.daysUntilDue(now) == 0) "today" else "tomorrow"
-                    Notifier.show(app, Notifier.MONEY, ("renew" + s.name).hashCode(), "${s.name} renews $whenText",
+                val stage = if (d == 0) "day" else "soon"
+                if (prefs.firstTime("renew:${s.name.lowercase()}:$dueKey:$stage")) {
+                    Notifier.show(app, Notifier.MONEY, ("renew" + s.name + stage).hashCode(), "${s.name} renews ${whenText(d)}",
                         "Expected ${r(s.amount)} (${s.cadenceLabel}). Cancel now if you don't need it.", openTab = "spend")
                 }
             }
+            // Bills found in your mail and messages, with a due date.
+            com.keepsakeai.app.data.preferences.ReminderStore(app).all()
+                .filter { it.kind == "due" && it.status != "dismissed" }
+                .forEach { b ->
+                    val d = Math.floorDiv(com.keepsakeai.app.ui.spend.startOfDay(b.atMillis) - com.keepsakeai.app.ui.spend.startOfDay(now), com.keepsakeai.app.ui.spend.DAY).toInt()
+                    if (d !in 0..3) return@forEach
+                    val stage = if (d == 0) "day" else "soon"
+                    if (prefs.firstTime("bill:${b.id}:$stage")) {
+                        Notifier.show(app, Notifier.MONEY, ("bill" + b.id + stage).hashCode(), "${b.title}: due ${whenText(d)}",
+                            "Open trove to see what's coming up.", openTab = "spend")
+                    }
+                }
         }
     }
 }
