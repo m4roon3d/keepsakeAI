@@ -8,10 +8,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.context.DeviceContext
-import com.keepsakeai.app.data.local.MindSpaceDao
-import com.keepsakeai.app.data.local.PlaceVisitEntity
 import com.keepsakeai.app.places.LocationPrefs
-import com.keepsakeai.app.places.OsmPlaces
+import com.keepsakeai.app.places.VisitNamer
 import com.keepsakeai.app.places.VisitTracker
 import java.util.concurrent.TimeUnit
 
@@ -38,7 +36,7 @@ class VisitWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
         when (val step = VisitTracker.step(open, here.first, here.second, now)) {
             is VisitTracker.Step.Extend -> {
-                dao.updateVisit(nameStay(prefs, step.visit))
+                dao.updateVisit(VisitNamer.nameStay(applicationContext, prefs, step.visit))
             }
             is VisitTracker.Step.Start -> {
                 step.closing?.let { dao.dropIfShort(it.id, VisitTracker.MIN_STAY_MS) }
@@ -49,47 +47,11 @@ class VisitWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                 )
             }
         }
-        nameOlderStays(prefs, dao)
+        VisitNamer.nameOlder(applicationContext, prefs, dao)
         return Result.success()
     }
 
-    /**
-     * Gives a stay of 10+ minutes a name: the phone's street/area first, then the venue (restaurant, shop, landmark,
-     * building...) from OpenStreetMap when one is mapped within [VENUE_RADIUS_M]. Names the user typed or confirmed are left alone.
-     */
-    private suspend fun nameStay(prefs: LocationPrefs, v: PlaceVisitEntity): PlaceVisitEntity {
-        if (!VisitTracker.isVisit(v) || v.confirmed) return v
-        var out = v
-        if (out.name == null) {
-            DeviceContext.placeNameAt(applicationContext, out.lat, out.lng)?.let { out = out.copy(name = it) }
-        }
-        if (!prefs.venueLookup || prefs.isVenueChecked(out.id)) return out
-        // null means the lookup failed (offline, busy): try again on the next check instead of giving up on this stay.
-        val venues = OsmPlaces.nearbyOrNull(out.lat, out.lng, VENUE_RADIUS_M, 1) ?: return out
-        prefs.markVenueChecked(out.id)
-        venues.firstOrNull()?.let { out = out.copy(name = it.name) }
-        return out
-    }
-
-    /** Names stays recorded before venue lookup existed, a few per check so the free service is not hammered. */
-    private suspend fun nameOlderStays(prefs: LocationPrefs, dao: MindSpaceDao) {
-        if (!prefs.venueLookup) return
-        runCatching {
-            dao.allVisits()
-                .filter { VisitTracker.isVisit(it) && !it.confirmed && !prefs.isVenueChecked(it.id) }
-                .take(BACKFILL_PER_RUN)
-                .forEach { v ->
-                    val named = nameStay(prefs, v)
-                    if (named != v) dao.updateVisit(named)
-                    kotlinx.coroutines.delay(1_500)
-                }
-        }
-    }
-
     companion object {
-        /** Stays are logged from a phone fix that can be off by a few dozen metres, so look a little wider than a photo. */
-        const val VENUE_RADIUS_M = 75
-        private const val BACKFILL_PER_RUN = 8
         private const val NAME = "places_visited"
 
         fun schedule(context: Context) {

@@ -34,12 +34,12 @@ class LocationPrefs(context: Context) {
         get() = prefs.getBoolean("venue_lookup", true)
         set(v) = prefs.edit().putBoolean("venue_lookup", v).apply()
 
-    /** Stays whose venue has already been looked up, so each is asked once. */
-    fun isVenueChecked(id: Long): Boolean = prefs.getStringSet("venue_checked", emptySet()).orEmpty().contains(id.toString())
+    /** Stays whose venue has already been looked up, so each is asked once. (v2: earlier lookups could count a busy server's empty reply as "nothing here".) */
+    fun isVenueChecked(id: Long): Boolean = prefs.getStringSet("venue_checked_v2", emptySet()).orEmpty().contains(id.toString())
 
     fun markVenueChecked(id: Long) {
-        val now = prefs.getStringSet("venue_checked", emptySet()).orEmpty()
-        prefs.edit().putStringSet("venue_checked", now + id.toString()).apply()
+        val now = prefs.getStringSet("venue_checked_v2", emptySet()).orEmpty()
+        prefs.edit().putStringSet("venue_checked_v2", now + id.toString()).apply()
     }
 
     fun isExcluded(lat: Double, lng: Double): Boolean =

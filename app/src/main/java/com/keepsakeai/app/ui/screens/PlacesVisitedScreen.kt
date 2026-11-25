@@ -37,6 +37,7 @@ import com.keepsakeai.app.maps.Directions
 import com.keepsakeai.app.places.LocationPrefs
 import com.keepsakeai.app.places.OsmPlaces
 import com.keepsakeai.app.places.Venue
+import com.keepsakeai.app.places.VisitNamer
 import com.keepsakeai.app.places.VisitTracker
 import com.keepsakeai.app.ui.components.FlowHeader
 import com.keepsakeai.app.ui.components.GlassButton
@@ -66,6 +67,8 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
     val visits = remember(all) { all.filter { VisitTracker.isVisit(it) } }
     var paused by remember { mutableStateOf(prefs.paused) }
     var venueLookup by remember { mutableStateOf(prefs.venueLookup) }
+    // Name stays that have not had a venue lookup yet as soon as the screen opens, not only on the next background check.
+    LaunchedEffect(Unit) { VisitNamer.nameOlder(context, prefs, dao) }
     var renaming by remember { mutableStateOf<PlaceVisitEntity?>(null) }
     val dayFmt = remember { SimpleDateFormat("EEEE, d MMM", Locale.ENGLISH) }
     val timeFmt = remember { SimpleDateFormat("h:mm a", Locale.ENGLISH) }
@@ -148,8 +151,13 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
     renaming?.let { v ->
         var text by remember(v.id) { mutableStateOf(v.name.orEmpty()) }
         var nearby by remember(v.id) { mutableStateOf<List<Venue>>(emptyList()) }
+        var lookupNote by remember(v.id) { mutableStateOf<String?>(null) }
         LaunchedEffect(v.id) {
-            if (prefs.venueLookup) nearby = OsmPlaces.nearby(v.lat, v.lng, 100, 6)
+            if (!prefs.venueLookup) { lookupNote = "Venue names are switched off."; return@LaunchedEffect }
+            lookupNote = "Looking for places nearby…"
+            val found = OsmPlaces.nearbyOrNull(v.lat, v.lng, 100, 6)
+            if (found == null) lookupNote = "Couldn't reach the place lookup. Check your connection and reopen this stay."
+            else { nearby = found; lookupNote = if (found.isEmpty()) "No named places are mapped within 100 m of this stay." else null }
         }
         AlertDialog(
             onDismissRequest = { renaming = null },
@@ -157,6 +165,7 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     OutlinedTextField(text, { text = it }, label = { Text("Name") }, singleLine = true)
+                    lookupNote?.let { Spacer(Modifier.height(6.dp)); Text(it, fontSize = 12.sp, color = c.muted) }
                     if (nearby.isNotEmpty()) {
                         Spacer(Modifier.height(6.dp))
                         Text("Were you at…", fontSize = 12.sp, color = c.muted)
