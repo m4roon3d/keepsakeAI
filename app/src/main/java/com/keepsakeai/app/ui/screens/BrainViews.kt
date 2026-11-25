@@ -438,14 +438,14 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
 }
 
 @Composable
-fun HubPills(current: HubView, todoCount: Int, peopleCount: Int, factCount: Int, expiryCount: Int = 0, onPick: (HubView) -> Unit) {
+fun HubPills(current: HubView, todoCount: Int, peopleCount: Int, factCount: Int, expiryCount: Int = 0, reviewCount: Int = 0, onPick: (HubView) -> Unit) {
     val c = LocalFlow.current
     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         items(HubView.entries.toList()) { v ->
             val sel = v == current
             val bg by animateColorAsState(if (sel) c.chipSelected else c.glass, label = "pillBg")
             val fg by animateColorAsState(if (sel) c.onChipSelected else c.muted, label = "pillFg")
-            val count = when (v) { HubView.TODOS -> todoCount; HubView.PEOPLE -> peopleCount; HubView.FACTS -> factCount; HubView.EXPIRIES -> expiryCount; else -> 0 }
+            val count = when (v) { HubView.TODOS -> todoCount; HubView.PEOPLE -> peopleCount; HubView.FACTS -> factCount; HubView.EXPIRIES -> expiryCount; HubView.REVIEW -> reviewCount; else -> 0 }
             Row(
                 Modifier.clip(RoundedCornerShape(50)).background(bg).border(1.dp, if (sel) Color.Transparent else c.glassBorder, RoundedCornerShape(50))
                     .clickable { onPick(v) }.padding(horizontal = 14.dp, vertical = 9.dp),

@@ -297,6 +297,19 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     private val nudgePrefs = com.keepsakeai.app.data.preferences.NudgePrefs(app)
     fun markViewed(id: Long) = nudgePrefs.markViewed(id)
 
+    // ── Daily review ─────────────────────────────────────────────
+    val reviewed = MutableStateFlow(nudgePrefs.reviewed)
+
+    fun reviewKeep(m: MemoryEntity) { nudgePrefs.markReviewed(m.id); reviewed.value = nudgePrefs.reviewed }
+
+    fun reviewToDo(m: MemoryEntity) {
+        todoStore.add(m.title, null, m.id)
+        todos.value = todoStore.all()
+        reviewKeep(m)
+    }
+
+    fun reviewDelete(m: MemoryEntity) { deleteMemory(m); reviewKeep(m) }
+
     /** Asks the home hub to switch view (e.g. "TODOS" from the brief). */
     val hubRequest = MutableStateFlow<String?>(null)
 
