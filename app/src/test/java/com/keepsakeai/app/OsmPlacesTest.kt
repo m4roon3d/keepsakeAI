@@ -45,6 +45,14 @@ class OsmPlacesTest {
         assertTrue(q.contains("around:75,"))
     }
 
+    @Test fun onlyCompleteRepliesCountAsAnswers() {
+        assertTrue(OsmPlaces.isCompleteReply("""{"elements":[]}"""))
+        assertTrue(OsmPlaces.isCompleteReply(reply))
+        assertTrue(!OsmPlaces.isCompleteReply("""{"elements":[],"remark":"runtime error: Query timed out"}"""))
+        assertTrue(!OsmPlaces.isCompleteReply("<html>busy</html>"))
+        assertTrue(!OsmPlaces.isCompleteReply(""))
+    }
+
     @Test fun badJsonIsEmpty() = assertTrue(OsmPlaces.parse("oops", 0.0, 0.0).isEmpty())
 
     @Test fun setsPlaceOnLocationLine() {

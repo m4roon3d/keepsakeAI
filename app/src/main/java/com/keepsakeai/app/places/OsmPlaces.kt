@@ -54,16 +54,34 @@ object OsmPlaces {
         }.sortedWith(compareBy<Venue>({ it.landmark }, { it.meters })).distinctBy { it.name.lowercase() }
     }
 
-    /** Named places within [radius] metres (businesses nearest first, then named buildings); null when the lookup itself failed. */
+    /** Public Overpass servers, tried in order: the main one is often busy and answers with an error or an empty "timed out" reply. */
+    private val endpoints = listOf(
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+    )
+
+    /** True when [body] is a complete Overpass answer: JSON with an elements list and no runtime error (timeout, overload). */
+    fun isCompleteReply(body: String): Boolean = runCatching {
+        val o = JSONObject(body)
+        o.has("elements") && !o.optString("remark").contains("runtime error", ignoreCase = true)
+    }.getOrDefault(false)
+
+    /** Named places within [radius] metres (businesses nearest first, then named buildings); null when no server gave a usable answer. */
     suspend fun nearbyOrNull(lat: Double, lng: Double, radius: Int = 60, limit: Int = 5): List<Venue>? = withContext(Dispatchers.IO) {
-        runCatching {
-            val req = Request.Builder().url("https://overpass-api.de/api/interpreter")
-                .header("User-Agent", "Trove/1.0 (personal notes app)")
-                .post(FormBody.Builder().add("data", query(lat, lng, radius)).build()).build()
-            client.newCall(req).execute().use { r ->
-                if (!r.isSuccessful) null else parse(r.body?.string().orEmpty(), lat, lng).take(limit)
-            }
-        }.getOrNull()
+        val q = query(lat, lng, radius)
+        for (url in endpoints) {
+            val body = runCatching {
+                val req = Request.Builder().url(url)
+                    .header("User-Agent", "Trove/1.0 (personal notes app)")
+                    .post(FormBody.Builder().add("data", q).build()).build()
+                client.newCall(req).execute().use { r ->
+                    if (!r.isSuccessful) null else r.body?.string().orEmpty().takeIf { isCompleteReply(it) }
+                }
+            }.getOrNull()
+            if (body != null) return@withContext parse(body, lat, lng).take(limit)
+        }
+        null
     }
 
     /** Same as [nearbyOrNull], but empty when offline or nothing is mapped there. */
