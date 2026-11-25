@@ -69,5 +69,6 @@ object MoneyWatch {
                     }
                 }
         }
+        ExpiryWatch.check(context)
     }
 }

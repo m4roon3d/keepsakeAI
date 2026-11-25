@@ -370,6 +370,29 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         statusMessage.value = "I'll remind you " + java.text.SimpleDateFormat("EEE d MMM, h:mm a", java.util.Locale.ENGLISH).format(java.util.Date(at))
     }
 
+    val expiryScanning = MutableStateFlow(false)
+
+    /** Reads saved text for "warranty valid till 12 Mar 2027" style lines and adds an expiry reminder. No AI, no cost. */
+    fun scanForExpiries() {
+        if (expiryScanning.value) return
+        expiryScanning.value = true
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val existing = reminderStore.all().filter { it.kind == com.keepsakeai.app.expiry.Expiries.KIND }.map { it.memoryId }.toSet()
+            val found = withContext(kotlinx.coroutines.Dispatchers.Default) {
+                dao.getAllMemories().filter { it.id !in existing && it.source != CaptureSource.UPI_MESSAGE }.mapNotNull { m ->
+                    com.keepsakeai.app.expiry.Expiries.find(m.title + "\n" + m.aiSummary + "\n" + m.rawContent, now)?.let { m to it }
+                }
+            }
+            found.forEach { (m, at) ->
+                reminderStore.add(KeepReminder(id = now + m.id, title = m.title.take(50) + " ends", atMillis = at, kind = com.keepsakeai.app.expiry.Expiries.KIND, memoryId = m.id, hasTime = false))
+            }
+            reminders.value = reminderStore.all()
+            expiryScanning.value = false
+            statusMessage.value = if (found.isEmpty()) "No warranty or expiry dates found in older saves" else "Found ${found.size} expiry date" + (if (found.size == 1) "" else "s")
+        }
+    }
+
     fun dismissReminder(r: KeepReminder) {
         com.keepsakeai.app.worker.ReminderWorker.cancel(app, r.id)
         reminderStore.update(r.id) { it.copy(status = "dismissed") }

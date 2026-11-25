@@ -122,6 +122,7 @@ fun HomeFeedScreen(
     }
     val facts by viewModel.facts.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
+    val expiryScanning by viewModel.expiryScanning.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
     val context = LocalContext.current
     var pendingReminder by remember { mutableStateOf<com.keepsakeai.app.data.preferences.KeepReminder?>(null) }
@@ -154,7 +155,7 @@ fun HomeFeedScreen(
     val relevantIds = remember(reminders, todosNow) {
         com.keepsakeai.app.finance.ImportSections.relevantIds(
             todos = todosNow.filter { !it.done }.map { it.memoryId to it.due },
-            reminders = reminders.filter { it.isUpcoming() }.map { it.memoryId to it.atMillis },
+            reminders = reminders.filter { it.isUpcoming() && com.keepsakeai.app.expiry.Expiries.showOnHome(it, System.currentTimeMillis()) }.map { it.memoryId to it.atMillis },
             now = System.currentTimeMillis()
         )
     }
@@ -228,7 +229,7 @@ fun HomeFeedScreen(
 
         if (!searching) {
             item(span = StaggeredGridItemSpan.FullLine) {
-                HubPills(hubView, openTodos, entities.count { !it.hidden }, facts.size) { hubView = it }
+                HubPills(hubView, openTodos, entities.count { !it.hidden }, facts.size, com.keepsakeai.app.expiry.Expiries.list(reminders, System.currentTimeMillis()).size) { hubView = it }
             }
         }
         if (!searching && hubView != HubView.KEEPSAKES) {
@@ -256,6 +257,12 @@ fun HomeFeedScreen(
                 )
                 HubView.TIMELINE -> timelineItems(allMemories, expenses, onOpen = { viewModel.openMemory(it) })
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
+                HubView.EXPIRIES -> expiryItems(
+                    reminders, scanning = expiryScanning,
+                    onScan = { viewModel.scanForExpiries() },
+                    onOpen = { viewModel.openMemory(it) },
+                    onDismiss = { viewModel.dismissReminder(it) }
+                )
                 HubView.IMPORTS -> importItems(allMemories, onOpen = { viewModel.openMemory(it) })
                 HubView.THREADS -> threadItems(allMemories, onAsk = { q -> viewModel.pilotDraft.value = q; onOpenPilot() }, onOpen = { viewModel.openMemory(it) })
                 else -> {}
@@ -301,7 +308,7 @@ fun HomeFeedScreen(
                 }
             }
 
-            val upcoming = reminders.filter { it.isUpcoming() }.sortedBy { it.atMillis }.take(3)
+            val upcoming = reminders.filter { it.isUpcoming() && com.keepsakeai.app.expiry.Expiries.showOnHome(it, System.currentTimeMillis()) }.sortedBy { it.atMillis }.take(3)
             val nowMs = System.currentTimeMillis()
             val dayStart = com.keepsakeai.app.ui.spend.startOfDay(nowMs)
             val nextEvent = calendarEvents.firstOrNull { it.end > nowMs && !(it.allDay && it.begin < dayStart) }
