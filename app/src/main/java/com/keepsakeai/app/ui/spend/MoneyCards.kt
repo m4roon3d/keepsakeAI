@@ -231,6 +231,51 @@ fun SubscriptionsCard(subs: List<Recurring>, remindersOn: Boolean, onToggleRemin
     }
 }
 
+/** Everything you will have to pay soon, soonest first: bills, renewals and money to-dos. */
+@Composable
+fun ComingUpCard(items: List<DueItem>, onOpen: (DueItem) -> Unit, onDone: (DueItem) -> Unit) {
+    val c = LocalFlow.current
+    val now = System.currentTimeMillis()
+    GlassCard(Modifier.fillMaxWidth()) {
+        Text("coming up", style = MaterialTheme.typography.titleMedium, color = c.text)
+        val known = items.mapNotNull { x -> x.amount }.sum()
+        Text(
+            "${items.size} to pay" + if (known > 0) " · about ${rupees(known)}" else "",
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Amber
+        )
+        Spacer(Modifier.height(8.dp))
+        items.take(8).forEach { item ->
+            val d = item.daysUntil(now)
+            val due = when {
+                d < 0 -> "${-d}d overdue"
+                d == 0 -> "due today"
+                d == 1 -> "due tomorrow"
+                else -> "in $d days"
+            }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onOpen(item) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(item.kind.label + (item.amount?.let { a -> " · ${rupees(a)}" } ?: ""), fontSize = 11.sp, color = c.muted)
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(due, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (d <= 1) Flow.Amber else c.muted)
+                    if (item.kind != DueKind.RENEWAL) {
+                        Text(
+                            "paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onDone(item) }.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+        if (items.size > 8) Text("and ${items.size - 8} more", fontSize = 12.sp, color = c.muted)
+    }
+}
+
 /** Long-press menu for a payment. */
 @Composable
 fun PaymentActionsDialog(
