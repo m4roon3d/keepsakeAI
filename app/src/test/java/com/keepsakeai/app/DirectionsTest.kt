@@ -22,4 +22,9 @@ class DirectionsTest {
     fun surroundingSpacesAreTrimmedAndSpecialCharactersEscaped() {
         assertEquals("https://www.google.com/maps/dir/?api=1&destination=Brahmin%27s%20%26%20Co", Directions.url("  Brahmin's & Co "))
     }
+
+    @Test
+    fun placeLinkShowsAPinNotARoute() {
+        assertEquals("https://www.google.com/maps/search/?api=1&query=12.9716,77.5946", Directions.placeUrl(12.9716, 77.5946))
+    }
 }

@@ -107,17 +107,3 @@ data class PersonalFactEntity(
     val sourceMemoryId: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
-
-/** A stay somewhere: the phone stayed within about 100 m. Lives only on the phone. */
-@Entity(tableName = "place_visits")
-data class PlaceVisitEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val lat: Double,
-    val lng: Double,
-    val arrivedAt: Long,
-    val lastSeenAt: Long,
-    /** Street or area from the phone's geocoder, or the name the user typed. */
-    val name: String? = null,
-    /** True once the user typed or confirmed the name. */
-    val confirmed: Boolean = false
-)

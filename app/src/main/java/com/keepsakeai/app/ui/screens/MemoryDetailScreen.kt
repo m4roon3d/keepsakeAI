@@ -95,10 +95,8 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
 
     var placeDialog by remember(id) { mutableStateOf(false) }
     var placeName by remember(id) { mutableStateOf("") }
-    var venues by remember(id) { mutableStateOf<List<com.keepsakeai.app.places.Venue>?>(null) }
 
     val m = memory
-    LaunchedEffect(placeDialog) { if (placeDialog && m != null) { venues = null; venues = viewModel.venuesFor(m) } }
     LaunchedEffect(m?.id, m?.title) { if (m != null) related = viewModel.relatedTo(m) }
     LaunchedEffect(id) { viewModel.markViewed(id) }
     if (m == null) return
@@ -109,22 +107,6 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     GlassField(placeName, { placeName = it }, "Place name, e.g. Inya, JP Nagar", Modifier.fillMaxWidth())
-                    when (val v = venues) {
-                        null -> Text("looking for places nearby…", fontSize = 12.sp, color = c.muted)
-                        else -> if (v.isEmpty()) Text("No named places found at this spot. Type it in above.", fontSize = 12.sp, color = c.muted)
-                        else {
-                            Text("Nearby", fontSize = 12.sp, color = c.muted)
-                            v.forEach { p ->
-                                Text(
-                                    "${p.name} · ${p.meters} m" + if (p.kind.isNotBlank()) " · ${p.kind}" else "",
-                                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
-                                    modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
-                                        .clickable { placeName = p.name }
-                                        .padding(horizontal = 12.dp, vertical = 7.dp)
-                                )
-                            }
-                        }
-                    }
                 }
             },
             confirmButton = {

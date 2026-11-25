@@ -260,7 +260,6 @@ fun MindPilotScreen(
                     )
                 }
                 if (!resp.isError && parsed.places.isNotEmpty()) {
-                    val tripLoading by viewModel.tripLoading.collectAsState()
                     Spacer(Modifier.height(10.dp))
                     Text("PLACES", style = MaterialTheme.typography.labelSmall, color = c.muted)
                     Spacer(Modifier.height(6.dp))
@@ -277,13 +276,6 @@ fun MindPilotScreen(
                             }
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    GlassButton(
-                        if (tripLoading) "placing pins…" else "see all on the map",
-                        onClick = { viewModel.showTripOnMap(parsed.places) },
-                        enabled = !tripLoading,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
                 if (resp.cited.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))

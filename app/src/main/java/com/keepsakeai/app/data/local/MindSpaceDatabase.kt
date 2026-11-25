@@ -40,6 +40,13 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+/** 9 → 10: places visited was removed, so its table (and the stays in it) is dropped. */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS place_visits")
+    }
+}
+
 class Converters {
     @TypeConverter
     fun fromSource(value: CaptureSource): String = value.name
@@ -57,10 +64,9 @@ class Converters {
         DigestSuggestionEntity::class,
         AiCallAuditEntity::class,
         PersonalFactEntity::class,
-        ObservedCreditEntity::class,
-        PlaceVisitEntity::class
+        ObservedCreditEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -78,7 +84,7 @@ abstract class MindSpaceDatabase : RoomDatabase() {
                     MindSpaceDatabase::class.java,
                     "keepsake_ai.db"
                 )
-                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

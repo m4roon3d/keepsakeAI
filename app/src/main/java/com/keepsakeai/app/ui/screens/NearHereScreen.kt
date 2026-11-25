@@ -3,6 +3,8 @@ package com.keepsakeai.app.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,9 +17,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.keepsakeai.app.maps.Directions
 import com.keepsakeai.app.places.NearHere
 import com.keepsakeai.app.ui.MindSpaceViewModel
 import com.keepsakeai.app.ui.components.FlowHeader
@@ -32,6 +36,7 @@ import com.keepsakeai.app.ui.theme.LocalFlow
 @Composable
 fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
+    val context = LocalContext.current
     val hits by viewModel.nearHere.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshNearHere() }
 
@@ -44,10 +49,7 @@ fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier:
                 joinSuffix = true,
                 leading = { LogoMark(size = 46.dp, glyph = MarkGlyph.ORBIT) }
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GlassButton("map", onClick = { viewModel.overlay.value = "map" })
-                    GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
-                }
+                GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
             }
         }
         if (hits.isEmpty()) item { SectionLabel("nothing saved around here yet") }
@@ -58,6 +60,12 @@ fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier:
                     Text("${h.meters} m", fontSize = 12.sp, color = c.muted)
                 }
                 Text(h.memory.aiSummary.replace("\n", " ").take(120), fontSize = 12.sp, color = c.muted, maxLines = 2)
+                val lat = h.memory.lat
+                val lng = h.memory.lng
+                if (lat != null && lng != null) {
+                    Spacer(Modifier.height(6.dp))
+                    GlassButton("open in Google Maps", onClick = { Directions.openPlace(context, lat, lng) })
+                }
             }
         }
     }
