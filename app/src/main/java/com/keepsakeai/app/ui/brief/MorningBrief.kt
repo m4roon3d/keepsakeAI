@@ -78,8 +78,9 @@ data class Brief(
     val money: List<BriefLine>,
     val revisit: List<BriefLine>,
     val onThisDay: List<BriefLine>,
+    val people: List<BriefLine> = emptyList(),
 ) {
-    val isEmpty get() = today.isEmpty() && money.isEmpty() && revisit.isEmpty() && onThisDay.isEmpty()
+    val isEmpty get() = today.isEmpty() && money.isEmpty() && revisit.isEmpty() && onThisDay.isEmpty() && people.isEmpty()
 
     /** One-line summary for the notification. */
     fun summary(): String = (today.take(2) + money.take(1)).joinToString(" · ") { it.text }.ifBlank {
@@ -100,6 +101,7 @@ fun buildBrief(
     viewed: Set<Long>,
     now: Long = System.currentTimeMillis(),
     events: List<com.keepsakeai.app.calendar.CalEvent> = emptyList(),
+    entities: List<com.keepsakeai.app.data.preferences.Entity> = emptyList(),
 ): Brief {
     val today = startOfDay(now)
     val tomorrow = today + DAY
@@ -162,7 +164,18 @@ fun buildBrief(
         e.memories.take(1).map { BriefLine(it.title, e.label, memoryId = it.id) }
     }
 
-    return Brief(todayLines, moneyLines, revisit, echoes)
+    // Birthdays today or tomorrow go in today's list (and the notification); the rest of the week and a catch-up go under people.
+    val peopleLines = mutableListOf<BriefLine>()
+    com.keepsakeai.app.people.PeopleNudges.birthdays(entities, now).forEach { b ->
+        val whenText = when (b.daysAway) { 0 -> "today"; 1 -> "tomorrow"; else -> "in ${b.daysAway} days" }
+        val line = BriefLine("${b.entity.name}'s birthday", whenText, memoryId = b.memoryId.takeIf { it > 0 }, urgent = b.daysAway == 0)
+        if (b.daysAway <= 1) todayLines += line else peopleLines += line
+    }
+    com.keepsakeai.app.people.PeopleNudges.catchUpToday(entities, now)?.let { c ->
+        peopleLines += BriefLine("Catch up with ${c.entity.name}", "last in your notes ${c.daysQuiet} days ago", memoryId = c.memoryId.takeIf { it > 0 })
+    }
+
+    return Brief(todayLines, moneyLines, revisit, echoes, peopleLines)
 }
 
 @Composable
@@ -175,13 +188,14 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
     val expenses by viewModel.expenses.collectAsState()
     val pending by viewModel.pendingUpi.collectAsState()
     val events by viewModel.calendarEvents.collectAsState()
+    val entities by viewModel.entities.collectAsState()
     var calendarOn by remember { mutableStateOf(com.keepsakeai.app.calendar.CalendarReader.hasPermission(context)) }
     val calendarPermission = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
         calendarOn = granted
         if (granted) viewModel.refreshCalendar()
     }
-    val brief = remember(reminders, todos, memories, expenses, pending, events) {
-        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed, events = events)
+    val brief = remember(reminders, todos, memories, expenses, pending, events, entities) {
+        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed, events = events, entities = entities)
     }
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greet = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; else -> "good evening" }
@@ -224,6 +238,7 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
         section("today", brief.today, Flow.Indigo, ::tap)
         section("money", brief.money, Flow.Emerald, ::tap)
         section("worth revisiting", brief.revisit, Flow.Amber, ::tap)
+        section("people", brief.people, Flow.Rose, ::tap)
         section("on this day", brief.onThisDay, Flow.Purple, ::tap)
         item {
             GradientButton("plan my day with pilot", brush = Flow.auroraSweep, icon = Icons.Rounded.AutoAwesome, modifier = Modifier.fillMaxWidth(), onClick = {
