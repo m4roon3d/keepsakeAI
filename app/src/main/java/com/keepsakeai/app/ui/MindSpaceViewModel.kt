@@ -106,6 +106,30 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Named places near a memory's photo location, nearest first (OpenStreetMap). */
+    suspend fun venuesFor(m: MemoryEntity): List<com.keepsakeai.app.places.Venue> {
+        val at = (m.lat to m.lng).let { (a, b) -> if (a != null && b != null) a to b else null }
+            ?: com.keepsakeai.app.places.NearHere.parseCoords(m.rawContent) ?: return emptyList()
+        return com.keepsakeai.app.places.OsmPlaces.nearby(at.first, at.second, radius = 80)
+    }
+
+    /** Names the place a memory was kept at: rewrites its Location line, files it under Places and pins it on the map. */
+    fun setPlace(m: MemoryEntity, name: String) {
+        val clean = name.trim()
+        if (clean.length < 2) return
+        viewModelScope.launch {
+            val coords = (m.lat to m.lng).let { (a, b) -> if (a != null && b != null) a to b else null }
+                ?: com.keepsakeai.app.places.NearHere.parseCoords(m.rawContent)
+                ?: DeviceContext.coordsFor(app, clean)
+            val raw = com.keepsakeai.app.places.PlaceTag.withPlace(m.rawContent, clean, coords?.first, coords?.second)
+            val vec = app.vectorSearch.embedText("${m.title} ${m.aiSummary} $clean ${m.tagsCsv}")
+            dao.updateMemory(m.copy(rawContent = raw, lat = coords?.first, lng = coords?.second, embeddingCsv = app.vectorSearch.encodeVector(vec)))
+            entityStore.addMention("place", clean, m.title.take(80), m.id, m.createdAt)
+            entities.value = entityStore.all()
+            statusMessage.value = "Place set to $clean"
+        }
+    }
+
     /** Full-screen overlay currently shown ("review", "ai_log") or null. */
     val overlay = MutableStateFlow<String?>(null)
 

@@ -135,7 +135,12 @@ class CapturePipeline(private val app: MindSpaceApp) {
             DeviceContext.currentLatLng(app)?.let { (lat, lng) -> tag = (tag ?: GeoTag(null, null, null)).copy(lat = lat, lng = lng) }
         }
         val t = tag ?: return null
-        if (t.hasLocation && t.place == null) return t.copy(place = MediaMeta.address(app, t.lat!!, t.lng!!))
+        if (t.hasLocation && t.place == null) {
+            val street = MediaMeta.address(app, t.lat!!, t.lng!!)
+            // The phone's geocoder only knows streets: ask OpenStreetMap which café or shop this was.
+            val venue = com.keepsakeai.app.places.OsmPlaces.best(t.lat, t.lng)?.name?.replace(Regex("[()\\n]"), " ")?.trim()
+            return t.copy(place = listOfNotNull(venue, street).joinToString(", ").ifBlank { null })
+        }
         return t
     }
 
