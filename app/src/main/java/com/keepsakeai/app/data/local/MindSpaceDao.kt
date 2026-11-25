@@ -38,6 +38,9 @@ interface MindSpaceDao {
     @Query("SELECT * FROM memories ORDER BY createdAt DESC LIMIT :limit")
     suspend fun getRecentMemories(limit: Int = 15): List<MemoryEntity>
 
+    @Query("SELECT * FROM memories WHERE createdAt >= :from AND createdAt < :to ORDER BY createdAt DESC")
+    suspend fun memoriesBetween(from: Long, to: Long): List<MemoryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMemory(memory: MemoryEntity): Long
 
