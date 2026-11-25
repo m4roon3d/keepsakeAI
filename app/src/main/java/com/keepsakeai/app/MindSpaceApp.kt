@@ -52,7 +52,8 @@ class MindSpaceApp : Application() {
         scheduleDailyMindSuggest()
         com.keepsakeai.app.worker.DailyNudgeWorker.scheduleAll(this)
         com.keepsakeai.app.worker.EmailSyncWorker.schedule(this)
-        if (com.keepsakeai.app.places.LocationPrefs(this).enabled) com.keepsakeai.app.worker.VisitWorker.schedule(this)
+        // Places visited was removed: stop the background check an earlier build scheduled.
+        androidx.work.WorkManager.getInstance(this).cancelUniqueWork("places_visited")
     }
 
     private fun scheduleDailyMindSuggest() {

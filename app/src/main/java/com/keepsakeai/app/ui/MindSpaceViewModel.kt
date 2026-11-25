@@ -106,14 +106,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /** Named places near a memory's photo location, nearest first (OpenStreetMap). */
-    suspend fun venuesFor(m: MemoryEntity): List<com.keepsakeai.app.places.Venue> {
-        val at = (m.lat to m.lng).let { (a, b) -> if (a != null && b != null) a to b else null }
-            ?: com.keepsakeai.app.places.NearHere.parseCoords(m.rawContent) ?: return emptyList()
-        return com.keepsakeai.app.places.OsmPlaces.nearby(at.first, at.second, radius = 80)
-    }
-
-    /** Names the place a memory was kept at: rewrites its Location line, files it under Places and pins it on the map. */
+    /** Names the place a memory was kept at: rewrites its Location line, and files it under Places. */
     fun setPlace(m: MemoryEntity, name: String) {
         val clean = name.trim()
         if (clean.length < 2) return
@@ -139,24 +132,6 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
     val pilotDraft = MutableStateFlow<String?>(null)
-
-    /** Places from a Pilot answer, shown on the map as the trip. */
-    val tripPins = MutableStateFlow<List<com.keepsakeai.app.places.MapPoint>>(emptyList())
-    val tripLoading = MutableStateFlow(false)
-
-    fun showTripOnMap(places: List<com.keepsakeai.app.ai.PlaceMarkers.Place>) {
-        viewModelScope.launch {
-            tripLoading.value = true
-            val found = withContext(Dispatchers.IO) {
-                places.mapNotNull { p ->
-                    DeviceContext.coordsFor(app, p.query)?.let { Triple(p.name, it.first, it.second) }
-                }
-            }
-            tripPins.value = com.keepsakeai.app.places.MapPoints.trip(found)
-            tripLoading.value = false
-            overlay.value = "map"
-        }
-    }
 
     /** Memories kept within a few hundred metres of where the phone is now. */
     val nearHere = MutableStateFlow<List<com.keepsakeai.app.places.NearHere.Hit>>(emptyList())
@@ -491,8 +466,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,
                 deviceContext = DeviceContext.promptBlock(app) + "\n" +
-                    withContext(Dispatchers.IO) { com.keepsakeai.app.calendar.CalendarReader.promptBlock(app) } + "\n" +
-                    com.keepsakeai.app.places.PlacesPrompt.block(dao.allVisits(), com.keepsakeai.app.places.LocationPrefs(app).enabled),
+                    withContext(Dispatchers.IO) { com.keepsakeai.app.calendar.CalendarReader.promptBlock(app) },
                 todosContext = todoStore.all().filter { !it.done }.take(30).joinToString("\n") { t ->
                     "- ${t.text}" + (t.due?.let { d -> " (due " + java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.ENGLISH).format(java.util.Date(d)) + ")" } ?: "")
                 },

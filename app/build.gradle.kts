@@ -149,7 +149,6 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
 
     // Vector map view: MapLibre (BSD) drawing free OpenFreeMap tiles, no API key
-    implementation("org.maplibre.gl:android-sdk:11.8.2")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Email receipts, orders, tickets and bills over IMAP (Gmail, Yahoo, others) with app passwords

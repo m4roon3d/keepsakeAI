@@ -1,6 +1,10 @@
 package com.keepsakeai.app.places
 
 import com.keepsakeai.app.data.local.MemoryEntity
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /** "What did I save around here?": memories kept within a few hundred metres of a point. */
 object NearHere {
@@ -20,7 +24,17 @@ object NearHere {
     fun nearby(memories: List<MemoryEntity>, lat: Double, lng: Double, radius: Double = RADIUS_M, limit: Int = 30): List<Hit> =
         memories.mapNotNull { m ->
             val at = (m.lat ?: return@mapNotNull null) to (m.lng ?: return@mapNotNull null)
-            val d = VisitTracker.distanceMeters(lat, lng, at.first, at.second)
+            val d = distanceMeters(lat, lng, at.first, at.second)
             if (d <= radius) Hit(m, d.toInt()) else null
         }.sortedBy { it.meters }.take(limit)
+
+    fun distanceMeters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val r = 6_371_000.0
+        val p1 = Math.toRadians(lat1)
+        val p2 = Math.toRadians(lat2)
+        val dp = p2 - p1
+        val dl = Math.toRadians(lng2 - lng1)
+        val a = sin(dp / 2) * sin(dp / 2) + cos(p1) * cos(p2) * sin(dl / 2) * sin(dl / 2)
+        return 2 * r * atan2(sqrt(a), sqrt(1 - a))
+    }
 }

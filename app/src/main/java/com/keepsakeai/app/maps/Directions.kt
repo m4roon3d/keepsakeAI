@@ -14,6 +14,15 @@ object Directions {
 
     fun url(lat: Double, lng: Double): String = url("$lat,$lng")
 
+    /** Maps URL that shows a spot (a pin at lat,lng), not a route to it. Pure, unit-tested. */
+    fun placeUrl(lat: Double, lng: Double): String = "https://www.google.com/maps/search/?api=1&query=$lat,$lng"
+
+    /** Opens the spot in Google Maps. Returns false when nothing on the phone could handle it. */
+    fun openPlace(context: Context, lat: Double, lng: Double): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(placeUrl(lat, lng))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return runCatching { context.startActivity(intent) }.isSuccess
+    }
+
     /** Opens directions in Maps. Returns false when nothing on the phone could handle it. */
     fun open(context: Context, destination: String): Boolean {
         if (destination.isBlank()) return false

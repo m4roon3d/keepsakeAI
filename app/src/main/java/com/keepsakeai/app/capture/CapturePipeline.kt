@@ -67,9 +67,8 @@ class CapturePipeline(private val app: MindSpaceApp) {
         val now = System.currentTimeMillis()
         val time = at ?: now
 
-        // Where it was kept: the photo's GPS, else the stay the phone was in at that moment.
+        // Where it was kept: the photo's GPS, when it has one.
         val spot = tag?.takeIf { it.hasLocation }?.let { it.lat!! to it.lng!! }
-            ?: dao.visitAt(time)?.let { it.lat to it.lng }
         val memoryId = dao.insertMemory(
             MemoryEntity(
                 title = analyzed.title,
@@ -136,10 +135,7 @@ class CapturePipeline(private val app: MindSpaceApp) {
         }
         val t = tag ?: return null
         if (t.hasLocation && t.place == null) {
-            val street = MediaMeta.address(app, t.lat!!, t.lng!!)
-            // The phone's geocoder only knows streets: ask OpenStreetMap which café or shop this was.
-            val venue = com.keepsakeai.app.places.OsmPlaces.best(t.lat, t.lng)?.name?.replace(Regex("[()\\n]"), " ")?.trim()
-            return t.copy(place = listOfNotNull(venue, street).joinToString(", ").ifBlank { null })
+            return t.copy(place = MediaMeta.address(app, t.lat!!, t.lng!!)?.ifBlank { null })
         }
         return t
     }
