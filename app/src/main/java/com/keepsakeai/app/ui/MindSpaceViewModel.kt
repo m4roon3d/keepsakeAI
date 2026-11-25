@@ -187,8 +187,18 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         viewModelScope.launch {
-            val all = dao.getRecentMemories(200)
-            semanticResults.value = app.vectorSearch.rankMemories(query, all, topK = 10)
+            // "yesterday", "today", "this week" narrow the search to that stretch of time, imports included.
+            val (window, rest) = com.keepsakeai.app.feed.DateWindows.detect(query)
+            if (window == null) {
+                val all = dao.getRecentMemories(200)
+                semanticResults.value = app.vectorSearch.rankMemories(query, all, topK = 10)
+            } else {
+                val r = com.keepsakeai.app.feed.DateWindows.range(window, System.currentTimeMillis())
+                val pool = dao.memoriesBetween(r.first, r.last + 1)
+                // Date words alone list everything from then, newest first, with no match score.
+                semanticResults.value = if (rest.isBlank()) pool.map { ScoredMemory(it, -1f) }
+                else app.vectorSearch.rankMemories(rest, pool, topK = 30)
+            }
         }
     }
 

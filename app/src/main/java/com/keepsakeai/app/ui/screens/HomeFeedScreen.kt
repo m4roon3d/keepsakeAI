@@ -158,8 +158,13 @@ fun HomeFeedScreen(
             now = System.currentTimeMillis()
         )
     }
-    val curated = !searching && selectedCol == null
-    val visibleMemories = if (curated) {
+    var dateChip by remember { mutableStateOf<com.keepsakeai.app.feed.DateWindow?>(null) }
+    val curated = !searching && selectedCol == null && dateChip == null
+    val visibleMemories = if (dateChip != null && !searching) {
+        // A date chip lists everything from that stretch of time, imports included.
+        val r = com.keepsakeai.app.feed.DateWindows.range(dateChip!!, System.currentTimeMillis())
+        memories.filter { it.createdAt in r }
+    } else if (curated) {
         val now = System.currentTimeMillis()
         // Receipts stay out of the feed (they live in Spend); a bill with a due date or reminder still shows.
         memories.filter {
@@ -169,7 +174,7 @@ fun HomeFeedScreen(
     } else memories
     val tuckedAway = memories.size - visibleMemories.size
     val cards: List<Pair<MemoryEntity, Float?>> =
-        if (searching) semantic.map { it.memory to it.similarity } else visibleMemories.map { it to null }
+        if (searching) semantic.map { it.memory to it.similarity.takeIf { s -> s >= 0f } } else visibleMemories.map { it to null }
 
     val refreshing by viewModel.isRefreshing.collectAsState()
     val todos by viewModel.todos.collectAsState()
@@ -364,7 +369,12 @@ fun HomeFeedScreen(
                     SectionLabel("your memories", trailing = "${allMemories.size} kept")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item {
-                            Pill("All (${allMemories.size})", selectedCol == null, { viewModel.selectedCollection.value = null })
+                            Pill("All (${allMemories.size})", selectedCol == null && dateChip == null, {
+                                viewModel.selectedCollection.value = null; dateChip = null
+                            })
+                        }
+                        items(com.keepsakeai.app.feed.DateWindow.values().toList()) { w ->
+                            Pill(w.label, dateChip == w, { dateChip = if (dateChip == w) null else w })
                         }
                         items(collections) { col ->
                             val n = allMemories.count { it.collectionName == col }
@@ -385,7 +395,7 @@ fun HomeFeedScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("$tuckedAway receipts and older imports kept out of your feed", style = MaterialTheme.typography.titleSmall, color = c.text)
-                            Text("Search finds them, or browse by type.", fontSize = 12.sp, color = c.muted)
+                            Text("Search, the Today / Yesterday / This week chips, or browse by type.", fontSize = 12.sp, color = c.muted)
                         }
                         Text("browse →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
                     }
