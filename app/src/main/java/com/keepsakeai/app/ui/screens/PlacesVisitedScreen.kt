@@ -1,6 +1,9 @@
 package com.keepsakeai.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +35,8 @@ import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.data.local.PlaceVisitEntity
 import com.keepsakeai.app.maps.Directions
 import com.keepsakeai.app.places.LocationPrefs
+import com.keepsakeai.app.places.OsmPlaces
+import com.keepsakeai.app.places.Venue
 import com.keepsakeai.app.places.VisitTracker
 import com.keepsakeai.app.ui.components.FlowHeader
 import com.keepsakeai.app.ui.components.GlassButton
@@ -60,6 +65,7 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
     val all by dao.observeVisits().collectAsState(initial = emptyList())
     val visits = remember(all) { all.filter { VisitTracker.isVisit(it) } }
     var paused by remember { mutableStateOf(prefs.paused) }
+    var venueLookup by remember { mutableStateOf(prefs.venueLookup) }
     var renaming by remember { mutableStateOf<PlaceVisitEntity?>(null) }
     val dayFmt = remember { SimpleDateFormat("EEEE, d MMM", Locale.ENGLISH) }
     val timeFmt = remember { SimpleDateFormat("h:mm a", Locale.ENGLISH) }
@@ -100,7 +106,7 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Stays on your phone. Only a place name is ever sent to an AI, and only when you ask Pilot about it. Android checks in about every 15 minutes, so very short stops are missed.",
+                    "Stays on your phone. Only a place name is ever sent to an AI, and only when you ask Pilot about it. To name a stay after the restaurant, shop or landmark you were at, its approximate position is sent to OpenStreetMap's free place lookup (not an AI); switch that off below. Android checks in about every 15 minutes, so very short stops are missed.",
                     fontSize = 12.sp, color = c.muted
                 )
                 Spacer(Modifier.height(10.dp))
@@ -110,6 +116,12 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
                     }, modifier = Modifier.weight(1f))
                     GlassButton("delete all", onClick = { scope.launch { dao.deleteAllVisits() } }, tint = Flow.Rose, modifier = Modifier.weight(1f))
                 }
+                Spacer(Modifier.height(8.dp))
+                GlassButton(
+                    if (venueLookup) "venue names: on" else "venue names: off",
+                    onClick = { venueLookup = !venueLookup; prefs.venueLookup = venueLookup },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
         if (visits.isEmpty()) item { SectionLabel("no stays yet") }
@@ -135,12 +147,25 @@ fun PlacesVisitedScreen(onClose: () -> Unit, modifier: Modifier = Modifier) {
 
     renaming?.let { v ->
         var text by remember(v.id) { mutableStateOf(v.name.orEmpty()) }
+        var nearby by remember(v.id) { mutableStateOf<List<Venue>>(emptyList()) }
+        LaunchedEffect(v.id) {
+            if (prefs.venueLookup) nearby = OsmPlaces.nearby(v.lat, v.lng, 100, 6)
+        }
         AlertDialog(
             onDismissRequest = { renaming = null },
             title = { Text("This stay") },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     OutlinedTextField(text, { text = it }, label = { Text("Name") }, singleLine = true)
+                    if (nearby.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("Were you at…", fontSize = 12.sp, color = c.muted)
+                        nearby.forEach { venue ->
+                            TextButton(onClick = { text = venue.name }) {
+                                Text(if (venue.kind.isBlank()) venue.name else "${venue.name} · ${venue.kind}")
+                            }
+                        }
+                    }
                     TextButton(onClick = { Directions.open(context, v.name ?: "${v.lat},${v.lng}") }) { Text("Directions") }
                     TextButton(onClick = {
                         prefs.excluded = prefs.excluded + (v.lat to v.lng)

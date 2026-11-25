@@ -8,8 +8,8 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** A named place near a point, from OpenStreetMap. */
-data class Venue(val name: String, val kind: String, val meters: Int)
+/** A named place near a point, from OpenStreetMap. [landmark] is true for named buildings and structures rather than businesses. */
+data class Venue(val name: String, val kind: String, val meters: Int, val landmark: Boolean = false)
 
 /**
  * Names the business a photo was taken at. The phone's geocoder only knows streets, so this asks
@@ -23,10 +23,15 @@ object OsmPlaces {
     private val skipAmenity = setOf("parking", "bench", "atm", "toilets", "bicycle_parking", "waste_basket", "drinking_water",
         "shelter", "post_box", "recycling", "parking_space", "parking_entrance", "motorcycle_parking", "charging_station")
 
+    /** Businesses and public places: restaurants, shops, hospitals, banks, temples, hotels, parks, monuments, studios... */
+    private val placeKeys = listOf("amenity", "shop", "tourism", "leisure", "office", "historic", "craft", "healthcare")
+    /** Named buildings and structures (apartment blocks, towers, stations, malls without a shop tag). Ranked after businesses. */
+    private val structureKeys = listOf("building", "man_made", "railway", "aeroway", "public_transport")
+
     fun query(lat: Double, lng: Double, radius: Int): String {
         val around = "around:$radius,${"%.6f".format(java.util.Locale.US, lat)},${"%.6f".format(java.util.Locale.US, lng)}"
-        val parts = listOf("amenity", "shop", "tourism", "leisure", "office").joinToString("") { "nwr($around)[\"name\"][\"$it\"];" }
-        return "[out:json][timeout:10];($parts);out center 40;"
+        val parts = (placeKeys + structureKeys).joinToString("") { "nwr($around)[\"name\"][\"$it\"];" }
+        return "[out:json][timeout:10];($parts);out center 80;"
     }
 
     /** Named places from an Overpass reply, nearest first, without duplicates. */
@@ -40,24 +45,30 @@ object OsmPlaces {
             val c = e.optJSONObject("center")
             val la = if (e.has("lat")) e.optDouble("lat") else c?.optDouble("lat") ?: return@mapNotNull null
             val lo = if (e.has("lon")) e.optDouble("lon") else c?.optDouble("lon") ?: return@mapNotNull null
-            val kind = listOf("amenity", "shop", "tourism", "leisure", "office").firstNotNullOfOrNull { k ->
-                tags.optString(k).takeIf { it.isNotBlank() }
-            }.orEmpty().replace('_', ' ')
-            Venue(name, kind, VisitTracker.distanceMeters(lat, lng, la, lo).toInt())
-        }.sortedBy { it.meters }.distinctBy { it.name.lowercase() }
+            val place = placeKeys.firstNotNullOfOrNull { k -> tags.optString(k).takeIf { it.isNotBlank() } }
+            val structure = if (place == null) structureKeys.firstNotNullOfOrNull { k ->
+                tags.optString(k).takeIf { it.isNotBlank() }?.let { v -> if (v == "yes") k else v }
+            } else null
+            val kind = (place ?: structure).orEmpty().replace('_', ' ')
+            Venue(name, kind, VisitTracker.distanceMeters(lat, lng, la, lo).toInt(), landmark = place == null)
+        }.sortedWith(compareBy<Venue>({ it.landmark }, { it.meters })).distinctBy { it.name.lowercase() }
     }
 
-    /** Named places within [radius] metres, nearest first; empty when offline or nothing is mapped there. */
-    suspend fun nearby(lat: Double, lng: Double, radius: Int = 60, limit: Int = 5): List<Venue> = withContext(Dispatchers.IO) {
+    /** Named places within [radius] metres (businesses nearest first, then named buildings); null when the lookup itself failed. */
+    suspend fun nearbyOrNull(lat: Double, lng: Double, radius: Int = 60, limit: Int = 5): List<Venue>? = withContext(Dispatchers.IO) {
         runCatching {
             val req = Request.Builder().url("https://overpass-api.de/api/interpreter")
                 .header("User-Agent", "Trove/1.0 (personal notes app)")
                 .post(FormBody.Builder().add("data", query(lat, lng, radius)).build()).build()
             client.newCall(req).execute().use { r ->
-                if (!r.isSuccessful) emptyList() else parse(r.body?.string().orEmpty(), lat, lng).take(limit)
+                if (!r.isSuccessful) null else parse(r.body?.string().orEmpty(), lat, lng).take(limit)
             }
-        }.getOrDefault(emptyList())
+        }.getOrNull()
     }
+
+    /** Same as [nearbyOrNull], but empty when offline or nothing is mapped there. */
+    suspend fun nearby(lat: Double, lng: Double, radius: Int = 60, limit: Int = 5): List<Venue> =
+        nearbyOrNull(lat, lng, radius, limit).orEmpty()
 
     /** The one venue worth stamping on a photo automatically: close by, otherwise leave it to the person. */
     suspend fun best(lat: Double, lng: Double, withinMeters: Int = 40): Venue? =
