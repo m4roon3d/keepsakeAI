@@ -32,7 +32,8 @@ class DailyNudgeWorker(appContext: Context, params: WorkerParameters) : Coroutin
                 val brief = buildBrief(
                     ReminderStore(app).all(), TodoStore(app).all(), dao.getRecentMemories(500),
                     dao.observeAllExpenses().first(), dao.countPendingUpi(), MoneyPrefs(app).budgets, nudges.viewed,
-                    events = com.keepsakeai.app.calendar.CalendarReader.events(app, startOfDay(System.currentTimeMillis()), startOfDay(System.currentTimeMillis()) + 24L * 60 * 60 * 1000)
+                    events = com.keepsakeai.app.calendar.CalendarReader.events(app, startOfDay(System.currentTimeMillis()), startOfDay(System.currentTimeMillis()) + 24L * 60 * 60 * 1000),
+                    entities = com.keepsakeai.app.data.preferences.EntityStore(app).all()
                 )
                 Notifier.show(app, Notifier.REVIEW, 7101, "Your morning brief", brief.summary(), openOverlay = "brief")
             }
