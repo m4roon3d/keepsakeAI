@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -74,55 +76,55 @@ fun EmailCard(viewModel: MindSpaceViewModel) {
     var confirmRemoveAll by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    GlassCard(Modifier.fillMaxWidth().animateContentSize(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+    GlassCard(Modifier.fillMaxWidth().animateContentSize(), padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(30.dp).clip(CircleShape).background(Flow.Sky.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Mail, null, tint = Flow.Sky, modifier = Modifier.size(16.dp))
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Gap.m))
             Text("Email", style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
-            Text("receipts · orders · tickets · bills", fontSize = 11.sp, color = c.muted)
+            Text("receipts · orders · tickets · bills", fontSize = Ts.meta, color = c.muted)
         }
         AnimatedVisibility(syncing) {
-            Column(Modifier.padding(top = 10.dp)) {
+            Column(Modifier.padding(top = Gap.m)) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape), color = Flow.Sky, trackColor = c.glass)
-                Spacer(Modifier.height(4.dp))
-                Text("reading your inbox…", fontSize = 11.sp, color = c.muted)
+                Spacer(Modifier.height(Gap.xs))
+                Text("reading your inbox…", fontSize = Ts.meta, color = c.muted)
             }
         }
         if (accounts.isEmpty()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Gap.s))
             Text(
                 "Connect Gmail or Yahoo with an app password. trove picks up card and autopay charges for the subscription radar, " +
                     "turns tickets into reminders and bills into to-dos.",
-                fontSize = 12.sp, color = c.muted
+                fontSize = Ts.meta, color = c.muted
             )
         }
         accounts.forEachIndexed { i, a ->
             if (i > 0) HorizontalDivider(color = c.divider)
             AccountRow(a, syncing, onSync = { viewModel.syncEmailNow() }, onRemove = { viewModel.disconnectEmail(a.id) })
         }
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(Gap.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             GradientButton("connect email", icon = Icons.Rounded.AlternateEmail, onClick = { connecting = true }, modifier = Modifier.weight(1f))
             if (accounts.isNotEmpty()) GlassButton("sync now", icon = Icons.Rounded.Sync, enabled = !syncing, onClick = { viewModel.syncEmailNow() }, modifier = Modifier.weight(1f))
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Gap.s))
         Text(
             "Only emails whose subject looks like a receipt, order, ticket, bill or renewal are opened, read-only. Their subject and " +
                 "trimmed text (no footers) go to Gemini, logged in AI activity. Promos are skipped. Your app password is encrypted on this phone.",
-            fontSize = 11.sp, color = c.muted
+            fontSize = Ts.meta, color = c.muted
         )
         if (accounts.isNotEmpty()) {
             Text(
                 "remove everything imported from email",
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
-                modifier = Modifier.padding(top = 8.dp).clickable { confirmRemoveAll = true }
+                fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
+                modifier = Modifier.padding(top = Gap.s).clickable { confirmRemoveAll = true }
             )
         }
         message?.let {
-            Spacer(Modifier.height(6.dp))
-            Text(it, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
+            Spacer(Modifier.height(Gap.s))
+            Text(it, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
         }
     }
 
@@ -140,7 +142,7 @@ fun EmailCard(viewModel: MindSpaceViewModel) {
             onDismissRequest = { confirmRemoveAll = false },
             icon = { Icon(Icons.Rounded.DeleteOutline, null, tint = Flow.Rose) },
             title = { Text("remove email imports?") },
-            text = { Text("Deletes every memory and payment trove made from your emails. Your mailboxes stay connected and those emails won't be read again.", fontSize = 13.sp) },
+            text = { Text("Deletes every memory and payment trove made from your emails. Your mailboxes stay connected and those emails won't be read again.", fontSize = Ts.body) },
             confirmButton = {
                 GradientButton("remove", onClick = {
                     confirmRemoveAll = false
@@ -156,14 +158,14 @@ fun EmailCard(viewModel: MindSpaceViewModel) {
 private fun AccountRow(a: EmailAccount, syncing: Boolean, onSync: () -> Unit, onRemove: () -> Unit) {
     val c = LocalFlow.current
     var askRemove by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = Gap.m), verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier.size(36.dp).clip(CircleShape).background((if (a.provider == MailProvider.YAHOO) Flow.Purple else Flow.Sky).copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center
         ) {
             Text(a.address.take(1).uppercase(), fontWeight = FontWeight.ExtraBold, color = if (a.provider == MailProvider.YAHOO) Flow.Purple else Flow.Sky)
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(Gap.m))
         Column(Modifier.weight(1f)) {
             Text(a.address, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val status = when {
@@ -171,18 +173,18 @@ private fun AccountRow(a: EmailAccount, syncing: Boolean, onSync: () -> Unit, on
                 a.lastSyncAt == 0L -> if (syncing) "first read in progress" else "waiting for first read"
                 else -> "${a.provider.label} · read ${ago(a.lastSyncAt)} · ${a.kept} kept"
             }
-            Text(status, fontSize = 11.sp, color = if (a.lastError != null) Flow.Rose else c.muted, maxLines = 2)
+            Text(status, fontSize = Ts.meta, color = if (a.lastError != null) Flow.Rose else c.muted, maxLines = 2)
         }
         if (a.lastError != null) {
-            Icon(Icons.Rounded.Sync, "retry", tint = Flow.Sky, modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onSync).padding(7.dp))
+            Icon(Icons.Rounded.Sync, "retry", tint = Flow.Sky, modifier = Modifier.size(34.dp).clip(CircleShape).clickable(onClick = onSync).padding(Gap.s))
         }
-        Icon(Icons.Rounded.DeleteOutline, "disconnect", tint = c.muted, modifier = Modifier.size(34.dp).clip(CircleShape).clickable { askRemove = true }.padding(7.dp))
+        Icon(Icons.Rounded.DeleteOutline, "disconnect", tint = c.muted, modifier = Modifier.size(34.dp).clip(CircleShape).clickable { askRemove = true }.padding(Gap.s))
     }
     if (askRemove) {
         AlertDialog(
             onDismissRequest = { askRemove = false },
             title = { Text("disconnect ${a.address}?") },
-            text = { Text("trove stops reading it and forgets the app password. What it already kept stays. You can also delete the app password in your account.", fontSize = 13.sp) },
+            text = { Text("trove stops reading it and forgets the app password. What it already kept stays. You can also delete the app password in your account.", fontSize = Ts.body) },
             confirmButton = { GradientButton("disconnect", onClick = { askRemove = false; onRemove() }) },
             dismissButton = { TextButton(onClick = { askRemove = false }) { Text("cancel") } }
         )
@@ -214,19 +216,19 @@ private fun ConnectEmailDialog(
         icon = { Icon(Icons.Rounded.Mail, null, tint = Flow.Sky) },
         title = { Text("connect email") },
         text = {
-            Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(Gap.s)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                     MailProvider.entries.forEach { p -> Pill(p.label, provider == p, { provider = p; error = null }, Modifier.weight(1f)) }
                 }
-                Text(provider.steps, fontSize = 12.sp, color = c.muted, lineHeight = 17.sp)
+                Text(provider.steps, fontSize = Ts.meta, color = c.muted)
                 provider.appPasswordUrl?.let { url ->
                     Row(
-                        Modifier.clip(CircleShape).clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }.padding(vertical = 2.dp),
+                        Modifier.clip(CircleShape).clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }.padding(vertical = Gap.xxs),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Rounded.OpenInNew, null, tint = Flow.Sky, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("open ${provider.label} app passwords", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Sky)
+                        Spacer(Modifier.width(Gap.xs))
+                        Text("open ${provider.label} app passwords", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
                     }
                 }
                 GlassField(
@@ -239,16 +241,16 @@ private fun ConnectEmailDialog(
                     leadingIcon = Icons.Rounded.Key, visualTransformation = PasswordVisualTransformation()
                 )
                 if (provider == MailProvider.OTHER) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                         GlassField(host, { host = it }, "imap.example.com", Modifier.weight(1f))
                         GlassField(port, { port = it.filter(Char::isDigit).take(5) }, "993", Modifier.width(84.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     }
                 }
                 if (microsoft) {
-                    Text("Outlook and Hotmail no longer allow app passwords for other apps, so they can't connect this way.", fontSize = 12.sp, color = Flow.Amber)
+                    Text("Outlook and Hotmail no longer allow app passwords for other apps, so they can't connect this way.", fontSize = Ts.meta, color = Flow.Amber)
                 }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().clip(CircleShape), color = Flow.Sky, trackColor = c.glass)
-                error?.let { Text(it, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Rose) }
+                error?.let { Text(it, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Rose) }
             }
         },
         confirmButton = {

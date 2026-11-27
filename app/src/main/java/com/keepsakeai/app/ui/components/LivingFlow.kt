@@ -1,5 +1,10 @@
 package com.keepsakeai.app.ui.components
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -92,7 +97,7 @@ fun Modifier.springPress(interaction: MutableInteractionSource): Modifier {
 fun GlassCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(24.dp),
-    padding: PaddingValues = PaddingValues(14.dp),
+    padding: PaddingValues = PaddingValues(Gap.l),
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -106,6 +111,7 @@ fun GlassCard(
             .background(c.glass)
             .border(1.dp, c.glassBorder, shape)
             .then(if (onClick != null) Modifier.clickable(interaction, null, onClick = onClick) else Modifier)
+            .animateContentSize(tween(260, easing = FastOutSlowInEasing))
             .padding(padding),
         content = content
     )
@@ -128,7 +134,7 @@ fun GradientCard(
             .drawBehind {
                 drawCircle(Color.White.copy(alpha = 0.12f), size.width * 0.45f, Offset(size.width * 0.95f, -size.height * 0.1f))
             }
-            .padding(18.dp),
+            .padding(Gap.l),
         content = content
     )
 }
@@ -151,13 +157,13 @@ fun Pill(
             .background(if (selected) c.chipSelected else c.glass)
             .border(1.dp, if (selected) Color.Transparent else c.glassBorder, shape)
             .clickable(interaction, null, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.s),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         if (icon != null) {
             Icon(icon, null, tint = if (selected) c.onChipSelected else Flow.Indigo, modifier = Modifier.size(15.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Gap.s))
         }
         Text(
             text,
@@ -176,9 +182,9 @@ fun Badge(text: String, tint: Color, modifier: Modifier = Modifier, brush: Brush
         modifier
             .clip(shape)
             .then(if (brush != null) Modifier.background(brush) else Modifier.background(tint.copy(alpha = 0.14f)))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = Gap.m, vertical = Gap.xs)
     ) {
-        Text(text, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (brush != null) Color.White else tint)
+        Text(text, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = if (brush != null) Color.White else tint)
     }
 }
 
@@ -201,13 +207,13 @@ fun GradientButton(
             .clip(shape)
             .background(brush, alpha = if (enabled) 1f else 0.45f)
             .clickable(interaction, null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 13.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.m),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Gap.s))
         }
         Text(text, color = Color.White, style = MaterialTheme.typography.labelLarge)
     }
@@ -233,13 +239,13 @@ fun GlassButton(
             .background(c.glass)
             .border(1.dp, c.glassBorder, shape)
             .clickable(interaction, null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.m),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Gap.s))
         }
         Text(text, color = if (enabled) c.text else c.muted, style = MaterialTheme.typography.labelLarge)
     }
@@ -290,12 +296,12 @@ fun GlassField(
         modifier = modifier
             .clip(shape)
             .then(if (bare) Modifier else Modifier.background(c.glass).border(1.dp, c.glassBorder, shape))
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.m),
         verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top
     ) {
         if (leadingIcon != null) {
             Icon(leadingIcon, null, tint = Flow.Indigo, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Gap.m))
         }
         BasicTextField(
             value = value,
@@ -304,12 +310,12 @@ fun GlassField(
             minLines = minLines,
             visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions,
-            textStyle = TextStyle(color = c.text, fontSize = 15.sp, lineHeight = 21.sp),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.text, fontSize = Ts.title),
             cursorBrush = SolidColor(Flow.Indigo),
             modifier = Modifier.weight(1f),
             decorationBox = { inner ->
                 Box {
-                    if (value.isEmpty()) Text(placeholder, color = c.muted, fontSize = 15.sp)
+                    if (value.isEmpty()) Text(placeholder, color = c.muted, fontSize = Ts.title)
                     inner()
                 }
             }
@@ -330,15 +336,15 @@ fun FlowHeader(
 ) {
     val c = LocalFlow.current
     Row(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(top = Gap.s, bottom = Gap.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (leading != null) {
             leading()
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Gap.m))
         }
         Column(Modifier.weight(1f)) {
-            Text(eyebrow, color = c.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(eyebrow, color = c.muted, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold)
             Text(
                 buildAnnotatedString {
                     withStyle(SpanStyle(color = c.text)) { append(title) }
@@ -357,9 +363,9 @@ fun FlowHeader(
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing: String? = null) {
     val c = LocalFlow.current
-    Row(modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().padding(horizontal = Gap.xxs), verticalAlignment = Alignment.CenterVertically) {
         Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = c.muted, modifier = Modifier.weight(1f))
-        if (trailing != null) Text(trailing, fontSize = 11.sp, color = c.muted)
+        if (trailing != null) Text(trailing, fontSize = Ts.meta, color = c.muted)
     }
 }
 
@@ -382,7 +388,7 @@ fun GlassToggle(
             .background(c.glass)
             .border(1.dp, if (checked) accent.copy(alpha = 0.5f) else c.glassBorder, shape)
             .clickable(interaction, null, onClick = onToggle)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.m),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = c.text, modifier = Modifier.weight(1f))
@@ -391,7 +397,7 @@ fun GlassToggle(
                 .size(width = 34.dp, height = 20.dp)
                 .clip(CircleShape)
                 .background(if (checked) accent else c.muted.copy(alpha = 0.3f))
-                .padding(2.dp),
+                .padding(Gap.xxs),
             contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart
         ) {
             Box(Modifier.size(16.dp).clip(CircleShape).background(Color.White))

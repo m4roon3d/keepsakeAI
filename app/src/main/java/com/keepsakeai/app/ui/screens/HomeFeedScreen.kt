@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -194,8 +196,8 @@ fun HomeFeedScreen(
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(start = Gap.l, end = Gap.l, top = Gap.s, bottom = DockClearance),
+        horizontalArrangement = Arrangement.spacedBy(Gap.m),
         verticalItemSpacing = 10.dp
     ) {
         item(span = StaggeredGridItemSpan.FullLine) {
@@ -219,7 +221,7 @@ fun HomeFeedScreen(
                     modifier = Modifier.weight(1f)
                 )
                 if (searching) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Gap.s))
                     Box(
                         Modifier.size(44.dp).clip(CircleShape).background(c.glass)
                             .clickable { viewModel.runSemanticSearch("") },
@@ -261,6 +263,7 @@ fun HomeFeedScreen(
                 HubView.FACTS -> factItems(facts, onAdd = { viewModel.addFact(it) }, onPin = { viewModel.togglePin(it) }, onDelete = { viewModel.deleteFact(it) })
                 HubView.REVIEW -> reviewItems(
                     reviewPending,
+                    total = maxOf(reviewPending.size, com.keepsakeai.app.review.DailyReview.recentCount(allMemories, System.currentTimeMillis())),
                     onKeep = { viewModel.reviewKeep(it) },
                     onToDo = { viewModel.reviewToDo(it) },
                     onDelete = { viewModel.reviewDelete(it) },
@@ -280,7 +283,7 @@ fun HomeFeedScreen(
         if (!searching) {
             // Quick capture composer
             item(span = StaggeredGridItemSpan.FullLine) {
-                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 10.dp)) {
+                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = Gap.s, end = Gap.m, top = Gap.s, bottom = Gap.m)) {
                     GlassField(
                         value = quickNote,
                         onValueChange = { quickNote = it },
@@ -290,9 +293,9 @@ fun HomeFeedScreen(
                         bare = true,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = 10.dp))
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 6.dp)) {
+                    HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = Gap.m))
+                    Spacer(Modifier.height(Gap.s))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = Gap.s)) {
                         ComposerIcon(Icons.Rounded.CenterFocusWeak, "lens", Flow.Indigo, onOpenSnapsake)
                         ComposerIcon(Icons.Rounded.Mic, "Voice note", Flow.Pink) {
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -342,8 +345,8 @@ fun HomeFeedScreen(
             }
             if (near.isNotEmpty()) item(key = "near_here", span = StaggeredGridItemSpan.FullLine) {
                 GlassCard(Modifier.fillMaxWidth().animateItem(), onClick = { viewModel.overlay.value = "near" }) {
-                    Text("Near here · ${near.size} saved within ${com.keepsakeai.app.places.NearHere.RADIUS_M.toInt()} m", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = c.text)
-                    Text(near.first().memory.title, fontSize = 12.sp, color = c.muted, maxLines = 1)
+                    Text("Near here · ${near.size} saved within ${com.keepsakeai.app.places.NearHere.RADIUS_M.toInt()} m", fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
+                    Text(near.first().memory.title, fontSize = Ts.meta, color = c.muted, maxLines = 1)
                 }
             }
             if (calendarSoon.isNotEmpty()) item(key = "calendar", span = StaggeredGridItemSpan.FullLine) {
@@ -363,12 +366,12 @@ fun HomeFeedScreen(
                     GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.overlay.value = "review" }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             LogoMark(size = 34.dp, halo = false)
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(Gap.m))
                             Column(Modifier.weight(1f)) {
                                 Text("your week is ready", style = MaterialTheme.typography.titleSmall, color = c.text)
-                                Text("spend, highlights and one insight", fontSize = 12.sp, color = c.muted)
+                                Text("spend, highlights and one insight", fontSize = Ts.meta, color = c.muted)
                             }
-                            Text("open →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                            Text("open →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
                         }
                     }
                 }
@@ -380,9 +383,9 @@ fun HomeFeedScreen(
             }
 
             item(span = StaggeredGridItemSpan.FullLine) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
                     SectionLabel("your memories", trailing = "${allMemories.size} kept")
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                         item {
                             Pill("All (${allMemories.size})", selectedCol == null && dateChip == null, {
                                 viewModel.selectedCollection.value = null; dateChip = null
@@ -410,9 +413,9 @@ fun HomeFeedScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("$tuckedAway receipts and older imports kept out of your feed", style = MaterialTheme.typography.titleSmall, color = c.text)
-                            Text("Search, the Today / Yesterday / This week chips, or browse by type.", fontSize = 12.sp, color = c.muted)
+                            Text("Search, the Today / Yesterday / This week chips, or browse by type.", fontSize = Ts.meta, color = c.muted)
                         }
-                        Text("browse →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                        Text("browse →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
                     }
                 }
             }
@@ -452,9 +455,9 @@ private fun WhiteChip(text: String, solid: Boolean = false, onClick: () -> Unit)
             .clip(RoundedCornerShape(50))
             .background(if (solid) Color.White else Color.White.copy(alpha = 0.22f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = Gap.l, vertical = Gap.s)
     ) {
-        Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -464,7 +467,7 @@ private fun ComposerIcon(icon: ImageVector, label: String, tint: Color, onClick:
         Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.10f)).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) { Icon(icon, label, tint = tint, modifier = Modifier.size(20.dp)) }
-    Spacer(Modifier.width(6.dp))
+    Spacer(Modifier.width(Gap.s))
 }
 
 @Composable
@@ -472,7 +475,7 @@ private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, o
     val c = LocalFlow.current
     val (a1, a2) = collectionAccent(mem.collectionName)
     val photo = mem.photoUrisCsv.split(",").firstOrNull { it.isNotBlank() }
-    GlassCard(modifier, padding = PaddingValues(12.dp), onClick = onOpen) {
+    GlassCard(modifier, padding = PaddingValues(Gap.m), onClick = onOpen) {
         if (photo != null) {
             AsyncImage(
                 model = photo,
@@ -480,13 +483,13 @@ private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, o
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(16.dp))
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Gap.m))
         } else {
             Box(
                 Modifier.width(40.dp).height(5.dp).clip(CircleShape)
                     .background(Brush.horizontalGradient(listOf(a1, a2)))
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Gap.m))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -503,18 +506,18 @@ private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, o
                 modifier = Modifier.size(18.dp).clip(CircleShape).clickable(onClick = onDelete)
             )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Gap.xs))
         Text(mem.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 3, overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Gap.xs))
         Text(mem.aiSummary, style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 5, overflow = TextOverflow.Ellipsis)
         val tag = mem.tagsCsv.split(",").firstOrNull { it.isNotBlank() }
         if (tag != null || score != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Gap.s))
             HorizontalDivider(color = c.divider)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Gap.s))
             Row {
-                Text(tag?.let { "#$it" } ?: "", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Flow.Sky, modifier = Modifier.weight(1f), maxLines = 1)
-                if (score != null) Text("${(score * 100).toInt()}%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
+                Text(tag?.let { "#$it" } ?: "", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Sky, modifier = Modifier.weight(1f), maxLines = 1)
+                if (score != null) Text("${(score * 100).toInt()}%", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald)
             }
         }
     }

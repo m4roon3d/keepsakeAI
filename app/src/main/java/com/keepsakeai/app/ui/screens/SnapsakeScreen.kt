@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.net.Uri
@@ -183,8 +185,8 @@ fun SnapsakeScreen(
     Column(
         modifier
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = Gap.l, end = Gap.l, top = Gap.s, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(Gap.l)
     ) {
         FlowHeader(
             eyebrow = "point. snap. keep.",
@@ -203,7 +205,7 @@ fun SnapsakeScreen(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             SnapMode.entries.forEach { m ->
                 Pill(m.label, mode == m, { mode = m }, Modifier.weight(1f), icon = m.icon)
             }
@@ -230,7 +232,7 @@ fun SnapsakeScreen(
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = Flow.Cyan, strokeWidth = 3.dp)
-                            Spacer(Modifier.height(10.dp))
+                            Spacer(Modifier.height(Gap.m))
                             Text("Reading text…", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -248,16 +250,16 @@ fun SnapsakeScreen(
         )
 
         error?.let {
-            Text(it, color = Flow.Rose, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 4.dp))
+            Text(it, color = Flow.Rose, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = Gap.xs))
         }
 
         if (photo != null && !reading) {
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(6.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.s)) {
                 Text(
                     "TEXT FOUND · edit before saving",
                     style = MaterialTheme.typography.labelSmall,
                     color = Flow.Indigo,
-                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp)
+                    modifier = Modifier.padding(start = Gap.m, top = Gap.s, bottom = Gap.xxs)
                 )
                 GlassField(
                     value = text,
@@ -286,7 +288,7 @@ fun SnapsakeScreen(
                 "lens opens your phone's own camera, so you get its full quality, zoom and HDR. Text is read on your phone; only the extracted text goes to your AI for sorting.",
                 color = c.muted,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = Gap.xs)
             )
         }
     }
@@ -321,10 +323,10 @@ private fun ScanFrame(mode: SnapMode) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Rounded.CenterFocusWeak, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(40.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(mode.label, color = Color(0xFFA5F3FC), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(Gap.s))
+            Text(mode.label, color = Color(0xFFA5F3FC), fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(1.dp))
-            Text("Tap Open camera to snap", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+            Text("Tap Open camera to snap", color = Color.White.copy(alpha = 0.7f), fontSize = Ts.meta)
         }
     }
 }

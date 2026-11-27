@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.Manifest
 import android.content.ClipboardManager
 import android.content.Context
@@ -144,8 +146,8 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
     Column(
         modifier
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(start = Gap.l, end = Gap.l, top = Gap.s, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(Gap.m)
     ) {
         FlowHeader(
             eyebrow = "make it yours",
@@ -169,10 +171,10 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
         // ── Look & feel ────────────────────────────────────────────
         GlassCard(Modifier.fillMaxWidth()) {
             CardTitle(Icons.Rounded.Palette, "Theme", Flow.Purple)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Gap.m))
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(Gap.m)
             ) {
                 Palettes.all.forEach { p ->
                     val selected = ThemeStore.palette.id == p.id
@@ -187,7 +189,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
                                 ThemeStore.setPalette(context, p)
                                 scope.launch { runCatching { MindSpaceWidget().updateAll(context) } }
                             }
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = Gap.m),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
@@ -195,15 +197,15 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
                                 .background(if (c.dark) p.darkBase else Color(0xFF111827)),
                             contentAlignment = Alignment.Center
                         ) { LogoMark(size = 46.dp, palette = p) }
-                        Spacer(Modifier.height(6.dp))
-                        Text(p.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (selected) p.primary else c.text)
+                        Spacer(Modifier.height(Gap.s))
+                        Text(p.name, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = if (selected) p.primary else c.text)
                     }
                 }
             }
-            Spacer(Modifier.height(6.dp))
-            Text(ThemeStore.palette.tagline, fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 2.dp))
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(Gap.s))
+            Text(ThemeStore.palette.tagline, fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(start = Gap.xxs))
+            Spacer(Modifier.height(Gap.m))
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 ThemeMode.entries.forEach { m ->
                     Pill(m.label, ThemeStore.mode == m, { ThemeStore.setMode(context, m) }, Modifier.weight(1f))
                 }
@@ -211,9 +213,9 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
         }
 
         // ── AI keys: one slim row each, tap to edit ────────────────
-        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
             CardTitle(Icons.Rounded.Key, "AI models", Flow.Indigo, trailing = "Encrypted on device")
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Gap.s))
             keySpecs.forEachIndexed { i, spec ->
                 if (i > 0) HorizontalDivider(color = c.divider)
                 KeyRow(
@@ -225,12 +227,12 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
                 )
             }
             HorizontalDivider(color = c.divider)
-            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = Gap.m), verticalAlignment = Alignment.CenterVertically) {
                 Text("Currency", style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f))
                 listOf("INR" to "₹", "USD" to "$", "EUR" to "€").forEach { (code, sym) ->
                     val sel = currency == code
                     Box(
-                        Modifier.padding(start = 6.dp).size(36.dp).clip(CircleShape)
+                        Modifier.padding(start = Gap.s).size(36.dp).clip(CircleShape)
                             .background(if (sel) c.chipSelected else c.glass)
                             .border(1.dp, if (sel) Color.Transparent else c.glassBorder, CircleShape)
                             .clickable { currency = code; keyStore.defaultCurrency = code },
@@ -241,9 +243,9 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
         }
 
         // ── Permissions ────────────────────────────────────────────
-        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+        GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
             CardTitle(Icons.Rounded.Security, "Permissions", Flow.Pink)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Gap.xs))
             SlimRow(Icons.Rounded.LocationOn, Flow.Pink, "Location", if (hasLocation) "Weather & nearby answers" else "Off", if (hasLocation) "On" else "Turn on", hasLocation) {
                 if (hasLocation) openAppInfo()
                 else locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
@@ -273,17 +275,17 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             }
             Text(
                 "Switch greyed out? App info → ⋮ → Allow restricted settings.",
-                fontSize = 11.sp, color = c.muted,
-                modifier = Modifier.padding(top = 6.dp).clickable { openAppInfo() }
+                fontSize = Ts.meta, color = c.muted,
+                modifier = Modifier.padding(top = Gap.s).clickable { openAppInfo() }
             )
         }
 
         // ── Insights ───────────────────────────────────────────────
         if (viewModel != null) {
             val logs by viewModel.aiLogs.collectAsState()
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
                 CardTitle(Icons.Rounded.Insights, "Insights", Flow.Indigo)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Gap.xs))
                 val nudges = remember { com.keepsakeai.app.data.preferences.NudgePrefs(context) }
                 var briefOn by remember { mutableStateOf(nudges.morningBrief) }
                 var journalOn by remember { mutableStateOf(nudges.eveningJournal) }
@@ -324,13 +326,13 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
 
         // ── Footer ─────────────────────────────────────────────────
         Column(
-            Modifier.fillMaxWidth().padding(top = 8.dp),
+            Modifier.fillMaxWidth().padding(top = Gap.s),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LogoMark(size = 40.dp, halo = false)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(Gap.s))
             Text("trove", style = MaterialTheme.typography.titleSmall, color = c.text)
-            Text("v${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", fontSize = 11.sp, color = c.muted)
+            Text("v${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}", fontSize = Ts.meta, color = c.muted)
         }
     }
 }
@@ -351,48 +353,48 @@ private fun KeyRow(
 
     Column {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onToggle).padding(vertical = 10.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onToggle).padding(vertical = Gap.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 Modifier.size(30.dp).clip(CircleShape).background(spec.color.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
-            ) { Text(spec.name.take(1), color = spec.color, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp) }
-            Spacer(Modifier.width(12.dp))
+            ) { Text(spec.name.take(1), color = spec.color, fontWeight = FontWeight.SemiBold, fontSize = Ts.title) }
+            Spacer(Modifier.width(Gap.m))
             Column(Modifier.weight(1f)) {
                 Text(spec.name, style = MaterialTheme.typography.titleSmall, color = c.text)
-                Text(spec.hint, fontSize = 11.sp, color = c.muted, maxLines = 1)
+                Text(spec.hint, fontSize = Ts.meta, color = c.muted, maxLines = 1)
             }
             Row(
                 Modifier.clip(RoundedCornerShape(50))
                     .background(if (connected) Flow.Emerald.copy(alpha = 0.12f) else c.glass)
-                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                    .padding(horizontal = Gap.s, vertical = Gap.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (connected) {
                     Box(Modifier.size(6.dp).clip(CircleShape).background(Flow.Emerald))
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(Gap.xs))
                 }
                 Text(
                     if (connected) masked(saved) else "Add key",
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    fontSize = Ts.meta, fontWeight = FontWeight.SemiBold,
                     color = if (connected) Flow.Emerald else Flow.Indigo
                 )
             }
             Icon(
                 Icons.Rounded.ExpandMore, null, tint = c.muted,
-                modifier = Modifier.padding(start = 4.dp).size(20.dp).rotate(if (expanded) 180f else 0f)
+                modifier = Modifier.padding(start = Gap.xs).size(20.dp).rotate(if (expanded) 180f else 0f)
             )
         }
         AnimatedVisibility(expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-            Column(Modifier.padding(bottom = 12.dp)) {
+            Column(Modifier.padding(bottom = Gap.m)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GlassField(
                         draft, { draft = it.trim() }, "Paste your ${spec.name} key",
                         Modifier.weight(1f),
                         visualTransformation = PasswordVisualTransformation()
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Gap.s))
                     Box(
                         Modifier.size(46.dp).clip(CircleShape).background(spec.color.copy(alpha = 0.14f))
                             .clickable {
@@ -402,25 +404,25 @@ private fun KeyRow(
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Rounded.ContentPaste, "Paste", tint = spec.color, modifier = Modifier.size(19.dp)) }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Gap.s))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Row(
                         Modifier.clip(RoundedCornerShape(50)).clickable {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(spec.getKeyUrl))) }
-                        }.padding(horizontal = 6.dp, vertical = 6.dp),
+                        }.padding(horizontal = Gap.s, vertical = Gap.s),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Get a key", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = spec.color)
-                        Spacer(Modifier.width(3.dp))
+                        Text("Get a key", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = spec.color)
+                        Spacer(Modifier.width(Gap.xs))
                         Icon(Icons.Rounded.OpenInNew, null, tint = spec.color, modifier = Modifier.size(13.dp))
                     }
                     Spacer(Modifier.weight(1f))
                     if (connected) {
                         Text(
-                            "Remove", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
+                            "Remove", fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
                             modifier = Modifier.clip(RoundedCornerShape(50)).clickable {
                                 spec.write(store, ""); saved = ""; onDone()
-                            }.padding(horizontal = 12.dp, vertical = 8.dp)
+                            }.padding(horizontal = Gap.m, vertical = Gap.s)
                         )
                     }
                     GradientButton(
@@ -441,9 +443,9 @@ private fun CardTitle(icon: ImageVector, title: String, tint: Color, trailing: S
         Box(Modifier.size(30.dp).clip(CircleShape).background(tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(Gap.m))
         Text(title, style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
-        if (trailing != null) Text(trailing, fontSize = 11.sp, color = c.muted)
+        if (trailing != null) Text(trailing, fontSize = Ts.meta, color = c.muted)
     }
 }
 
@@ -460,19 +462,19 @@ private fun SlimRow(
 ) {
     val c = LocalFlow.current
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 10.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = Gap.m),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Gap.m))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall, color = c.text)
-            Text(subtitle, fontSize = 11.sp, color = c.muted, maxLines = 1)
+            Text(subtitle, fontSize = Ts.meta, color = c.muted, maxLines = 1)
         }
         if (secondary != null) {
             Text(
                 secondary.first, style = MaterialTheme.typography.labelMedium, color = c.muted,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = secondary.second).padding(horizontal = 10.dp, vertical = 4.dp)
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = secondary.second).padding(horizontal = Gap.m, vertical = Gap.xs)
             )
         }
         Text(action, style = MaterialTheme.typography.labelMedium, color = if (on == true) Flow.Emerald else Flow.Indigo)

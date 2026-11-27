@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.spend
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -123,16 +126,16 @@ fun SplitDialog(expense: ExpenseEntity, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("split ${expense.merchant}") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("₹${String.format(Locale.US, "%,.0f", expense.amount)} between", fontSize = 13.sp, color = c.muted)
+            Column(verticalArrangement = Arrangement.spacedBy(Gap.m)) {
+                Text("₹${String.format(Locale.US, "%,.0f", expense.amount)} between", fontSize = Ts.body, color = c.soft)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     StepButton("–") { if (people > 2) people-- }
-                    Text("$people people", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = c.text, modifier = Modifier.padding(horizontal = 14.dp))
+                    Text("$people people", fontSize = Ts.lead, fontFamily = Display, fontWeight = FontWeight.Bold, color = c.text, modifier = Modifier.padding(horizontal = Gap.l))
                     StepButton("+") { if (people < 20) people++ }
                     Spacer(Modifier.weight(1f))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("₹${String.format(Locale.US, "%,.0f", share)}", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
-                        Text("each", fontSize = 11.sp, color = c.muted)
+                        Text("₹${String.format(Locale.US, "%,.0f", share)}", fontSize = Ts.heading, fontFamily = Display, fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
+                        Text("each", fontSize = Ts.meta, color = c.muted)
                     }
                 }
                 GlassField(vpa, { vpa = it }, "Your UPI ID (e.g. name@okhdfcbank)", Modifier.fillMaxWidth())
@@ -142,7 +145,7 @@ fun SplitDialog(expense: ExpenseEntity, onDismiss: () -> Unit) {
                         Image(qr.asImageBitmap(), "UPI QR for ₹$share", Modifier.size(170.dp).clip(RoundedCornerShape(12.dp)))
                     }
                 } else if (vpa.isNotBlank()) {
-                    Text("That doesn't look like a UPI ID yet.", fontSize = 11.sp, color = Flow.Rose)
+                    Text("That doesn't look like a UPI ID yet.", fontSize = Ts.meta, color = Flow.Rose)
                 }
             }
         },
@@ -183,5 +186,5 @@ private fun StepButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier.size(34.dp).clip(CircleShape).background(c.glass).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
-    ) { Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = c.text) }
+    ) { Text(label, fontSize = Ts.lead, fontFamily = Display, fontWeight = FontWeight.Bold, color = c.text) }
 }

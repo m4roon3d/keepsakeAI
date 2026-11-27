@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.components
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
@@ -75,7 +77,7 @@ fun FloatingDock(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.m),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -85,7 +87,7 @@ fun FloatingDock(
                 .clip(shape)
                 .background(if (c.dark) Color(0xE6171F34) else Color(0xEBFFFFFF))
                 .border(1.dp, c.glassBorder, shape)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = Gap.s, vertical = Gap.s),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             dockItems.forEach { item ->
@@ -101,19 +103,19 @@ fun FloatingDock(
                         .clip(shape)
                         .background(bg)
                         .clickable(remember { MutableInteractionSource() }, null) { onSelect(item.tab) }
-                        .padding(vertical = 7.dp),
+                        .padding(vertical = Gap.s),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(item.icon, item.label, tint = fg, modifier = Modifier.size(21.dp))
-                        Spacer(Modifier.height(2.dp))
-                        Text(item.label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = fg, maxLines = 1)
+                        Spacer(Modifier.height(Gap.xxs))
+                        Text(item.label, fontSize = Ts.caption, fontWeight = FontWeight.Bold, color = fg, maxLines = 1)
                     }
                     if (item.tab == MainActivity.TAB_SPEND && pendingUpi > 0) {
                         Box(
                             Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(end = 14.dp)
+                                .padding(end = Gap.l)
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(Flow.Amber)
@@ -122,7 +124,7 @@ fun FloatingDock(
                 }
             }
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(Gap.m))
         AuroraOrb(
             icon = Icons.Rounded.AutoAwesome,
             contentDescription = "Ask trove Pilot",
@@ -146,19 +148,19 @@ fun StatusToast(viewModel: MindSpaceViewModel, modifier: Modifier = Modifier) {
         visible = msg != null,
         enter = fadeIn() + slideInVertically { -it },
         exit = fadeOut() + slideOutVertically { -it },
-        modifier = modifier.padding(top = 8.dp)
+        modifier = modifier.padding(top = Gap.s)
     ) {
         Row(
             Modifier
                 .shadow(16.dp, RoundedCornerShape(50))
                 .clip(RoundedCornerShape(50))
                 .background(Color(0xF00F172A))
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = Gap.l, vertical = Gap.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = Flow.Cyan, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(msg.orEmpty(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(Gap.s))
+            Text(msg.orEmpty(), color = Color.White, fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
         }
     }
 }

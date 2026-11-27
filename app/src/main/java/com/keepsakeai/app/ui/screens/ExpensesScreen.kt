@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -306,13 +309,13 @@ fun ExpensesScreen(
             onDismissRequest = { viewModel.dismissCleanup() },
             title = { Text("Remove ${plan.duplicates.size} duplicate${if (plan.duplicates.size == 1) "" else "s"}?") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Gap.xs)) {
                     if (plan.transfersMoved > 0) Text("${plan.transfersMoved} already moved to transfers.")
                     Text("The same payment was saved more than once. The best copy (bank message first) stays.")
                     plan.duplicates.take(6).forEach { d ->
-                        Text("${d.remove.merchant} · ${money(d.remove.currency, d.remove.amount)} · ${dayLabel(startOfDay(d.remove.timestamp))}", fontSize = 12.sp, color = LocalFlow.current.muted)
+                        Text("${d.remove.merchant} · ${money(d.remove.currency, d.remove.amount)} · ${dayLabel(startOfDay(d.remove.timestamp))}", fontSize = Ts.meta, color = LocalFlow.current.muted)
                     }
-                    if (plan.duplicates.size > 6) Text("and ${plan.duplicates.size - 6} more", fontSize = 12.sp, color = LocalFlow.current.muted)
+                    if (plan.duplicates.size > 6) Text("and ${plan.duplicates.size - 6} more", fontSize = Ts.meta, color = LocalFlow.current.muted)
                 }
             },
             confirmButton = { TextButton(onClick = { viewModel.applyCleanup() }) { Text("Remove", color = Flow.Rose, fontWeight = FontWeight.Bold) } },
@@ -347,8 +350,8 @@ fun ExpensesScreen(
     ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = Gap.l, end = Gap.l, top = Gap.s, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(Gap.m)
     ) {
         item {
             FlowHeader(
@@ -369,7 +372,7 @@ fun ExpensesScreen(
 
         // Tools: log an expense / import from SMS, folded away until needed
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 Pill("log expense", openTool == "log", { openTool = if (openTool == "log") null else "log" }, Modifier.weight(1f), icon = Icons.Rounded.Add)
                 Pill("import sms", openTool == "import", { openTool = if (openTool == "import") null else "import" }, Modifier.weight(1f), icon = Icons.Rounded.Sms)
             }
@@ -418,7 +421,7 @@ fun ExpensesScreen(
 
         // Period
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 SpendPeriod.entries.forEach { p ->
                     Pill(p.label, period == p, { period = p }, Modifier.weight(1f))
                 }
@@ -431,16 +434,16 @@ fun ExpensesScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         if (filter.isActive) "${period.label} · filtered" else "spent ${period.label}",
-                        color = Color(0xFFD1FAE5), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                        color = Color(0xFFD1FAE5), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
                     )
                     if (change != null) {
                         val up = change > 0
                         Box(
-                            Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.2f)).padding(horizontal = 9.dp, vertical = 3.dp)
+                            Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.2f)).padding(horizontal = Gap.s, vertical = Gap.xs)
                         ) {
                             Text(
                                 "${if (up) "▲" else "▼"} ${kotlin.math.abs(change)}% vs ${if (period == SpendPeriod.THIS_MONTH) "last month" else "before"}",
-                                color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold
+                                color = Color.White, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
@@ -448,24 +451,24 @@ fun ExpensesScreen(
                 val shownTotal by androidx.compose.animation.core.animateFloatAsState(
                     total.toFloat(), androidx.compose.animation.core.tween(700), label = "total"
                 )
-                Text(money(currency, Math.round(shownTotal).toDouble()), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold)
+                Text(money(currency, Math.round(shownTotal).toDouble()), color = Color.White, fontSize = Ts.hero, fontFamily = Display, fontWeight = FontWeight.ExtraBold)
                 Row {
                     HeroStat(moneyShort(currency, total / range.days), "per day")
-                    Spacer(Modifier.width(18.dp))
+                    Spacer(Modifier.width(Gap.l))
                     HeroStat("${shown.size}", if (shown.size == 1) "payment" else "payments")
-                    Spacer(Modifier.width(18.dp))
+                    Spacer(Modifier.width(Gap.l))
                     val biggest = shown.maxByOrNull { it.amount }
                     if (biggest != null) HeroStat(moneyShort(currency, biggest.amount), "largest")
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(Gap.m))
                 TrendBars(trend, Color.White, height = 56.dp)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Gap.xs))
                 Row {
                     val fmt = SimpleDateFormat("d MMM", Locale.ENGLISH)
                     val faint = Color.White.copy(alpha = 0.75f)
-                    Text(fmt.format(Date(range.start)).lowercase(), fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f))
-                    Text(if (range.days <= 45) "daily" else "weekly", fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    Text(fmt.format(Date(range.end - 1)).lowercase(), fontSize = 10.sp, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                    Text(fmt.format(Date(range.start)).lowercase(), fontSize = Ts.caption, color = faint, modifier = Modifier.weight(1f))
+                    Text(if (range.days <= 45) "daily" else "weekly", fontSize = Ts.caption, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    Text(fmt.format(Date(range.end - 1)).lowercase(), fontSize = Ts.caption, color = faint, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                 }
             }
         }
@@ -518,7 +521,7 @@ fun ExpensesScreen(
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     DashTitle("where it went", "tap to filter")
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Gap.m))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val catTotal = catSlices.sumOf { it.value }
                         val sel = catSlices.filter { it.key in filter.categories }
@@ -534,7 +537,7 @@ fun ExpensesScreen(
                             onTap = { toggleCategory(it) },
                             size = 132.dp
                         )
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
                             catSlices.take(6).forEach { s ->
                                 LegendRow(
@@ -545,7 +548,7 @@ fun ExpensesScreen(
                                 )
                             }
                             if (catSlices.size > 6) {
-                                Text("+${catSlices.size - 6} more", fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+                                Text("+${catSlices.size - 6} more", fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(start = Gap.s, top = Gap.xxs))
                             }
                         }
                     }
@@ -556,9 +559,9 @@ fun ExpensesScreen(
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     DashTitle("how you paid", null)
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Gap.m))
                     StackedBar(chSlices, filter.channels)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Gap.s))
                     val chTotal = chSlices.sumOf { it.value }
                     chSlices.forEach { s ->
                         LegendRow(
@@ -576,7 +579,7 @@ fun ExpensesScreen(
                 item {
                     GlassCard(Modifier.fillMaxWidth()) {
                         DashTitle("top merchants", null)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Gap.s))
                         val max = merchants.first().total
                         merchants.forEachIndexed { i, m ->
                             val sel = filter.merchant != null && filter.merchant.equals(m.name, ignoreCase = true)
@@ -584,17 +587,17 @@ fun ExpensesScreen(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                                     .background(if (sel) Flow.Indigo.copy(alpha = 0.12f) else Color.Transparent)
                                     .clickable { filter = filter.copy(merchant = if (sel) null else m.name) }
-                                    .padding(horizontal = 8.dp, vertical = 7.dp)
+                                    .padding(horizontal = Gap.s, vertical = Gap.s)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${i + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Flow.Indigo, modifier = Modifier.width(18.dp))
-                                    Text(m.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                    Text("${m.count}×", fontSize = 11.sp, color = c.muted)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(moneyShort(currency, m.total), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text)
+                                    Text("${i + 1}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo, modifier = Modifier.width(18.dp))
+                                    Text(m.name, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text("${m.count}×", fontSize = Ts.meta, color = c.muted)
+                                    Spacer(Modifier.width(Gap.s))
+                                    Text(moneyShort(currency, m.total), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
                                 }
-                                Spacer(Modifier.height(5.dp))
-                                Box(Modifier.padding(start = 18.dp).fillMaxWidth().height(4.dp).clip(CircleShape).background(c.divider)) {
+                                Spacer(Modifier.height(Gap.xs))
+                                Box(Modifier.padding(start = Gap.l).fillMaxWidth().height(4.dp).clip(CircleShape).background(c.divider)) {
                                     Box(
                                         Modifier.fillMaxWidth((m.total / max).toFloat()).fillMaxHeight().clip(CircleShape)
                                             .background(Brush.horizontalGradient(listOf(Flow.Indigo, Flow.Sky)))
@@ -608,29 +611,29 @@ fun ExpensesScreen(
 
             // Transactions: search, active filters, grouping
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Gap.m)) {
                     SectionLabel("transactions", trailing = "${shown.size} · ${moneyShort(currency, total)}")
                     GlassField(
                         filter.query, { filter = filter.copy(query = it) }, "Search merchant, category or note",
                         Modifier.fillMaxWidth(), leadingIcon = Icons.Rounded.Search
                     )
                     if (filter.isActive) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                             items(filter.categories.toList()) { k -> RemovableChip(k, categoryIcon(k).second) { toggleCategory(k) } }
                             items(filter.channels.toList()) { k -> RemovableChip(k, channelColor(k)) { toggleChannel(k) } }
                             filter.merchant?.let { m -> item { RemovableChip(m, Flow.Indigo) { filter = filter.copy(merchant = null) } } }
                             if (filter.query.isNotBlank()) item { RemovableChip("“${filter.query}”", Flow.Sky) { filter = filter.copy(query = "") } }
                             item {
                                 Text(
-                                    "clear all", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
-                                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { filter = SpendFilter() }.padding(horizontal = 10.dp, vertical = 8.dp)
+                                    "clear all", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
+                                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { filter = SpendFilter() }.padding(horizontal = Gap.m, vertical = Gap.s)
                                 )
                             }
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("group by", fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(end = 8.dp))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("group by", fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(end = Gap.s))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                             items(GroupBy.entries) { g ->
                                 Pill(g.label, groupBy == g, { groupBy = g; expanded = emptySet(); showAll = emptySet() })
                             }
@@ -679,8 +682,8 @@ fun ExpensesScreen(
 @Composable
 private fun HeroStat(value: String, label: String) {
     Column {
-        Text(value, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
+        Text(value, color = Color.White, fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
+        Text(label, color = Color.White.copy(alpha = 0.75f), fontSize = Ts.meta)
     }
 }
 
@@ -689,7 +692,7 @@ private fun DashTitle(title: String, hint: String?) {
     val c = LocalFlow.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
-        if (hint != null) Text(hint, fontSize = 11.sp, color = c.muted)
+        if (hint != null) Text(hint, fontSize = Ts.meta, color = c.muted)
     }
 }
 
@@ -697,11 +700,11 @@ private fun DashTitle(title: String, hint: String?) {
 private fun RemovableChip(label: String, color: Color, onRemove: () -> Unit) {
     Row(
         Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.16f)).clickable(onClick = onRemove)
-            .padding(start = 12.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
+            .padding(start = Gap.m, end = Gap.s, top = Gap.s, bottom = Gap.s),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
-        Spacer(Modifier.width(4.dp))
+        Text(label, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1)
+        Spacer(Modifier.width(Gap.xs))
         Icon(Icons.Rounded.Close, "Remove filter", tint = color, modifier = Modifier.size(14.dp))
     }
 }
@@ -728,42 +731,42 @@ private fun GroupCard(
     }
     GlassCard(Modifier.fillMaxWidth().animateContentSize(), padding = PaddingValues(0.dp)) {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(12.dp),
+            Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(Gap.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(38.dp).clip(CircleShape).background(color.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = color, modifier = Modifier.size(19.dp))
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Gap.m))
             Column(Modifier.weight(1f)) {
                 Text(group.label, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Gap.xs))
                 Box(Modifier.fillMaxWidth(0.9f).height(4.dp).clip(CircleShape).background(c.divider)) {
                     Box(Modifier.fillMaxWidth(if (total > 0) (group.total / total).toFloat() else 0f).fillMaxHeight().clip(CircleShape).background(color))
                 }
-                Spacer(Modifier.height(3.dp))
-                Text("${group.items.size} payment${if (group.items.size == 1) "" else "s"} · ${pct(group.total, total)}%", fontSize = 11.sp, color = c.muted)
+                Spacer(Modifier.height(Gap.xs))
+                Text("${group.items.size} payment${if (group.items.size == 1) "" else "s"} · ${pct(group.total, total)}%", fontSize = Ts.meta, color = c.muted)
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Gap.s))
             Text(money(currency, group.total), style = MaterialTheme.typography.titleSmall, color = c.text)
-            Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.padding(start = 4.dp).size(20.dp).rotate(if (open) 180f else 0f))
+            Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.padding(start = Gap.xs).size(20.dp).rotate(if (open) 180f else 0f))
         }
         if (open) {
             HorizontalDivider(color = c.divider)
             val list = if (showAll) group.items else group.items.take(6)
             list.forEach { exp -> TxnRow(exp, groupBy, currency, onLongPress) }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Gap.m, vertical = Gap.s), verticalAlignment = Alignment.CenterVertically) {
                 if (!showAll && group.items.size > 6) {
                     Text(
-                        "show all ${group.items.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onShowAll).padding(horizontal = 8.dp, vertical = 6.dp)
+                        "show all ${group.items.size}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onShowAll).padding(horizontal = Gap.s, vertical = Gap.s)
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 if (groupBy != GroupBy.DAY) {
                     Text(
-                        "filter to this →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onDrill).padding(horizontal = 8.dp, vertical = 6.dp)
+                        "filter to this →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = color,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onDrill).padding(horizontal = Gap.s, vertical = Gap.s)
                     )
                 }
             }
@@ -784,19 +787,19 @@ private fun TxnRow(exp: ExpenseEntity, groupBy: GroupBy, currency: String, onLon
     Row(
         Modifier.fillMaxWidth()
             .pointerInput(exp.id) { detectTapGestures(onLongPress = { onLongPress(exp) }) }
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = Gap.l, vertical = Gap.s),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(categoryIcon(exp.category).second))
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Gap.m))
         Column(Modifier.weight(1f)) {
             Text(
                 if (groupBy == GroupBy.MERCHANT) SimpleDateFormat("d MMM, h:mm a", Locale.ENGLISH).format(Date(exp.timestamp)).lowercase() else exp.merchant,
-                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis
+                fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Text(sub, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(sub, fontSize = Ts.meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text(money(exp.currency.ifBlank { currency }, exp.amount), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text)
+        Text(money(exp.currency.ifBlank { currency }, exp.amount), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
     }
 }
 
@@ -810,19 +813,19 @@ private fun QuickLogCard(
     val c = LocalFlow.current
     GlassCard(Modifier.fillMaxWidth()) {
         Text("log an expense", style = MaterialTheme.typography.titleSmall, color = c.text)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(Gap.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             GlassField(merchant, onMerchant, "Merchant", Modifier.weight(1.4f))
             GlassField(
                 amountText, { onAmount(it.filter { ch -> ch.isDigit() || ch == '.' }) }, "Amount", Modifier.weight(1f),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             )
         }
-        Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Spacer(Modifier.height(Gap.s))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             items(categories) { cat -> Pill(cat, category == cat, { onCategory(cat) }) }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         val amt = amountText.toDoubleOrNull() ?: 0.0
         GradientButton("Add", brush = Flow.spendGradient, enabled = amt > 0.0, onClick = { onAdd(amt) }, modifier = Modifier.fillMaxWidth())
     }
@@ -838,35 +841,35 @@ private fun ImportCard(
     val c = LocalFlow.current
     GlassCard(Modifier.fillMaxWidth()) {
         Text("import from messages", style = MaterialTheme.typography.titleSmall, color = c.text)
-        Text("UPI, card and bank debit SMS go to your review queue. Read on your phone only.", fontSize = 11.sp, color = c.muted)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("UPI, card and bank debit SMS go to your review queue. Read on your phone only.", fontSize = Ts.meta, color = c.muted)
+        Spacer(Modifier.height(Gap.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             listOf(30 to "30 days", 90 to "90 days", 365 to "1 year").forEach { (d, label) ->
                 Pill(label, smsDays == d, { onDays(d) }, Modifier.weight(1f))
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         GradientButton(
             if (scanning) "Reading messages…" else "Scan messages",
             enabled = !scanning, brush = Flow.spendGradient, icon = Icons.Rounded.Sms,
             onClick = onScan, modifier = Modifier.fillMaxWidth()
         )
         if (blocked) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Gap.s))
             Text(
                 "SMS access is blocked. Open App info → ⋮ → Allow restricted settings, then Permissions → SMS → Allow.",
-                fontSize = 11.sp, color = Flow.Rose, modifier = Modifier.clickable(onClick = onOpenAppInfo)
+                fontSize = Ts.meta, color = Flow.Rose, modifier = Modifier.clickable(onClick = onOpenAppInfo)
             )
         }
         Text(
             if (cleaning) "Tidying up…" else "Tidy up: find duplicates and transfers",
-            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
-            modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable(enabled = !cleaning, onClick = onTidy).padding(horizontal = 8.dp, vertical = 6.dp)
+            fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+            modifier = Modifier.padding(top = Gap.s).clip(RoundedCornerShape(50)).clickable(enabled = !cleaning, onClick = onTidy).padding(horizontal = Gap.s, vertical = Gap.s)
         )
         if (canRemove) {
             Text(
-                "Remove imported", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Rose,
-                modifier = Modifier.padding(top = 6.dp).clip(RoundedCornerShape(50)).clickable(onClick = onRemoveAll).padding(horizontal = 8.dp, vertical = 6.dp)
+                "Remove imported", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
+                modifier = Modifier.padding(top = Gap.s).clip(RoundedCornerShape(50)).clickable(onClick = onRemoveAll).padding(horizontal = Gap.s, vertical = Gap.s)
             )
         }
     }
@@ -877,7 +880,7 @@ private fun ImportCard(
 private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceViewModel, currency: String) {
     val c = LocalFlow.current
     var open by remember { mutableStateOf(false) }
-    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.l)) {
         Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "${transfers.size} transfers between your accounts · excluded",
@@ -887,14 +890,14 @@ private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceVi
         }
         if (open) {
             transfers.take(40).forEach { t ->
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(top = Gap.s), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(t.merchant, color = c.text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${money(t.currency.ifBlank { currency }, t.amount)} · ${dayLabel(startOfDay(t.timestamp))}", fontSize = 11.sp, color = c.muted)
+                        Text(t.merchant, color = c.text, fontSize = Ts.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${money(t.currency.ifBlank { currency }, t.amount)} · ${dayLabel(startOfDay(t.timestamp))}", fontSize = Ts.meta, color = c.muted)
                     }
                     Text(
-                        "not a transfer", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setExpenseTransfer(t, false) }.padding(8.dp)
+                        "not a transfer", color = Flow.Emerald, fontWeight = FontWeight.SemiBold, fontSize = Ts.meta,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setExpenseTransfer(t, false) }.padding(Gap.s)
                     )
                 }
             }
@@ -912,13 +915,13 @@ private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String)
         Modifier.fillMaxWidth().clip(shape)
             .background(if (c.dark) Flow.Amber.copy(alpha = 0.10f) else Color(0xCCFFFBEB))
             .border(1.dp, Flow.Amber.copy(alpha = 0.45f), shape)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(Gap.l),
+        verticalArrangement = Arrangement.spacedBy(Gap.m)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).clip(RoundedCornerShape(50)).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Inbox, null, tint = Flow.Amber, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Gap.s))
                 Text(
                     "to review (${pendingUpi.size})",
                     style = MaterialTheme.typography.titleSmall,
@@ -927,41 +930,41 @@ private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String)
                 Icon(Icons.Rounded.ExpandMore, null, tint = Flow.Amber, modifier = Modifier.size(18.dp).rotate(if (open) 180f else 0f))
             }
             Text(
-                "clear", color = c.muted, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.clearPendingUpi() }.padding(6.dp)
+                "clear", color = c.soft, fontWeight = FontWeight.SemiBold, fontSize = Ts.title,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.clearPendingUpi() }.padding(Gap.s)
             )
             Text(
-                "approve all", color = Flow.Emerald, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.approveAllPendingUpi() }.padding(6.dp)
+                "approve all", color = Flow.Emerald, fontWeight = FontWeight.SemiBold, fontSize = Ts.title,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.approveAllPendingUpi() }.padding(Gap.s)
             )
         }
         if (open) {
             pendingUpi.forEach { item ->
                 var selectedCat by remember(item.id) { mutableStateOf(item.suggestedCategory) }
-                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp)) {
+                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.m)) {
                     Row {
                         Text(item.merchant, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(money(item.currency.ifBlank { currencyFallback }, item.amount), style = MaterialTheme.typography.titleSmall, color = Flow.Indigo)
                     }
-                    Text("${item.bankOrApp} · ${dayLabel(startOfDay(item.receivedAt))}", fontSize = 11.sp, color = c.muted)
+                    Text("${item.bankOrApp} · ${dayLabel(startOfDay(item.receivedAt))}", fontSize = Ts.meta, color = c.muted)
                     val isTransfer = item.type == com.keepsakeai.app.data.local.TxnType.TRANSFER
                     Text(
                         if (isTransfer) "looks like a transfer between your accounts · tap if it's spending" else "tap if this is a transfer between your accounts",
-                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        fontSize = Ts.meta, fontWeight = FontWeight.SemiBold,
                         color = if (isTransfer) Flow.Amber else c.muted,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setPendingTransfer(item, !isTransfer) }.padding(vertical = 4.dp)
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setPendingTransfer(item, !isTransfer) }.padding(vertical = Gap.xs)
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text("“${item.rawMessage}”", fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Spacer(Modifier.height(Gap.xs))
+                    Text("“${item.rawMessage}”", fontSize = Ts.meta, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(Gap.s))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                         items(categories) { cat -> Pill(cat, selectedCat == cat, { selectedCat = cat }) }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Gap.s))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "dismiss", color = c.muted, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.dismissPendingUpi(item) }.padding(10.dp)
+                            "dismiss", color = c.soft, fontWeight = FontWeight.SemiBold, fontSize = Ts.title,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.dismissPendingUpi(item) }.padding(Gap.m)
                         )
                         Spacer(Modifier.weight(1f))
                         GradientButton("Approve", onClick = { viewModel.approvePendingUpi(item, selectedCat) }, brush = Flow.spendGradient)

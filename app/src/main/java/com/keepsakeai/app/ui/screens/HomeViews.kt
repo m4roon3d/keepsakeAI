@@ -1,5 +1,9 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.components.appear
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.content.Intent
 import android.provider.CalendarContract
 import androidx.compose.foundation.background
@@ -74,18 +78,18 @@ private fun rupees(v: Double) = "₹" + String.format(Locale.US, "%,.0f", v)
 fun HubSwitcher(current: HubView, factCount: Int, onPick: (HubView) -> Unit) {
     val c = LocalFlow.current
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.glass).border(1.dp, c.glassBorder, RoundedCornerShape(50)).padding(4.dp)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(c.glass).border(1.dp, c.glassBorder, RoundedCornerShape(50)).padding(Gap.xs)
     ) {
         HubView.entries.forEach { v ->
             val sel = v == current
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(50)).background(if (sel) c.chipSelected else Color.Transparent)
-                    .clickable { onPick(v) }.padding(vertical = 9.dp),
+                    .clickable { onPick(v) }.padding(vertical = Gap.s),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     if (v == HubView.FACTS && factCount > 0) "facts ($factCount)" else v.label,
-                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (sel) c.onChipSelected else c.muted, maxLines = 1
+                    fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = if (sel) c.onChipSelected else c.muted, maxLines = 1
                 )
             }
         }
@@ -117,20 +121,20 @@ fun OnThisDayCard(memories: List<MemoryEntity>, expenses: List<ExpenseEntity>, o
     GlassCard(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.History, null, tint = Flow.Purple, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Gap.s))
             Text("on this day", style = MaterialTheme.typography.titleSmall, color = c.text)
         }
         list.forEach { e ->
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Gap.s))
             Text(e.label.uppercase(), style = MaterialTheme.typography.labelSmall, color = Flow.Purple)
             e.memories.take(2).forEach { m ->
                 Text(
-                    "• ${m.title}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = 3.dp)
+                    "• ${m.title}", fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = Gap.xs)
                 )
             }
-            if (e.memories.size > 2) Text("+${e.memories.size - 2} more", fontSize = 11.sp, color = c.muted)
-            if (e.spent > 0) Text("and you spent ${rupees(e.spent)} that day", fontSize = 11.sp, color = c.muted)
+            if (e.memories.size > 2) Text("+${e.memories.size - 2} more", fontSize = Ts.meta, color = c.muted)
+            if (e.spent > 0) Text("and you spent ${rupees(e.spent)} that day", fontSize = Ts.meta, color = c.muted)
         }
     }
 }
@@ -147,26 +151,26 @@ fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () 
         modifier.fillMaxWidth().clip(shape)
             .background(Brush.linearGradient(listOf(Flow.Indigo.copy(alpha = 0.16f), Flow.Sky.copy(alpha = 0.10f))))
             .border(1.dp, Flow.Indigo.copy(alpha = 0.35f), shape)
-            .padding(14.dp)
+            .padding(Gap.l)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(if (r.kind == "event") Icons.Rounded.Event else Icons.Rounded.CalendarMonth, null, tint = Flow.Indigo, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Gap.s))
             Column(Modifier.weight(1f)) {
                 Text(r.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text((if (r.kind == "due") "due " else if (r.kind == "deadline") "deadline " else "") + whenText.lowercase(), fontSize = 12.sp, color = c.muted)
+                Text((if (r.kind == "due") "due " else if (r.kind == "deadline") "deadline " else "") + whenText.lowercase(), fontSize = Ts.meta, color = c.muted)
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (r.status == "scheduled") {
-                Text("reminder set ✓", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald, modifier = Modifier.padding(end = 8.dp))
+                Text("reminder set ✓", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald, modifier = Modifier.padding(end = Gap.s))
             } else {
                 GradientButton("remind me", onClick = onRemind)
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Gap.s))
             Text(
-                "add to calendar", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                "add to calendar", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
                 modifier = Modifier.clip(RoundedCornerShape(50)).clickable {
                     val i = Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI)
                         .putExtra(CalendarContract.Events.TITLE, r.title)
@@ -174,12 +178,12 @@ fun ReminderSuggestionCard(r: KeepReminder, onRemind: () -> Unit, onDismiss: () 
                         .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, r.atMillis + 60 * 60 * 1000)
                         .putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, !r.hasTime)
                     runCatching { context.startActivity(i) }
-                }.padding(horizontal = 8.dp, vertical = 8.dp)
+                }.padding(horizontal = Gap.s, vertical = Gap.s)
             )
             Spacer(Modifier.weight(1f))
             Text(
-                "✕", fontSize = 14.sp, color = c.muted,
-                modifier = Modifier.clip(CircleShape).clickable(onClick = onDismiss).padding(8.dp)
+                "✕", fontSize = Ts.body, color = c.soft,
+                modifier = Modifier.clip(CircleShape).clickable(onClick = onDismiss).padding(Gap.s)
             )
         }
     }
@@ -206,38 +210,53 @@ fun LazyStaggeredGridScope.timelineItems(memories: List<MemoryEntity>, expenses:
         }
         return
     }
+    item(span = StaggeredGridItemSpan.FullLine, key = "timelineActivity") {
+        val c = LocalFlow.current
+        val saves = remember(memories) { com.keepsakeai.app.ui.components.dailyCounts(memories.map { it.createdAt }) }
+        val pays = remember(expenses) { com.keepsakeai.app.ui.components.dailyCounts(expenses.map { it.timestamp }) }
+        GlassCard(Modifier.fillMaxWidth().then(Modifier.appear()), padding = PaddingValues(Gap.m)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("last 14 days", fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
+                Text("${saves.sum().toInt()} kept · ${pays.sum().toInt()} payments", fontSize = Ts.meta, color = c.muted)
+            }
+            Spacer(Modifier.height(Gap.s))
+            com.keepsakeai.app.ui.components.MiniBars(saves, Flow.Indigo, Modifier.fillMaxWidth(), height = 36.dp)
+            Spacer(Modifier.height(Gap.xs))
+            com.keepsakeai.app.ui.components.MiniBars(pays, Flow.Emerald, Modifier.fillMaxWidth(), height = 18.dp)
+        }
+    }
     byDay.forEach { (day, list) ->
         item(span = StaggeredGridItemSpan.FullLine, key = "day$day") {
             val spent = list.filterIsInstance<TimelineEntry.Pay>().sumOf { it.e.amount }
-            SectionLabel(dayLabel(day), trailing = if (spent > 0) "spent ${rupees(spent)}" else null, modifier = Modifier.padding(top = 6.dp))
+            SectionLabel(dayLabel(day), trailing = if (spent > 0) "spent ${rupees(spent)}" else null, modifier = Modifier.padding(top = Gap.s))
         }
         item(span = StaggeredGridItemSpan.FullLine, key = "list$day") {
             val c = LocalFlow.current
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(vertical = 4.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(vertical = Gap.xs)) {
                 list.forEach { entry ->
                     val time = SimpleDateFormat("h:mm a", Locale.ENGLISH).format(Date(entry.time)).lowercase()
                     Row(
                         Modifier.fillMaxWidth()
                             .then(if (entry is TimelineEntry.Mem) Modifier.clickable { onOpen(entry.m.id) } else Modifier)
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                            .padding(horizontal = Gap.l, vertical = Gap.s),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(time, fontSize = 11.sp, color = c.muted, modifier = Modifier.width(58.dp))
+                        Text(time, fontSize = Ts.meta, color = c.muted, modifier = Modifier.width(58.dp))
                         when (entry) {
                             is TimelineEntry.Mem -> {
                                 val (a1, _) = collectionAccent(entry.m.collectionName)
                                 Box(Modifier.size(8.dp).clip(CircleShape).background(a1))
-                                Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(Gap.m))
                                 Column(Modifier.weight(1f)) {
-                                    Text(entry.m.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(entry.m.collectionName.lowercase(), fontSize = 11.sp, color = c.muted)
+                                    Text(entry.m.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(entry.m.collectionName.lowercase(), fontSize = Ts.meta, color = c.muted)
                                 }
                             }
                             is TimelineEntry.Pay -> {
                                 Icon(Icons.Rounded.Receipt, null, tint = Flow.Emerald, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(entry.e.merchant, fontSize = 13.sp, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text(rupees(entry.e.amount), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
+                                Spacer(Modifier.width(Gap.s))
+                                Text(entry.e.merchant, fontSize = Ts.body, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(rupees(entry.e.amount), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = Flow.Emerald)
                             }
                         }
                     }
@@ -259,7 +278,7 @@ fun LazyStaggeredGridScope.factItems(
         val c = LocalFlow.current
         var draft by remember { mutableStateOf("") }
         Column {
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = Gap.s, end = Gap.m, top = Gap.s, bottom = Gap.s)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GlassField(draft, { draft = it }, "Teach trove about you…", Modifier.weight(1f), bare = true)
                     GradientButton("remember", enabled = draft.isNotBlank(), onClick = { onAdd(draft); draft = "" })
@@ -267,19 +286,19 @@ fun LazyStaggeredGridScope.factItems(
             }
             Text(
                 "Pilot uses these to personalise answers. trove also learns them from what you save. Pin the important ones.",
-                fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 8.dp)
+                fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(start = Gap.s, top = Gap.s)
             )
         }
     }
     if (facts.isEmpty()) return
     facts.groupBy { it.category }.toList().sortedBy { it.first }.forEach { (cat, list) ->
-        item(span = StaggeredGridItemSpan.FullLine, key = "fcat$cat") { SectionLabel(cat, modifier = Modifier.padding(top = 4.dp)) }
+        item(span = StaggeredGridItemSpan.FullLine, key = "fcat$cat") { SectionLabel(cat, modifier = Modifier.padding(top = Gap.xs)) }
         list.forEach { f ->
             item(key = "fact${f.id}") {
                 val c = LocalFlow.current
-                GlassCard(padding = PaddingValues(12.dp)) {
-                    Text(f.fact, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text)
-                    Spacer(Modifier.height(8.dp))
+                GlassCard(padding = PaddingValues(Gap.m)) {
+                    Text(f.fact, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
+                    Spacer(Modifier.height(Gap.s))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Rounded.PushPin, if (f.pinned) "Unpin" else "Pin",
@@ -317,36 +336,36 @@ fun LazyStaggeredGridScope.threadItems(memories: List<MemoryEntity>, onAsk: (Str
                 Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(name, style = MaterialTheme.typography.titleSmall, color = c.text)
-                        Text("${items.size} linked · last ${dayLabel(startOfDay(sorted.first().createdAt))}", fontSize = 11.sp, color = c.muted)
+                        Text("${items.size} linked · last ${dayLabel(startOfDay(sorted.first().createdAt))}", fontSize = Ts.meta, color = c.muted)
                     }
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                        Text("${items.size}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.14f)).padding(horizontal = Gap.s, vertical = Gap.xs)) {
+                        Text("${items.size}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-                Column(Modifier.padding(start = 6.dp)) {
+                Spacer(Modifier.height(Gap.s))
+                Column(Modifier.padding(start = Gap.s)) {
                     (if (open) sorted else sorted.take(3)).forEach { m ->
-                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = 4.dp)) {
-                            Box(Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape).background(collectionAccent(m.collectionName).first))
-                            Spacer(Modifier.width(10.dp))
+                        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(vertical = Gap.xs)) {
+                            Box(Modifier.padding(top = Gap.xs).size(7.dp).clip(CircleShape).background(collectionAccent(m.collectionName).first))
+                            Spacer(Modifier.width(Gap.m))
                             Column {
-                                Text(m.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(m.aiSummary, fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(m.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(m.aiSummary, fontSize = Ts.meta, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
-                    if (!open && sorted.size > 3) Text("+${sorted.size - 3} more · tap to expand", fontSize = 11.sp, color = c.muted)
+                    if (!open && sorted.size > 3) Text("+${sorted.size - 3} more · tap to expand", fontSize = Ts.meta, color = c.muted)
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Gap.s))
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                         .clickable { onAsk("Summarise everything I've saved about \"$name\" and suggest what I should do next.") }
-                        .padding(vertical = 9.dp),
+                        .padding(vertical = Gap.s),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Rounded.AutoAwesome, null, tint = Flow.Indigo, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("ask pilot about $name", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.width(Gap.s))
+                    Text("ask pilot about $name", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -378,8 +397,8 @@ fun TodayCard(
     val greeting = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; in 17..21 -> "good evening"; else -> "late night thoughts?" }
     val date = SimpleDateFormat("EEEE d MMMM", Locale.ENGLISH).format(Date(now)).lowercase()
     com.keepsakeai.app.ui.components.GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
-        Text("$greeting · $date", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(6.dp))
+        Text("$greeting · $date", color = Color.White.copy(alpha = 0.85f), fontSize = Ts.meta, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(Gap.s))
         val headline = when {
             memories.isEmpty() -> "Your second brain is empty. Snap, share or jot your first memory."
             nextEvent != null && (next == null || nextEvent.begin <= next.atMillis) -> {
@@ -398,9 +417,9 @@ fun TodayCard(
             keptToday > 0 -> "You kept $keptToday thing${if (keptToday > 1) "s" else ""} today. Ask Pilot to connect the dots."
             else -> "$keptWeek memories this week, ${memories.size} in all. What's on your mind?"
         }
-        Text(headline, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, lineHeight = 23.sp)
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(headline, color = Color.White, fontSize = Ts.lead, fontFamily = Display, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(Gap.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             HomeChip("ask pilot", solid = true, onClick = onAsk)
             if (hour < 12) HomeChip("brief", onClick = onBrief) else if (hour >= 18) HomeChip("journal", onClick = onJournal)
             if (openTodos > 0) HomeChip("$openTodos to-do${if (openTodos > 1) "s" else ""}", onClick = onTodos)
@@ -415,17 +434,17 @@ fun CalendarTodayCard(events: List<com.keepsakeai.app.calendar.CalEvent>, modifi
     if (events.isEmpty()) return
     val c = LocalFlow.current
     val context = LocalContext.current
-    com.keepsakeai.app.ui.components.GlassCard(modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+    com.keepsakeai.app.ui.components.GlassCard(modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.CalendarMonth, null, tint = Flow.Sky, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("ON YOUR CALENDAR", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp, color = c.muted)
+            Spacer(Modifier.width(Gap.s))
+            Text("ON YOUR CALENDAR", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp, color = c.muted)
         }
         events.forEach { e ->
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
                     .clickable { runCatching { context.startActivity(com.keepsakeai.app.calendar.CalendarReader.openIntent(e.id)) } }
-                    .padding(vertical = 7.dp),
+                    .padding(vertical = Gap.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val now = System.currentTimeMillis()
@@ -436,19 +455,19 @@ fun CalendarTodayCard(events: List<com.keepsakeai.app.calendar.CalEvent>, modifi
                     else -> e.timeLabel()
                 }
                 Text(
-                    label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    label, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold,
                     color = if (live) Flow.Emerald else Flow.Sky, modifier = Modifier.width(78.dp)
                 )
                 Column(Modifier.weight(1f)) {
                     Text(e.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (e.location.isNotBlank()) Text(e.location, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (e.location.isNotBlank()) Text(e.location, fontSize = Ts.meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (e.location.isNotBlank()) {
                     Text(
-                        "directions", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                        "directions", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                             .clickable { com.keepsakeai.app.maps.Directions.open(context, e.location) }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .padding(horizontal = Gap.m, vertical = Gap.s)
                     )
                 }
             }
@@ -460,8 +479,8 @@ fun CalendarTodayCard(events: List<com.keepsakeai.app.calendar.CalEvent>, modifi
 private fun HomeChip(text: String, solid: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.clip(RoundedCornerShape(50)).background(if (solid) Color.White else Color.White.copy(alpha = 0.22f))
-            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp)
-    ) { Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+            .clickable(onClick = onClick).padding(horizontal = Gap.l, vertical = Gap.s)
+    ) { Text(text, color = if (solid) Flow.IndigoDeep else Color.White, fontSize = Ts.title, fontWeight = FontWeight.SemiBold) }
 }
 
 /** Threads you're in the middle of, newest first. */
@@ -476,19 +495,19 @@ fun ThreadsCarousel(memories: List<MemoryEntity>, onOpen: () -> Unit) {
     if (threads.isEmpty()) return
     val c = LocalFlow.current
     Column {
-        SectionLabel("pick up where you left off", modifier = Modifier.padding(bottom = 8.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionLabel("pick up where you left off", modifier = Modifier.padding(bottom = Gap.s))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.m)) {
             items(threads.size) { i ->
                 val (name, items) = threads[i]
                 val latest = items.maxBy { it.createdAt }
                 val (a1, a2) = collectionAccent(latest.collectionName)
-                GlassCard(Modifier.width(190.dp), onClick = onOpen, padding = PaddingValues(12.dp)) {
+                GlassCard(Modifier.width(190.dp), onClick = onOpen, padding = PaddingValues(Gap.m)) {
                     Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape).background(Brush.horizontalGradient(listOf(a1, a2))))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Gap.s))
                     Text(name, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${items.size} linked · ${dayLabel(startOfDay(latest.createdAt))}", fontSize = 11.sp, color = c.muted)
-                    Spacer(Modifier.height(6.dp))
-                    Text(latest.title, fontSize = 12.sp, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("${items.size} linked · ${dayLabel(startOfDay(latest.createdAt))}", fontSize = Ts.meta, color = c.muted)
+                    Spacer(Modifier.height(Gap.s))
+                    Text(latest.title, fontSize = Ts.meta, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -504,17 +523,17 @@ fun MoneyRow(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> Unit) {
         set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
     val month = expenses.filter { it.timestamp >= monthStart }.sumOf { it.amount }
-    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(34.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Text("₹", fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Gap.m))
             Column(Modifier.weight(1f)) {
                 Text("${rupees(month)} this month", style = MaterialTheme.typography.titleSmall, color = c.text)
-                Text(if (pending > 0) "$pending payment${if (pending > 1) "s" else ""} to review" else "spend, budgets & subscriptions", fontSize = 11.sp, color = if (pending > 0) Flow.Amber else c.muted)
+                Text(if (pending > 0) "$pending payment${if (pending > 1) "s" else ""} to review" else "spend, budgets & subscriptions", fontSize = Ts.meta, color = if (pending > 0) Flow.Amber else c.muted)
             }
-            Text("spend →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
+            Text("spend →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald)
         }
     }
 }
@@ -532,12 +551,12 @@ fun SpendAnswerCard(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> U
     val todayTotal = today.sumOf { it.amount }
     val week = expenses.filter { it.timestamp >= weekStart }.sumOf { it.amount }
     val month = expenses.filter { it.timestamp >= monthStart }.sumOf { it.amount }
-    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), onClick = onOpen, padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(34.dp).clip(CircleShape).background(Flow.Emerald.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                 Text("₹", fontWeight = FontWeight.ExtraBold, color = Flow.Emerald)
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Gap.m))
             Column(Modifier.weight(1f)) {
                 Text(
                     if (today.isEmpty()) "Nothing spent today" else "${rupees(todayTotal)} today · ${today.size} payment${if (today.size > 1) "s" else ""}",
@@ -545,10 +564,10 @@ fun SpendAnswerCard(expenses: List<ExpenseEntity>, pending: Int, onOpen: () -> U
                 )
                 Text(
                     "${rupees(week)} this week · ${rupees(month)} this month" + if (pending > 0) " · $pending to review" else "",
-                    fontSize = 11.sp, color = c.muted
+                    fontSize = Ts.meta, color = c.muted
                 )
             }
-            Text("spend →", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald)
+            Text("spend →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald)
         }
     }
 }

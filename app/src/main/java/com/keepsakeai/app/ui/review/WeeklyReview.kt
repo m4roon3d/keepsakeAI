@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.review
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -135,7 +138,7 @@ fun WeeklyReviewScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
     val fmt = SimpleDateFormat("d MMM", Locale.ENGLISH)
     val rangeText = "${fmt.format(Date(w.range.start))} – ${fmt.format(Date(w.range.end - 1))}".lowercase()
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         item {
             FlowHeader(eyebrow = rangeText, title = "your ", gradientSuffix = "week", joinSuffix = true, leading = { LogoMark(size = 46.dp) }) {
                 GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
@@ -144,33 +147,33 @@ fun WeeklyReviewScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
         item {
             GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
                 Text("✦ insight", color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(6.dp))
-                Text(w.insight, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 26.sp)
+                Spacer(Modifier.height(Gap.s))
+                Text(w.insight, color = Color.White, fontSize = Ts.section, fontFamily = Display, fontWeight = FontWeight.ExtraBold)
             }
         }
         item {
             GradientCard(Flow.spendGradient, Modifier.fillMaxWidth(), glow = Flow.Emerald) {
-                Text("spent this week", color = Color(0xFFD1FAE5), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(r(w.spent), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                Text("spent this week", color = Color(0xFFD1FAE5), fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
+                Text(r(w.spent), color = Color.White, fontSize = Ts.hero, fontFamily = Display, fontWeight = FontWeight.ExtraBold)
                 Text(
                     buildString {
                         append("${w.payments} payments")
                         w.change?.let { append(" · ${if (it >= 0) "▲" else "▼"} ${kotlin.math.abs(it)}% vs last week") }
                     },
-                    color = Color.White, fontSize = 12.sp
+                    color = Color.White, fontSize = Ts.meta
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(Gap.m))
                 TrendBars(expenses.buckets(w.range), Color.White, height = 46.dp)
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.m)) {
                 Stat("top category", w.topCategory?.let { "${it.first}\n${r(it.second)}" } ?: "—", Modifier.weight(1f))
                 Stat("top merchant", w.topMerchant?.let { "${it.first}\n${r(it.second)}" } ?: "—", Modifier.weight(1f))
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.m)) {
                 Stat("memories kept", "${w.kept}" + (w.topCollection?.let { "\nmostly $it" } ?: ""), Modifier.weight(1f))
                 Stat("renewals next week", if (w.dueNextWeek.isEmpty()) "none" else "${w.dueNextWeek.size}\n${r(w.dueNextWeek.sumOf { it.amount })}", Modifier.weight(1f))
             }
@@ -179,12 +182,12 @@ fun WeeklyReviewScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Text("you kept", style = MaterialTheme.typography.titleSmall, color = c.text)
-                    w.highlights.forEach { Text("• $it", fontSize = 13.sp, color = c.text, modifier = Modifier.fillMaxWidth()) }
+                    w.highlights.forEach { Text("• $it", fontSize = Ts.body, color = c.text, modifier = Modifier.fillMaxWidth()) }
                 }
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.m)) {
                 GradientButton("share", onClick = { shareWeek(context, w, rangeText) }, icon = Icons.Rounded.IosShare, modifier = Modifier.weight(1f))
                 GlassButton("ask pilot", onClick = {
                     viewModel.pilotDraft.value = "Review my week ($rangeText): what stood out in my spending and what I saved, and one thing to do better next week."
@@ -200,8 +203,8 @@ private fun Stat(label: String, value: String, modifier: Modifier) {
     val c = LocalFlow.current
     GlassCard(modifier) {
         Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = c.muted)
-        Spacer(Modifier.height(4.dp))
-        Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = c.text, lineHeight = 20.sp)
+        Spacer(Modifier.height(Gap.xs))
+        Text(value, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
     }
 }
 

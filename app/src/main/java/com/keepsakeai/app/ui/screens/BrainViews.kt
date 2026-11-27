@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -114,7 +117,7 @@ fun LazyStaggeredGridScope.todoItems(
         var draft by remember { mutableStateOf("") }
         var due by remember { mutableStateOf<Long?>(null) }
         Column {
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 6.dp, end = 10.dp, top = 6.dp, bottom = 6.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = Gap.s, end = Gap.m, top = Gap.s, bottom = Gap.s)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     GlassField(draft, { draft = it }, "Add a to-do…", Modifier.weight(1f), bare = true)
                     Box(
@@ -122,16 +125,16 @@ fun LazyStaggeredGridScope.todoItems(
                             .clickable { pickDate(context, due) { due = it } },
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Rounded.Event, "Due date", tint = if (due != null) Flow.Indigo else c.muted, modifier = Modifier.size(18.dp)) }
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Gap.s))
                     GradientButton("add", enabled = draft.isNotBlank(), onClick = { onAdd(draft, due); draft = ""; due = null })
                 }
             }
             if (due != null) {
-                Text("due ${dayLabel(startOfDay(due!!))}", fontSize = 11.sp, color = Flow.Indigo, modifier = Modifier.padding(start = 10.dp, top = 6.dp))
+                Text("due ${dayLabel(startOfDay(due!!))}", fontSize = Ts.meta, color = Flow.Indigo, modifier = Modifier.padding(start = Gap.m, top = Gap.s))
             }
             Text(
                 "trove also adds to-dos from what you save: bills to pay, tickets to book, people to call.",
-                fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 6.dp, top = 6.dp)
+                fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(start = Gap.s, top = Gap.s)
             )
         }
     }
@@ -151,7 +154,7 @@ fun LazyStaggeredGridScope.todoItems(
         item(span = StaggeredGridItemSpan.FullLine, key = "tb${b.name}") {
             SectionLabel(
                 b.label, trailing = "${list.size}",
-                modifier = Modifier.padding(top = 6.dp)
+                modifier = Modifier.padding(top = Gap.s)
             )
         }
         val shown = if (b == TodoBucket.DONE) list.sortedByDescending { it.doneAt }.take(10) else list
@@ -193,7 +196,7 @@ private fun TodoRow(
 
     GlassCard(
         modifier.fillMaxWidth().alpha(rowAlpha).pointerInput(t.id) { detectTapGestures(onLongPress = { confirm = true }) },
-        shape = RoundedCornerShape(20.dp), padding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+        shape = RoundedCornerShape(20.dp), padding = PaddingValues(horizontal = Gap.m, vertical = Gap.m)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -204,26 +207,26 @@ private fun TodoRow(
             ) {
                 Icon(Icons.Rounded.Check, if (t.done) "Mark not done" else "Mark done", tint = Flow.Emerald, modifier = Modifier.size(16.dp).scale(checkScale))
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Gap.m))
             Column(Modifier.weight(1f)) {
                 Text(
-                    t.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.text,
+                    t.text, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text,
                     textDecoration = if (t.done) TextDecoration.LineThrough else TextDecoration.None, maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val due = t.due
                     if (due != null) {
                         Text(
-                            "due ${dayLabel(startOfDay(due))}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                            "due ${dayLabel(startOfDay(due))}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold,
                             color = if (bucket == TodoBucket.OVERDUE) Flow.Rose else Flow.Indigo,
                             modifier = Modifier.clickable { pickDate(context, due) { d -> onSetDue(t.id, d) } }
                         )
                     } else if (!t.done) {
-                        Text("+ due date", fontSize = 11.sp, color = c.muted, modifier = Modifier.clickable { pickDate(context, null) { d -> onSetDue(t.id, d) } })
+                        Text("+ due date", fontSize = Ts.meta, color = c.muted, modifier = Modifier.clickable { pickDate(context, null) { d -> onSetDue(t.id, d) } })
                     }
                     val src = t.memoryId
                     if (src != null) {
-                        Text("  ·  from a memory", fontSize = 11.sp, color = c.muted, modifier = Modifier.clickable { onOpenSource(src) })
+                        Text("  ·  from a memory", fontSize = Ts.meta, color = c.muted, modifier = Modifier.clickable { onOpenSource(src) })
                     }
                 }
             }
@@ -260,10 +263,10 @@ fun LazyStaggeredGridScope.peopleItems(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (backfilling) CircularProgressIndicator(Modifier.size(20.dp), color = Flow.Indigo, strokeWidth = 2.5.dp)
                     else Icon(Icons.Rounded.TravelExplore, null, tint = Flow.Indigo, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(Gap.m))
                     Column(Modifier.weight(1f)) {
                         Text(if (backfilling) "reading your memories…" else "find people & places in older memories", style = MaterialTheme.typography.titleSmall, color = c.text)
-                        Text(if (backfilling) "this takes a few seconds" else "$unscanned memories not scanned yet · uses Gemini", fontSize = 11.sp, color = c.muted)
+                        Text(if (backfilling) "this takes a few seconds" else "$unscanned memories not scanned yet · uses Gemini", fontSize = Ts.meta, color = c.muted)
                     }
                 }
             }
@@ -281,26 +284,28 @@ fun LazyStaggeredGridScope.peopleItems(
     listOf("person", "place", "project", "org").forEach { type ->
         val list = visible.filter { it.type == type }.sortedByDescending { it.lastSeen }
         if (list.isEmpty()) return@forEach
-        item(span = StaggeredGridItemSpan.FullLine, key = "et$type") { SectionLabel(typeLabel(type), trailing = "${list.size}", modifier = Modifier.padding(top = 6.dp)) }
+        item(span = StaggeredGridItemSpan.FullLine, key = "et$type") { SectionLabel(typeLabel(type), trailing = "${list.size}", modifier = Modifier.padding(top = Gap.s)) }
         list.forEach { e ->
             item(key = "e${e.key}") {
                 val c = LocalFlow.current
                 val col = typeColor(e.type)
-                GlassCard(Modifier.animateItem(), onClick = { onOpen(e.key) }, padding = PaddingValues(12.dp)) {
+                GlassCard(Modifier.animateItem(), onClick = { onOpen(e.key) }, padding = PaddingValues(Gap.m)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(34.dp).clip(CircleShape).background(Brush.linearGradient(listOf(col, col.copy(alpha = 0.55f)))),
                             contentAlignment = Alignment.Center
                         ) { Text(e.name.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.ExtraBold) }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Gap.s))
                         Column(Modifier.weight(1f)) {
-                            Text(e.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${e.memoryIds.size} memor${if (e.memoryIds.size == 1) "y" else "ies"}", fontSize = 11.sp, color = c.muted)
+                            Text(e.name, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${e.memoryIds.size} memor${if (e.memoryIds.size == 1) "y" else "ies"}", fontSize = Ts.meta, color = c.muted)
                         }
+                        val weeks = remember(e.notes) { com.keepsakeai.app.ui.components.weeklyCounts(e.notes.map { it.at }) }
+                        if (weeks.any { it > 0f }) com.keepsakeai.app.ui.components.MiniBars(weeks, col, Modifier.width(44.dp), height = 20.dp)
                     }
                     e.notes.lastOrNull()?.let {
-                        Spacer(Modifier.height(6.dp))
-                        Text(it.note, fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(Gap.s))
+                        Text(it.note, fontSize = Ts.meta, color = c.soft, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -328,7 +333,7 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
         expenses.filter { x -> first.length >= 3 && x.merchant.lowercase().split(" ", ".", "-").any { it == first } } else emptyList()
     val related = todos.filter { t -> !t.done && (t.memoryId in e.memoryIds || t.text.lowercase().contains(first)) }
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(42.dp).clip(CircleShape).background(c.glass).clickable(onClick = onClose), contentAlignment = Alignment.Center) {
@@ -343,11 +348,11 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
                 Box(
                     Modifier.size(64.dp).clip(CircleShape).background(Brush.linearGradient(listOf(col, Flow.Indigo))),
                     contentAlignment = Alignment.Center
-                ) { Text(e.name.take(1).uppercase(), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold) }
-                Spacer(Modifier.width(14.dp))
+                ) { Text(e.name.take(1).uppercase(), color = Color.White, fontSize = Ts.screen, fontFamily = Display, fontWeight = FontWeight.ExtraBold) }
+                Spacer(Modifier.width(Gap.l))
                 Column {
                     Text(e.name, style = MaterialTheme.typography.headlineSmall, color = c.text)
-                    Text("${e.type} · ${mems.size} memories" + (if (e.lastSeen > 0) " · last ${dayLabel(startOfDay(e.lastSeen))}" else ""), fontSize = 12.sp, color = c.muted)
+                    Text("${e.type} · ${mems.size} memories" + (if (e.lastSeen > 0) " · last ${dayLabel(startOfDay(e.lastSeen))}" else ""), fontSize = Ts.meta, color = c.muted)
                 }
             }
         }
@@ -355,12 +360,12 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     SectionLabel("what you know")
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(Gap.s))
                     e.notes.sortedByDescending { it.at }.take(12).forEach { n ->
-                        Row(Modifier.fillMaxWidth().clickable { viewModel.openMemory(n.memoryId) }.padding(vertical = 4.dp)) {
+                        Row(Modifier.fillMaxWidth().clickable { viewModel.openMemory(n.memoryId) }.padding(vertical = Gap.xs)) {
                             Text("•", color = col, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(8.dp))
-                            Text(n.note, fontSize = 13.sp, color = c.text, modifier = Modifier.weight(1f))
+                            Spacer(Modifier.width(Gap.s))
+                            Text(n.note, fontSize = Ts.body, color = c.text, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -389,11 +394,11 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
                 GlassCard(Modifier.fillMaxWidth()) {
                     SectionLabel("open to-dos")
                     related.forEach { t ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = Gap.xs), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(18.dp).clip(CircleShape).border(2.dp, c.muted, CircleShape).clickable { viewModel.toggleTodo(t.id) })
-                            Spacer(Modifier.width(10.dp))
-                            Text(t.text, fontSize = 13.sp, color = c.text, modifier = Modifier.weight(1f))
-                            t.due?.let { Text(dayLabel(startOfDay(it)), fontSize = 11.sp, color = Flow.Indigo) }
+                            Spacer(Modifier.width(Gap.m))
+                            Text(t.text, fontSize = Ts.body, color = c.text, modifier = Modifier.weight(1f))
+                            t.due?.let { Text(dayLabel(startOfDay(it)), fontSize = Ts.meta, color = Flow.Indigo) }
                         }
                     }
                 }
@@ -406,30 +411,30 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
                         SectionLabel("money", modifier = Modifier.weight(1f))
                     }
                     Text("${rupees(payments.sumOf { it.amount })} across ${payments.size} payment${if (payments.size > 1) "s" else ""}", style = MaterialTheme.typography.titleSmall, color = Flow.Emerald)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(Gap.s))
                     payments.sortedByDescending { it.timestamp }.take(5).forEach { p ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                            Text(dayLabel(startOfDay(p.timestamp)), fontSize = 12.sp, color = c.muted, modifier = Modifier.width(96.dp))
-                            Text(p.merchant, fontSize = 12.sp, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(rupees(p.amount), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = c.text)
+                        Row(Modifier.fillMaxWidth().padding(vertical = Gap.xs)) {
+                            Text(dayLabel(startOfDay(p.timestamp)), fontSize = Ts.meta, color = c.muted, modifier = Modifier.width(96.dp))
+                            Text(p.merchant, fontSize = Ts.meta, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(rupees(p.amount), fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text)
                         }
                     }
                 }
             }
         }
         if (mems.isNotEmpty()) {
-            item { SectionLabel("memories", trailing = "${mems.size}", modifier = Modifier.padding(top = 4.dp)) }
+            item { SectionLabel("memories", trailing = "${mems.size}", modifier = Modifier.padding(top = Gap.xs)) }
             items(mems, key = { it.id }) { m ->
                 val (a1, _) = collectionAccent(m.collectionName)
-                GlassCard(Modifier.fillMaxWidth().animateItem(), onClick = { viewModel.openMemory(m.id) }, padding = PaddingValues(12.dp)) {
+                GlassCard(Modifier.fillMaxWidth().animateItem(), onClick = { viewModel.openMemory(m.id) }, padding = PaddingValues(Gap.m)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(a1))
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
-                            Text(m.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(m.aiSummary, fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(m.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(m.aiSummary, fontSize = Ts.meta, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(dayLabel(startOfDay(m.createdAt)), fontSize = 10.sp, color = c.muted)
+                        Text(dayLabel(startOfDay(m.createdAt)), fontSize = Ts.caption, color = c.muted)
                     }
                 }
             }
@@ -440,7 +445,7 @@ fun EntityScreen(viewModel: MindSpaceViewModel, key: String, onClose: () -> Unit
 @Composable
 fun HubPills(current: HubView, todoCount: Int, peopleCount: Int, factCount: Int, expiryCount: Int = 0, reviewCount: Int = 0, onPick: (HubView) -> Unit) {
     val c = LocalFlow.current
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
         items(HubView.entries.toList()) { v ->
             val sel = v == current
             val bg by animateColorAsState(if (sel) c.chipSelected else c.glass, label = "pillBg")
@@ -448,16 +453,16 @@ fun HubPills(current: HubView, todoCount: Int, peopleCount: Int, factCount: Int,
             val count = when (v) { HubView.TODOS -> todoCount; HubView.PEOPLE -> peopleCount; HubView.FACTS -> factCount; HubView.EXPIRIES -> expiryCount; HubView.REVIEW -> reviewCount; else -> 0 }
             Row(
                 Modifier.clip(RoundedCornerShape(50)).background(bg).border(1.dp, if (sel) Color.Transparent else c.glassBorder, RoundedCornerShape(50))
-                    .clickable { onPick(v) }.padding(horizontal = 14.dp, vertical = 9.dp),
+                    .clickable { onPick(v) }.padding(horizontal = Gap.l, vertical = Gap.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(v.label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = fg)
+                Text(v.label, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = fg)
                 if (count > 0) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Gap.s))
                     Box(
                         Modifier.clip(RoundedCornerShape(50)).background(if (sel) c.onChipSelected.copy(alpha = 0.15f) else Flow.Indigo.copy(alpha = 0.14f))
-                            .padding(horizontal = 6.dp, vertical = 1.dp)
-                    ) { Text("$count", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = if (sel) c.onChipSelected else Flow.Indigo) }
+                            .padding(horizontal = Gap.s, vertical = 1.dp)
+                    ) { Text("$count", fontSize = Ts.caption, fontWeight = FontWeight.ExtraBold, color = if (sel) c.onChipSelected else Flow.Indigo) }
                 }
             }
         }

@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.spend
 
+import androidx.compose.runtime.getValue
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -65,19 +68,19 @@ fun AskMoneyCard(onAsk: (String) -> Unit) {
         "How much do I spend on subscriptions a year?",
         "Which merchant do I pay most often?",
     )
-    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = 14.dp, top = 12.dp, bottom = 12.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(start = Gap.l, top = Gap.m, bottom = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.AutoAwesome, null, tint = Flow.Indigo, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Gap.s))
             Text("ask about your money", style = MaterialTheme.typography.titleSmall, color = c.text)
         }
-        Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(end = 14.dp)) {
+        Spacer(Modifier.height(Gap.s))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s), contentPadding = PaddingValues(end = Gap.l)) {
             items(prompts) { p ->
                 Box(
                     Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f)).clickable { onAsk(p) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) { Text(p, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo) }
+                        .padding(horizontal = Gap.m, vertical = Gap.s)
+                ) { Text(p, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo) }
             }
         }
     }
@@ -94,16 +97,16 @@ fun BudgetsCard(statuses: List<BudgetStatus>, onEdit: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("budgets", style = MaterialTheme.typography.titleMedium, color = c.text, modifier = Modifier.weight(1f))
             Text(
-                if (statuses.isEmpty()) "set up" else "edit", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
-                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onEdit).padding(horizontal = 8.dp, vertical = 4.dp)
+                if (statuses.isEmpty()) "set up" else "edit", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+                modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onEdit).padding(horizontal = Gap.s, vertical = Gap.xs)
             )
         }
         if (statuses.isEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            Text("Set a monthly limit overall or per category. trove shows a daily pace and warns you at 80%.", fontSize = 12.sp, color = c.muted)
+            Spacer(Modifier.height(Gap.s))
+            Text("Set a monthly limit overall or per category. trove shows a daily pace and warns you at 80%.", fontSize = Ts.meta, color = c.muted)
             return@GlassCard
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(Gap.s))
         statuses.forEach { b ->
             val state = b.state(day, dim)
             val color = when (state) {
@@ -111,15 +114,18 @@ fun BudgetsCard(statuses: List<BudgetStatus>, onEdit: () -> Unit) {
                 BudgetState.WATCH -> Flow.Amber
                 BudgetState.OVER -> Flow.Rose
             }
-            Column(Modifier.padding(vertical = 6.dp)) {
+            Column(Modifier.padding(vertical = Gap.s)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(b.name.lowercase(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
-                    Text("${rupees(b.spent)} / ${rupees(b.limit)}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = c.text)
+                    Text(b.name.lowercase(), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
+                    Text("${rupees(b.spent)} / ${rupees(b.limit)}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text)
                 }
-                Spacer(Modifier.height(5.dp))
+                Spacer(Modifier.height(Gap.xs))
+                val fill by androidx.compose.animation.core.animateFloatAsState(
+                    b.fraction.toFloat().coerceIn(0f, 1f), androidx.compose.animation.core.tween(800), label = "budget"
+                )
                 Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(c.divider)) {
                     Box(
-                        Modifier.fillMaxWidth(b.fraction.toFloat().coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape)
+                        Modifier.fillMaxWidth(fill).fillMaxHeight().clip(CircleShape)
                             .background(Brush.horizontalGradient(listOf(color.copy(alpha = 0.7f), color)))
                     )
                     // Where you "should" be today if spending evenly
@@ -127,13 +133,13 @@ fun BudgetsCard(statuses: List<BudgetStatus>, onEdit: () -> Unit) {
                         Box(Modifier.width(2.dp).fillMaxHeight().background(c.text.copy(alpha = 0.35f)))
                     }
                 }
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(Gap.xs))
                 Text(
                     when (state) {
                         BudgetState.OVER -> "over by ${rupees(-b.remaining)}"
                         else -> "${rupees(b.remaining)} left · ${rupees(b.perDayLeft)}/day for ${b.daysLeft} days"
                     },
-                    fontSize = 11.sp, color = if (state == BudgetState.OK) c.muted else color
+                    fontSize = Ts.meta, color = if (state == BudgetState.OK) c.muted else color
                 )
             }
         }
@@ -152,11 +158,11 @@ fun BudgetDialog(current: Map<String, Double>, categories: List<String>, onSave:
         onDismissRequest = onDismiss,
         title = { Text("monthly budgets") },
         text = {
-            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Leave blank for no limit.", fontSize = 12.sp, color = c.muted)
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Gap.s)) {
+                Text("Leave blank for no limit.", fontSize = Ts.meta, color = c.muted)
                 (listOf(OVERALL) + categories).forEach { k ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(k.lowercase(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.width(110.dp))
+                        Text(k.lowercase(), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.width(110.dp))
                         GlassField(
                             values[k].orEmpty(), { v -> values[k] = v.filter { it.isDigit() } }, "₹ —", Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -185,7 +191,7 @@ fun SubscriptionsCard(subs: List<Recurring>, remindersOn: Boolean, onToggleRemin
                 Text("subscriptions & repeats", style = MaterialTheme.typography.titleMedium, color = c.text)
                 Text(
                     "${rupees(subs.sumOf { it.monthly })}/month · ${rupees(subs.sumOf { it.monthly } * 12)}/year",
-                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Purple
+                    fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Purple
                 )
             }
             Box(
@@ -200,7 +206,7 @@ fun SubscriptionsCard(subs: List<Recurring>, remindersOn: Boolean, onToggleRemin
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Gap.s))
         subs.forEach { s ->
             val d = s.daysUntilDue(now)
             val due = when {
@@ -210,21 +216,21 @@ fun SubscriptionsCard(subs: List<Recurring>, remindersOn: Boolean, onToggleRemin
                 else -> "in $d days"
             }
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onTap(s) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onTap(s) }.padding(horizontal = Gap.xs, vertical = Gap.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(Flow.Purple.copy(alpha = 0.14f)),
                     contentAlignment = Alignment.Center
                 ) { Text(s.name.take(1).uppercase(), fontWeight = FontWeight.ExtraBold, color = Flow.Purple) }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Gap.m))
                 Column(Modifier.weight(1f)) {
-                    Text(s.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${s.cadenceLabel} · ${s.count} payments", fontSize = 11.sp, color = c.muted)
+                    Text(s.name, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${s.cadenceLabel} · ${s.count} payments", fontSize = Ts.meta, color = c.muted)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(rupees(s.amount), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = c.text)
-                    Text(due, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (d <= 1) Flow.Amber else c.muted)
+                    Text(rupees(s.amount), fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
+                    Text(due, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = if (d <= 1) Flow.Amber else c.muted)
                 }
             }
         }
@@ -241,9 +247,9 @@ fun ComingUpCard(items: List<DueItem>, onOpen: (DueItem) -> Unit, onDone: (DueIt
         val known = items.mapNotNull { x -> x.amount }.sum()
         Text(
             "${items.size} to pay" + if (known > 0) " · about ${rupees(known)}" else "",
-            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Amber
+            fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Amber
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Gap.s))
         items.take(8).forEach { item ->
             val d = item.daysUntil(now)
             val due = when {
@@ -253,26 +259,26 @@ fun ComingUpCard(items: List<DueItem>, onOpen: (DueItem) -> Unit, onDone: (DueIt
                 else -> "in $d days"
             }
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onOpen(item) }.padding(horizontal = 4.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onOpen(item) }.padding(horizontal = Gap.xs, vertical = Gap.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(item.kind.label + (item.amount?.let { a -> " · ${rupees(a)}" } ?: ""), fontSize = 11.sp, color = c.muted)
+                    Text(item.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(item.kind.label + (item.amount?.let { a -> " · ${rupees(a)}" } ?: ""), fontSize = Ts.meta, color = c.muted)
                 }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Gap.s))
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(due, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (d <= 1) Flow.Amber else c.muted)
+                    Text(due, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = if (d <= 1) Flow.Amber else c.muted)
                     if (item.kind != DueKind.RENEWAL) {
                         Text(
-                            "paid", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Emerald,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onDone(item) }.padding(horizontal = 8.dp, vertical = 4.dp)
+                            "paid", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onDone(item) }.padding(horizontal = Gap.s, vertical = Gap.xs)
                         )
                     }
                 }
             }
         }
-        if (items.size > 8) Text("and ${items.size - 8} more", fontSize = 12.sp, color = c.muted)
+        if (items.size > 8) Text("and ${items.size - 8} more", fontSize = Ts.meta, color = c.muted)
     }
 }
 

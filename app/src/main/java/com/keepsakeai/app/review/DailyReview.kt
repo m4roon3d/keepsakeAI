@@ -18,6 +18,10 @@ object DailyReview {
             .take(MAX)
             .toList()
 
+    /** Everything you saved yourself in the window, decided or not: the ring's whole. */
+    fun recentCount(memories: List<MemoryEntity>, now: Long): Int =
+        memories.count { it.source != CaptureSource.EMAIL && it.source != CaptureSource.UPI_MESSAGE && now - it.createdAt <= WINDOW_DAYS * DAY && it.createdAt <= now }
+
     /** The count shown on the pill, without the cap. */
     fun count(memories: List<MemoryEntity>, reviewed: Set<Long>, now: Long): Int = pending(memories, reviewed, now).size
 }
