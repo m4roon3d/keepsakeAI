@@ -7,7 +7,6 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.flow.first
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.data.local.DigestSuggestionEntity
-import com.keepsakeai.app.widget.MindSpaceWidget
 
 class DailyDigestWorker(
     appContext: Context,
@@ -53,7 +52,7 @@ class DailyDigestWorker(
         }
         runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
         runCatching { weeklyReviewNudge(app) }
-        runCatching { MindSpaceWidget().updateAll(app) }
+        runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
         return Result.success()
     }
 

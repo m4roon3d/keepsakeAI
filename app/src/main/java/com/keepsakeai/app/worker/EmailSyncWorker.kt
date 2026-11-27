@@ -18,7 +18,6 @@ import com.keepsakeai.app.email.EmailFilter
 import com.keepsakeai.app.email.EmailStore
 import com.keepsakeai.app.email.MailAuthException
 import com.keepsakeai.app.email.MailReader
-import com.keepsakeai.app.widget.MindSpaceWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -90,7 +89,7 @@ class EmailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
         }
 
         if (anyKept) {
-            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
             runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
         }
         return Result.success()

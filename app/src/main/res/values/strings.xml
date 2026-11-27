@@ -2,7 +2,10 @@
 <resources>
     <string name="app_name">trove</string>
     <string name="accessibility_snap_description">Allows trove to capture visible screen text only when you tap the Floating Snap Key.</string>
-    <string name="widget_description">Your memories, this month’s spend and payments to review, with one-tap snap and Pilot.</string>
+    <string name="widget_today_description">Today at a glance: your next plans, reminders, to-dos due and birthdays.</string>
+    <string name="widget_capture_description">Save a note, voice memo or photo, or ask Pilot, in one tap.</string>
+    <string name="widget_money_description">This month\'s spend against your budget, and payments waiting for review.</string>
+    <string name="widget_comingup_description">Bills, renewals and things that expire in the next month.</string>
     <string name="shortcut_snap">snap</string>
     <string name="shortcut_snap_long">Snap with camera</string>
     <string name="shortcut_pilot">ask pilot</string>

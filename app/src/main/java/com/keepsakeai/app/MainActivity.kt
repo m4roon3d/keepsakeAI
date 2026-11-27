@@ -275,6 +275,7 @@ class MainActivity : FragmentActivity() {
         intent.getStringExtra(EXTRA_OPEN_OVERLAY)?.let { viewModel.overlay.value = it }
         when (intent.getStringExtra(EXTRA_OPEN_TAB)) {
             "home" -> requestedTab.intValue = TAB_HOME
+            "note" -> { requestedTab.intValue = TAB_HOME; viewModel.hubRequest.value = "KEEPSAKES"; viewModel.focusNote.value = true }
             "lens", "snapsake" -> requestedTab.intValue = TAB_SNAPSAKE
             "camera" -> { requestedTab.intValue = TAB_SNAPSAKE; viewModel.autoCamera.value = true }
             "journal" -> { requestedTab.intValue = TAB_HOME; viewModel.overlay.value = OVERLAY_JOURNAL }

@@ -1,5 +1,6 @@
 package com.keepsakeai.app.ui.screens
 
+import androidx.compose.ui.focus.focusRequester
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
 import android.app.Activity
@@ -119,6 +120,15 @@ fun HomeFeedScreen(
     var quickNote by remember { mutableStateOf("") }
     var hubView by rememberSaveable { mutableStateOf(HubView.KEEPSAKES) }
     val hubReq by viewModel.hubRequest.collectAsState()
+    val noteFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val focusNote by viewModel.focusNote.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(focusNote) {
+        if (focusNote) {
+            kotlinx.coroutines.delay(400)
+            runCatching { noteFocus.requestFocus() }
+            viewModel.focusNote.value = false
+        }
+    }
     androidx.compose.runtime.LaunchedEffect(hubReq) {
         hubReq?.let { r -> HubView.entries.firstOrNull { it.name == r }?.let { hubView = it }; viewModel.hubRequest.value = null }
     }
@@ -291,7 +301,8 @@ fun HomeFeedScreen(
                         singleLine = false,
                         minLines = 2,
                         bare = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        fieldModifier = Modifier.focusRequester(noteFocus)
                     )
                     HorizontalDivider(color = c.divider, modifier = Modifier.padding(horizontal = Gap.m))
                     Spacer(Modifier.height(Gap.s))

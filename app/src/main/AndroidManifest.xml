@@ -88,11 +88,11 @@
             </intent-filter>
         </service>
 
-        <!-- Jetpack Glance Home-Screen Widget -->
+        <!-- Home-screen widgets (Glance). The Today widget keeps the old receiver name so widgets already placed survive. -->
         <receiver
             android:name=".widget.MindSpaceWidgetReceiver"
             android:exported="true"
-            android:label="trove Brief">
+            android:label="trove Today">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -100,6 +100,48 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/mindspace_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.CaptureWidgetReceiver"
+            android:exported="true"
+            android:label="trove Capture">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_capture_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.MoneyWidgetReceiver"
+            android:exported="true"
+            android:label="trove Money">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_money_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ComingUpWidgetReceiver"
+            android:exported="true"
+            android:label="trove Coming up">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_comingup_info" />
+        </receiver>
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <!-- Play Store-friendly UPI Notification Listener (Preview & Approve) -->
         <service
