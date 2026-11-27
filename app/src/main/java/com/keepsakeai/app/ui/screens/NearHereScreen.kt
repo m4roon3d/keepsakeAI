@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,7 +42,7 @@ fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier:
     val hits by viewModel.nearHere.collectAsState()
     LaunchedEffect(Unit) { viewModel.refreshNearHere() }
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         item {
             FlowHeader(
                 eyebrow = "within ${NearHere.RADIUS_M.toInt()} m of you",
@@ -56,14 +58,14 @@ fun NearHereScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier:
         items(hits, key = { it.memory.id }) { h ->
             GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.openMemory(h.memory.id) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(h.memory.title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
-                    Text("${h.meters} m", fontSize = 12.sp, color = c.muted)
+                    Text(h.memory.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
+                    Text("${h.meters} m", fontSize = Ts.meta, color = c.muted)
                 }
-                Text(h.memory.aiSummary.replace("\n", " ").take(120), fontSize = 12.sp, color = c.muted, maxLines = 2)
+                Text(h.memory.aiSummary.replace("\n", " ").take(120), fontSize = Ts.meta, color = c.muted, maxLines = 2)
                 val lat = h.memory.lat
                 val lng = h.memory.lng
                 if (lat != null && lng != null) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(Gap.s))
                     GlassButton("open in Google Maps", onClick = { Directions.openPlace(context, lat, lng) })
                 }
             }

@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.journal
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -139,7 +142,7 @@ fun VoiceJournalScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
     val voice by animateFloatAsState(1f + level * 0.35f, tween(120), label = "voice")
 
     Column(
-        modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier.verticalScroll(rememberScrollState()).padding(Gap.l),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         FlowHeader(eyebrow = "talk for a minute", title = "voice ", gradientSuffix = "journal", joinSuffix = true,
@@ -153,19 +156,19 @@ fun VoiceJournalScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
                 Box(Modifier.size(180.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(Modifier.size(120.dp), color = Flow.Indigo, strokeWidth = 4.dp)
                 }
-                Spacer(Modifier.height(20.dp))
-                Text("listening back and keeping what matters…", color = c.muted, fontSize = 14.sp)
+                Spacer(Modifier.height(Gap.xl))
+                Text("listening back and keeping what matters…", color = c.soft, fontSize = Ts.body)
             }
             state == "saved" -> {
                 LogoMark(size = 96.dp)
-                Spacer(Modifier.height(12.dp))
-                Text("kept ✓", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = c.text)
-                Text("facts, people, to-dos and dates were picked up automatically", fontSize = 12.sp, color = c.muted, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Gap.m))
+                Text("kept ✓", fontSize = Ts.heading, fontFamily = Display, fontWeight = FontWeight.ExtraBold, color = c.text)
+                Text("facts, people, to-dos and dates were picked up automatically", fontSize = Ts.meta, color = c.muted, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(Gap.l))
                 transcript?.let {
-                    GlassCard(Modifier.fillMaxWidth()) { Text(it, fontSize = 14.sp, color = c.text, lineHeight = 20.sp) }
+                    GlassCard(Modifier.fillMaxWidth()) { Text(it, fontSize = Ts.body, color = c.text) }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(Gap.l))
                 GradientButton("done", onClick = { viewModel.resetJournal(); onClose() }, modifier = Modifier.fillMaxWidth())
             }
             else -> {
@@ -186,24 +189,24 @@ fun VoiceJournalScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modif
                         Icon(if (recording) Icons.Rounded.Stop else Icons.Rounded.Mic, if (recording) "Stop" else "Record", tint = Color.White, modifier = Modifier.size(44.dp))
                     }
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(Gap.xl))
                 Text(
                     if (recording) String.format("%d:%02d", seconds / 60, seconds % 60) else "tap to start",
-                    fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = c.text
+                    fontSize = Ts.screen, fontFamily = Display, fontWeight = FontWeight.ExtraBold, color = c.text
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Gap.s))
                 Text(
                     if (recording) "tap the orb when you're done · up to 3 minutes"
                     else "How was your day? Who did you meet, what's on your mind, what do you need to do? Any language is fine.",
-                    fontSize = 13.sp, color = c.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp)
+                    fontSize = Ts.body, color = c.soft, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = Gap.m)
                 )
                 if (recording) {
-                    Spacer(Modifier.height(18.dp))
-                    Text("discard", color = Flow.Rose, fontWeight = FontWeight.Bold, modifier = Modifier.clip(CircleShape).clickable { stop(save = false) }.padding(10.dp))
+                    Spacer(Modifier.height(Gap.l))
+                    Text("discard", color = Flow.Rose, fontWeight = FontWeight.Bold, modifier = Modifier.clip(CircleShape).clickable { stop(save = false) }.padding(Gap.m))
                 }
                 if (state.startsWith("failed:")) {
-                    Spacer(Modifier.height(16.dp))
-                    Text(state.removePrefix("failed:"), color = Flow.Rose, fontSize = 13.sp, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(Gap.l))
+                    Text(state.removePrefix("failed:"), color = Flow.Rose, fontSize = Ts.body, textAlign = TextAlign.Center)
                 }
             }
         }

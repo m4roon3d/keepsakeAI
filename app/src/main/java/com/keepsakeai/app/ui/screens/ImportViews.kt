@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,7 +53,7 @@ fun LazyStaggeredGridScope.importItems(memories: List<MemoryEntity>, onOpen: (Lo
         val section = ImportSection.entries.firstOrNull { it.name == picked } ?: ImportSection.UPI
         val list = grouped[section].orEmpty().sortedByDescending { it.createdAt }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Gap.m)) {
             if (imports.isEmpty()) {
                 GlassCard(Modifier.fillMaxWidth()) {
                     Text("Nothing imported yet. Connect a mailbox in Settings or allow the SMS listener.", color = c.muted, style = MaterialTheme.typography.bodyMedium)
@@ -59,7 +61,7 @@ fun LazyStaggeredGridScope.importItems(memories: List<MemoryEntity>, onOpen: (Lo
                 return@Column
             }
             SectionLabel("imported from email and SMS", trailing = "${imports.size} kept")
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 items(ImportSection.entries.toList()) { s ->
                     Pill("${s.label} (${grouped[s]?.size ?: 0})", section == s, { picked = s.name })
                 }
@@ -67,24 +69,24 @@ fun LazyStaggeredGridScope.importItems(memories: List<MemoryEntity>, onOpen: (Lo
             if (list.isEmpty()) {
                 GlassCard(Modifier.fillMaxWidth()) { Text("Nothing here.", color = c.muted) }
             } else {
-                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(vertical = 4.dp)) {
+                GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(vertical = Gap.xs)) {
                     list.take(shown).forEach { m ->
                         Column(
-                            Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(horizontal = 14.dp, vertical = 9.dp)
+                            Modifier.fillMaxWidth().clickable { onOpen(m.id) }.padding(horizontal = Gap.l, vertical = Gap.s)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(m.title, color = c.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text(dayLabel(startOfDay(m.createdAt)), fontSize = 11.sp, color = c.muted, modifier = Modifier.padding(start = 8.dp))
+                                Text(m.title, color = c.text, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(dayLabel(startOfDay(m.createdAt)), fontSize = Ts.meta, color = c.muted, modifier = Modifier.padding(start = Gap.s))
                             }
                             if (m.aiSummary.isNotBlank()) {
-                                Text(m.aiSummary, fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(m.aiSummary, fontSize = Ts.meta, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }
                     if (list.size > shown) {
                         Text(
-                            "show more (${list.size - shown} left)", color = Flow.Indigo, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                            modifier = Modifier.fillMaxWidth().clickable { shown += 30 }.padding(14.dp)
+                            "show more (${list.size - shown} left)", color = Flow.Indigo, fontWeight = FontWeight.SemiBold, fontSize = Ts.title,
+                            modifier = Modifier.fillMaxWidth().clickable { shown += 30 }.padding(Gap.l)
                         )
                     }
                 }

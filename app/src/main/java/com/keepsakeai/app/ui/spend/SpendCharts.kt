@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.spend
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -101,8 +104,8 @@ fun Donut(
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(centerTop, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = c.text, maxLines = 1)
-            Text(centerBottom, fontSize = 11.sp, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(size * 0.5f))
+            Text(centerTop, fontSize = Ts.lead, fontFamily = Display, fontWeight = FontWeight.Bold, color = c.text, maxLines = 1)
+            Text(centerBottom, fontSize = Ts.meta, color = c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(size * 0.5f))
         }
     }
 }
@@ -144,7 +147,7 @@ fun TrendBars(
 fun StackedBar(slices: List<Slice>, selected: Set<String>, modifier: Modifier = Modifier) {
     val c = LocalFlow.current
     val total = slices.sumOf { it.value }.takeIf { it > 0 } ?: 1.0
-    Row(modifier.fillMaxWidth().height(14.dp).clip(CircleShape).background(c.divider), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Row(modifier.fillMaxWidth().height(14.dp).clip(CircleShape).background(c.divider), horizontalArrangement = Arrangement.spacedBy(Gap.xxs)) {
         slices.forEach { s ->
             val dim = selected.isNotEmpty() && s.key !in selected
             Box(
@@ -171,14 +174,14 @@ fun LegendRow(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
             .background(if (selected) color.copy(alpha = 0.14f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = Gap.s, vertical = Gap.s),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(9.dp).clip(CircleShape).background(color.copy(alpha = if (dimmed) 0.35f else 1f)))
-        Spacer(Modifier.width(8.dp))
-        Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (dimmed) c.muted else c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("$share%", fontSize = 11.sp, color = c.muted)
-        Spacer(Modifier.width(8.dp))
-        Text(amount, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (dimmed) c.muted else c.text)
+        Spacer(Modifier.width(Gap.s))
+        Text(name, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = if (dimmed) c.muted else c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("$share%", fontSize = Ts.meta, color = c.muted)
+        Spacer(Modifier.width(Gap.s))
+        Text(amount, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = if (dimmed) c.muted else c.text)
     }
 }

@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,7 +58,7 @@ fun AiLogScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Mo
     val week = logs.count { it.timestamp > System.currentTimeMillis() - 7 * DAY }
     val fmt = remember { SimpleDateFormat("d MMM, h:mm a", Locale.ENGLISH) }
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         item {
             FlowHeader(
                 eyebrow = "what was sent, and when",
@@ -68,14 +70,14 @@ fun AiLogScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Mo
         }
         item {
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("$week calls this week · ${logs.size} kept", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = c.text)
-                Spacer(Modifier.height(4.dp))
+                Text("$week calls this week · ${logs.size} kept", fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text)
+                Spacer(Modifier.height(Gap.xs))
                 Text(
                     "trove only talks to the AIs whose keys you added. Photos and your SMS stay on your phone: only the text shown below was sent (for payments, just the payee names).",
-                    fontSize = 12.sp, color = c.muted
+                    fontSize = Ts.meta, color = c.muted
                 )
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(Gap.m))
+                Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                     GlassButton("export", onClick = {
                         val text = logs.joinToString("\n\n") { "${fmt.format(Date(it.timestamp))} · ${it.provider} · ${it.feature}\n${it.promptPreview}" }
                         val i = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text.ifBlank { "No AI calls yet." })
@@ -93,17 +95,17 @@ fun AiLogScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, modifier: Mo
             val color = when (log.provider) { "Gemini" -> Flow.Indigo; "ChatGPT" -> Flow.Emerald; else -> Flow.Sky }
             GlassCard(Modifier.fillMaxWidth(), onClick = { open = !open }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.15f)).padding(horizontal = 9.dp, vertical = 3.dp)) {
-                        Text(log.provider, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.15f)).padding(horizontal = Gap.s, vertical = Gap.xs)) {
+                        Text(log.provider, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = color)
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Text(log.feature, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
-                    Text(fmt.format(Date(log.timestamp)).lowercase(), fontSize = 11.sp, color = c.muted)
+                    Spacer(Modifier.width(Gap.s))
+                    Text(log.feature, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, modifier = Modifier.weight(1f))
+                    Text(fmt.format(Date(log.timestamp)).lowercase(), fontSize = Ts.meta, color = c.muted)
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Gap.s))
                 Text(
                     if (open) log.promptPreview else log.promptPreview.replace("\n", " ").take(140) + "…",
-                    fontSize = 11.sp, color = c.muted, fontFamily = if (open) FontFamily.Monospace else FontFamily.Default
+                    fontSize = Ts.meta, color = c.muted, fontFamily = if (open) FontFamily.Monospace else FontFamily.Default
                 )
             }
         }

@@ -142,6 +142,8 @@ data class FlowColors(
     val glassBorder: Color,
     val text: Color,
     val muted: Color,
+    /** Between text and muted: descriptions and supporting lines you are meant to read. */
+    val soft: Color,
     val chipSelected: Color,
     val onChipSelected: Color,
     val divider: Color,
@@ -158,6 +160,7 @@ private fun flowColors(p: Palette, dark: Boolean) = if (dark) FlowColors(
     glassBorder = Color(0x1AFFFFFF),
     text = Color(0xFFF8FAFC),
     muted = Color(0xFF94A3B8),
+    soft = Color(0xFFCBD5E1),
     chipSelected = Color(0xFFF8FAFC),
     onChipSelected = Color(0xFF0F172A),
     divider = Color(0x1AFFFFFF),
@@ -172,6 +175,7 @@ private fun flowColors(p: Palette, dark: Boolean) = if (dark) FlowColors(
     glassBorder = Color(0xD9FFFFFF),
     text = Color(0xFF0F172A),
     muted = Color(0xFF64748B),
+    soft = Color(0xFF334155),
     chipSelected = Color(0xFF0F172A),
     onChipSelected = Color.White,
     divider = Color(0x33CBD5E1),
@@ -179,20 +183,6 @@ private fun flowColors(p: Palette, dark: Boolean) = if (dark) FlowColors(
 
 val LocalFlow = staticCompositionLocalOf { flowColors(Palettes.Lagoon, false) }
 
-private val FlowTypography = Typography(
-    displaySmall = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp),
-    headlineMedium = TextStyle(fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
-    headlineSmall = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp),
-    titleLarge = TextStyle(fontSize = 19.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp),
-    titleMedium = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-    titleSmall = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 23.sp),
-    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontSize = 12.sp, lineHeight = 17.sp),
-    labelLarge = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-    labelMedium = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold),
-    labelSmall = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp),
-)
 
 private val LivingFlowShapes = Shapes(
     small = RoundedCornerShape(16.dp),
@@ -222,7 +212,7 @@ fun MindSpaceTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalFlow provides flowColors(p, dark)) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = FlowTypography,
+            typography = TroveTypography,
             shapes = LivingFlowShapes,
             content = content
         )

@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -88,13 +90,13 @@ fun PrivacyCard(viewModel: MindSpaceViewModel?) {
     var restoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
     val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restoreUri = uri }
 
-    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(horizontal = Gap.l, vertical = Gap.m)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Shield, null, tint = Flow.Emerald, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Gap.m))
             Text("Privacy & backup", style = MaterialTheme.typography.titleMedium, color = c.text)
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         GlassToggle(
             "App lock (fingerprint / face / PIN)", lockOn,
             onToggle = {
@@ -108,26 +110,26 @@ fun PrivacyCard(viewModel: MindSpaceViewModel?) {
             modifier = Modifier.fillMaxWidth(),
             accent = Flow.Emerald
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         HorizontalDivider(color = c.divider)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(Gap.m))
         Text(
             "Encrypted backup of memories, payments, facts, budgets and reminders (not your API keys or photos). Choose Google Drive in the save screen to keep it in the cloud.",
-            fontSize = 12.sp, color = c.muted
+            fontSize = Ts.meta, color = c.muted
         )
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Spacer(Modifier.height(Gap.m))
+        Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
             GradientButton(if (busy) "working…" else "back up", enabled = !busy, icon = Icons.Rounded.Backup, onClick = { askBackupPassword = true }, modifier = Modifier.weight(1f))
             GlassButton("restore", enabled = !busy, icon = Icons.Rounded.Restore, onClick = { openDoc.launch(arrayOf("*/*")) }, modifier = Modifier.weight(1f))
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(Gap.s))
         Text(
             if (lastBackup > 0) "last backup " + SimpleDateFormat("d MMM yyyy, h:mm a", Locale.ENGLISH).format(Date(lastBackup)).lowercase() else "no backup yet",
-            fontSize = 11.sp, color = c.muted
+            fontSize = Ts.meta, color = c.muted
         )
         message?.let {
-            Spacer(Modifier.height(6.dp))
-            Text(it, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
+            Spacer(Modifier.height(Gap.s))
+            Text(it, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
         }
     }
 
@@ -186,12 +188,12 @@ private fun PasswordDialog(
         icon = { Icon(Icons.Rounded.Lock, null, tint = Flow.Emerald) },
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(body, fontSize = 12.sp, color = c.muted)
+            Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
+                Text(body, fontSize = Ts.meta, color = c.muted)
                 GlassField(pw, { pw = it }, "Password (6+ characters)", Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
                 if (needsConfirm) {
                     GlassField(pw2, { pw2 = it }, "Repeat password", Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation())
-                    if (pw2.isNotEmpty() && pw != pw2) Text("Passwords don't match.", fontSize = 11.sp, color = Flow.Rose)
+                    if (pw2.isNotEmpty() && pw != pw2) Text("Passwords don't match.", fontSize = Ts.meta, color = Flow.Rose)
                 }
             }
         },

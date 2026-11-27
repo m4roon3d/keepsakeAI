@@ -1,5 +1,9 @@
 package com.keepsakeai.app.ui.brief
 
+import com.keepsakeai.app.ui.components.appear
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -209,7 +213,7 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
         }
     }
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         item {
             FlowHeader(eyebrow = date, title = "your ", gradientSuffix = "brief", joinSuffix = true, leading = { LogoMark(size = 46.dp) }) {
                 GlassButton("close", onClick = onClose, icon = Icons.Rounded.Close)
@@ -217,21 +221,36 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
         }
         item {
             GradientCard(Flow.suggestGradient, Modifier.fillMaxWidth()) {
-                Text(greet, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
+                Text(greet, color = Color.White.copy(alpha = 0.85f), fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(Gap.xs))
                 Text(
                     if (brief.isEmpty) "A clear day. Nothing needs you — keep something worth remembering."
                     else brief.summary(),
-                    color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 25.sp
+                    color = Color.White, fontSize = Ts.section, fontFamily = Display, fontWeight = FontWeight.ExtraBold
                 )
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
+                listOf(
+                    Triple("today", brief.today.size, Flow.Indigo),
+                    Triple("money", brief.money.size, Flow.Emerald),
+                    Triple("people", brief.people.size, Flow.Rose),
+                ).forEachIndexed { i, (label, n, col) ->
+                    GlassCard(Modifier.weight(1f).appear(i + 1), padding = PaddingValues(Gap.m)) {
+                        val shown by androidx.compose.animation.core.animateIntAsState(n, androidx.compose.animation.core.tween(600), label = "tile")
+                        Text("$shown", fontSize = Ts.heading, fontFamily = Display, fontWeight = FontWeight.ExtraBold, color = if (n > 0) col else c.muted)
+                        Text(label, fontSize = Ts.meta, color = c.muted)
+                    }
+                }
             }
         }
         if (!calendarOn) item {
             GlassCard(Modifier.fillMaxWidth()) {
-                Text("see your meetings and plans here too", color = c.text, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text("Connect your phone's calendar and trove adds today's events to the brief, and Pilot can answer \"am I free on Saturday?\"", color = c.muted, fontSize = 12.sp)
-                Spacer(Modifier.height(10.dp))
+                Text("see your meetings and plans here too", color = c.text, fontSize = Ts.title, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(Gap.xs))
+                Text("Connect your phone's calendar and trove adds today's events to the brief, and Pilot can answer \"am I free on Saturday?\"", color = c.muted, fontSize = Ts.meta)
+                Spacer(Modifier.height(Gap.m))
                 GlassButton("connect calendar", onClick = { calendarPermission.launch(android.Manifest.permission.READ_CALENDAR) }, icon = Icons.Rounded.CalendarMonth)
             }
         }
@@ -253,19 +272,19 @@ private fun androidx.compose.foundation.lazy.LazyListScope.section(title: String
     if (lines.isEmpty()) return
     item {
         val c = LocalFlow.current
-        GlassCard(Modifier.fillMaxWidth()) {
+        GlassCard(Modifier.fillMaxWidth().appear(2)) {
             SectionLabel(title)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(Gap.xs))
             lines.forEach { l ->
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onTap(l) }.padding(vertical = 8.dp, horizontal = 4.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onTap(l) }.padding(vertical = Gap.s, horizontal = Gap.xs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(if (l.urgent) Flow.Rose else color))
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(Gap.m))
                     Column(Modifier.weight(1f)) {
-                        Text(l.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        l.sub?.let { Text(it, fontSize = 12.sp, color = if (l.urgent) Flow.Rose else c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Text(l.text, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        l.sub?.let { Text(it, fontSize = Ts.meta, color = if (l.urgent) Flow.Rose else c.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                     if (l.memoryId != null || l.tab != null) Text("→", color = c.muted, fontWeight = FontWeight.Bold)
                 }

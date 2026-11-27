@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -105,7 +107,7 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
             onDismissRequest = { placeDialog = false },
             title = { Text("Where was this?") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
                     GlassField(placeName, { placeName = it }, "Place name, e.g. Inya, JP Nagar", Modifier.fillMaxWidth())
                 }
             },
@@ -133,7 +135,7 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
     val (a1, a2) = collectionAccent(m.collectionName)
     val photo = m.photoUrisCsv.split(",").firstOrNull { it.isNotBlank() }
 
-    LazyColumn(modifier, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier, contentPadding = PaddingValues(Gap.l), verticalArrangement = Arrangement.spacedBy(Gap.m)) {
         // Top bar
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -145,12 +147,12 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                     IconPill(Icons.Rounded.Edit, "edit") {
                         title = m.title; summary = m.aiSummary; body = m.rawContent; editing = true
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Gap.s))
                     IconPill(Icons.Rounded.IosShare, "share") {
                         val text = "${m.title}\n\n${m.aiSummary}" + (m.sourceUrl?.let { "\n\n$it" } ?: "")
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Share memory"))
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Gap.s))
                     IconPill(Icons.Rounded.DeleteOutline, "delete", tint = Flow.Rose) { confirmDelete = true }
                 }
             }
@@ -169,19 +171,19 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
         item {
             Column {
                 Box(Modifier.width(48.dp).height(5.dp).clip(CircleShape).background(Brush.horizontalGradient(listOf(a1, a2))))
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(Gap.m))
                 if (editing) {
                     GlassField(title, { title = it }, "Title", Modifier.fillMaxWidth())
                 } else {
                     Text(m.title, style = MaterialTheme.typography.headlineSmall, color = c.text)
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Gap.s))
                 val date = SimpleDateFormat("EEE d MMM yyyy, h:mm a", Locale.ENGLISH).format(Date(m.createdAt)).lowercase()
-                Text("$date · ${sourceLabel(m)}", fontSize = 12.sp, color = c.muted)
+                Text("$date · ${sourceLabel(m)}", fontSize = Ts.meta, color = c.muted)
             }
         }
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 items(collectionsList) { col ->
                     Pill(col.lowercase(), m.collectionName == col, {
                         if (m.collectionName != col) viewModel.updateMemory(m.copy(collectionName = col))
@@ -194,10 +196,10 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 Row(
                     Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                         .clickable { viewModel.pilotDraft.value = "Summarise everything I've saved about \"${m.threadKey}\" and suggest what I should do next."; viewModel.closeAllMemories() }
-                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                        .padding(horizontal = Gap.m, vertical = Gap.s),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("thread · ${m.threadKey}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                    Text("thread · ${m.threadKey}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
                 }
             }
         }
@@ -206,12 +208,12 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionLabel("summary")
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Gap.s))
                 if (editing) GlassField(summary, { summary = it }, "Summary", Modifier.fillMaxWidth(), singleLine = false, minLines = 2)
                 else Text(m.aiSummary, style = MaterialTheme.typography.bodyLarge, color = c.text)
                 if (m.tagsCsv.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(m.tagsCsv.split(",").filter { it.isNotBlank() }.joinToString("  ") { "#${it.trim()}" }, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
+                    Spacer(Modifier.height(Gap.m))
+                    Text(m.tagsCsv.split(",").filter { it.isNotBlank() }.joinToString("  ") { "#${it.trim()}" }, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
                 }
             }
         }
@@ -225,16 +227,16 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Place, null, tint = Flow.Pink, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
-                            Text(near.ifBlank { "$lat, $lng" }, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text("where this was taken · open in maps", fontSize = 11.sp, color = c.muted)
+                            Text(near.ifBlank { "$lat, $lng" }, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text("where this was taken · open in maps", fontSize = Ts.meta, color = c.muted)
                         }
                         Text(
-                            "directions", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                            "directions", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
                             modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                                 .clickable { com.keepsakeai.app.maps.Directions.open(context, "$lat,$lng") }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .padding(horizontal = Gap.m, vertical = Gap.s)
                         )
                     }
                 }
@@ -246,10 +248,10 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 val named = com.keepsakeai.app.places.PlaceTag.placeOf(m.rawContent) ?: com.keepsakeai.app.places.PlaceTag.plainPlace(m.rawContent)
                 Text(
                     if (named == null) "name this place" else "change place",
-                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo,
+                    fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                         .clickable { placeName = ""; placeDialog = true }
-                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                        .padding(horizontal = Gap.m, vertical = Gap.s)
                 )
             }
         }
@@ -258,8 +260,8 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 GlassCard(Modifier.fillMaxWidth(), onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Link, null, tint = Flow.Indigo, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text(url, fontSize = 12.sp, color = Flow.Indigo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.width(Gap.m))
+                        Text(url, fontSize = Ts.meta, color = Flow.Indigo, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -267,14 +269,14 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
         item {
             GlassCard(Modifier.fillMaxWidth()) {
                 SectionLabel("full text")
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(Gap.s))
                 if (editing) GlassField(body, { body = it }, "Notes", Modifier.fillMaxWidth(), singleLine = false, minLines = 4)
                 else SelectionContainer { Text(m.rawContent, style = MaterialTheme.typography.bodyMedium, color = c.text) }
             }
         }
         if (editing) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                     GlassButton("cancel", onClick = { editing = false }, modifier = Modifier.weight(1f))
                     GradientButton("save", onClick = {
                         viewModel.updateMemory(m.copy(title = title.ifBlank { m.title }, aiSummary = summary, rawContent = body))
@@ -299,19 +301,19 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
 
         // Related by meaning
         if (related.isNotEmpty()) {
-            item { SectionLabel("related memories", modifier = Modifier.padding(top = 6.dp)) }
+            item { SectionLabel("related memories", modifier = Modifier.padding(top = Gap.s)) }
             items(related, key = { it.id }) { r ->
                 val (ra, _) = collectionAccent(r.collectionName)
-                GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.openMemory(r.id) }, padding = PaddingValues(12.dp)) {
+                GlassCard(Modifier.fillMaxWidth(), onClick = { viewModel.openMemory(r.id) }, padding = PaddingValues(Gap.m)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(ra))
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
-                            Text(r.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(r.aiSummary, fontSize = 11.sp, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(r.title, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.aiSummary, fontSize = Ts.meta, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                         if (r.threadKey == m.threadKey && m.threadKey != "General") {
-                            Text("same thread", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                            Text("same thread", fontSize = Ts.caption, fontWeight = FontWeight.Bold, color = Flow.Indigo)
                         }
                     }
                 }
@@ -324,11 +326,11 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
 private fun IconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: androidx.compose.ui.graphics.Color = Flow.Indigo, onClick: () -> Unit) {
     val c = LocalFlow.current
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(c.glass).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 9.dp),
+        Modifier.clip(RoundedCornerShape(50)).background(c.glass).clickable(onClick = onClick).padding(horizontal = Gap.m, vertical = Gap.s),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(5.dp))
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = c.text)
+        Spacer(Modifier.width(Gap.xs))
+        Text(label, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text)
     }
 }

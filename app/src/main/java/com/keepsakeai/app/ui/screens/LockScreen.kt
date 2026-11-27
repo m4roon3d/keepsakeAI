@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
+import com.keepsakeai.app.ui.theme.Display
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -38,10 +41,10 @@ fun LockScreen(onUnlock: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             LogoMark(size = 110.dp)
-            Spacer(Modifier.height(18.dp))
-            Text("trove is locked", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = c.text)
-            Spacer(Modifier.height(6.dp))
-            Text("Your memories and payments stay private.", fontSize = 13.sp, color = c.muted)
+            Spacer(Modifier.height(Gap.l))
+            Text("trove is locked", fontSize = Ts.section, fontFamily = Display, fontWeight = FontWeight.ExtraBold, color = c.text)
+            Spacer(Modifier.height(Gap.s))
+            Text("Your memories and payments stay private.", fontSize = Ts.body, color = c.soft)
             Spacer(Modifier.height(28.dp))
             GradientButton("unlock", onClick = onUnlock, icon = Icons.Rounded.Fingerprint)
         }

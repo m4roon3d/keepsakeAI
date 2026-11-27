@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.theme.Ts
+import com.keepsakeai.app.ui.theme.Gap
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -114,8 +116,8 @@ fun MindPilotScreen(
 
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = DockClearance),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = Gap.l, end = Gap.l, top = Gap.s, bottom = DockClearance),
+        verticalArrangement = Arrangement.spacedBy(Gap.m)
     ) {
         item {
             FlowHeader(
@@ -138,12 +140,12 @@ fun MindPilotScreen(
                 Row(
                     Modifier.clip(RoundedCornerShape(50)).background(c.glass)
                         .clickable { viewModel.refreshPlace() }
-                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                        .padding(horizontal = Gap.m, vertical = Gap.s),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Rounded.LocationOn, null, tint = Flow.Pink, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(place ?: "Finding your location…", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.width(Gap.s))
+                    Text(place ?: "Finding your location…", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             } else {
                 GlassCard(
@@ -156,7 +158,7 @@ fun MindPilotScreen(
                         Box(Modifier.size(36.dp).clip(CircleShape).background(Flow.Pink.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.LocationOn, null, tint = Flow.Pink)
                         }
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
                             Text("Use my location", style = MaterialTheme.typography.titleSmall, color = c.text)
                             Text("So Pilot can answer weather, nearby and \"where I live\" questions.", style = MaterialTheme.typography.bodySmall, color = c.muted)
@@ -167,7 +169,7 @@ fun MindPilotScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 AiProvider.entries.forEach { p ->
                     Pill(p.tag, p in selectedProviders, { viewModel.toggleProvider(p) }, Modifier.weight(1f))
                 }
@@ -175,14 +177,14 @@ fun MindPilotScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                 GlassToggle("Memory context", useMemory, { viewModel.useMemoryContext.value = !useMemory }, Modifier.weight(1f))
                 GlassToggle("Agent mode", agentMode, { viewModel.agentModeEnabled.value = !agentMode }, Modifier.weight(1f), accent = Flow.Purple)
             }
         }
 
         item {
-            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(6.dp)) {
+            GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.s)) {
                 GlassField(
                     value = query,
                     onValueChange = { query = it },
@@ -193,15 +195,15 @@ fun MindPilotScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Gap.s),
+                    contentPadding = PaddingValues(horizontal = Gap.s, vertical = Gap.s)
                 ) {
                     items(presets) { p ->
                         Box(
                             Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
                                 .clickable { query = p }
-                                .padding(horizontal = 11.dp, vertical = 6.dp)
-                        ) { Text(p, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo) }
+                                .padding(horizontal = Gap.m, vertical = Gap.s)
+                        ) { Text(p, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo) }
                     }
                 }
                 GradientButton(
@@ -221,7 +223,7 @@ fun MindPilotScreen(
 
         if (isAsking) {
             item {
-                Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.Center) {
+                Row(Modifier.fillMaxWidth().padding(Gap.s), horizontalArrangement = Arrangement.Center) {
                     CircularProgressIndicator(color = Flow.Indigo, strokeWidth = 3.dp, modifier = Modifier.size(28.dp))
                 }
             }
@@ -231,7 +233,7 @@ fun MindPilotScreen(
             item {
                 GlassCard(Modifier.fillMaxWidth()) {
                     LogoMark(Modifier.align(Alignment.CenterHorizontally), size = 64.dp)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Gap.s))
                     Text(
                         "Compare answers from Gemini, ChatGPT and Perplexity side by side, grounded in what you've saved, plus live web search, your location and today's date.",
                         color = c.muted,
@@ -246,11 +248,11 @@ fun MindPilotScreen(
             GlassCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(Brush.linearGradient(listOf(pc, Flow.Sky))))
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Gap.s))
                     Text(resp.provider.tag, style = MaterialTheme.typography.titleSmall, color = pc, modifier = Modifier.weight(1f))
-                    Text(resp.provider.displayName, fontSize = 11.sp, color = c.muted)
+                    Text(resp.provider.displayName, fontSize = Ts.meta, color = c.muted)
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(Gap.s))
                 val parsed = remember(resp.content) { com.keepsakeai.app.ai.PlaceMarkers.parse(resp.content) }
                 SelectionContainer {
                     Text(
@@ -260,41 +262,41 @@ fun MindPilotScreen(
                     )
                 }
                 if (!resp.isError && parsed.places.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Gap.m))
                     Text("PLACES", style = MaterialTheme.typography.labelSmall, color = c.muted)
-                    Spacer(Modifier.height(6.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Spacer(Modifier.height(Gap.s))
+                    Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
                         parsed.places.forEach { place ->
                             Row(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flow.Sky.copy(alpha = 0.10f))
                                     .clickable { com.keepsakeai.app.maps.Directions.open(context, place.query) }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    .padding(horizontal = Gap.m, vertical = Gap.s),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(place.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text("directions →", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Sky)
+                                Text(place.name, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("directions →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
                             }
                         }
                     }
                 }
                 if (resp.cited.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(Gap.m))
                     Text("FROM YOUR MEMORIES", style = MaterialTheme.typography.labelSmall, color = c.muted)
-                    Spacer(Modifier.height(6.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Spacer(Modifier.height(Gap.s))
+                    Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
                         resp.cited.forEach { id ->
                             val src = sources[id] ?: return@forEach
                             val n = sources.keys.indexOf(id) + 1
                             Row(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Flow.Indigo.copy(alpha = 0.10f))
                                     .clickable { viewModel.openMemory(id) }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    .padding(horizontal = Gap.m, vertical = Gap.s),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("[$n]", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Flow.Indigo)
-                                Spacer(Modifier.width(8.dp))
-                                Text(src.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                Text("open →", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Flow.Indigo)
+                                Text("[$n]", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
+                                Spacer(Modifier.width(Gap.s))
+                                Text(src.title, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text("open →", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
                             }
                         }
                     }
