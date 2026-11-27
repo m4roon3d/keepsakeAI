@@ -100,6 +100,12 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         return dao.countExpensesByAmountWindow(amount, at - w, at + w) > 0
     }
 
+    /** True if this exact bank message reached trove before (checked and remembered in one step). */
+    fun seenMessage(body: String, at: Long): Boolean {
+        val fp = MessageFingerprint.of(body) ?: return false
+        return prefs.seenMessage(fp, at)
+    }
+
     /** True if the payment is already saved or already waiting in the review queue. */
     suspend fun isDuplicate(amount: Double, utr: String?, at: Long, wide: Boolean = false): Boolean {
         if (expenseExists(amount, utr, at, wide)) return true

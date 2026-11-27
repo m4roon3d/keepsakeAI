@@ -44,6 +44,22 @@ class MoneyPrefs(context: Context) {
         set(v) = prefs.edit().putBoolean("renewal_reminders", v).apply()
 
     /** True the first time a given alert key is seen; used so each alert fires once. */
+    /**
+     * Remembers bank-message fingerprints for a few days. Returns true if this one was already seen
+     * (a re-posted notification, or the inbox scan meeting a message the listener already saved).
+     */
+    @Synchronized
+    fun seenMessage(fingerprint: String, now: Long): Boolean {
+        val keep = 4L * 24 * 60 * 60 * 1000
+        val live = prefs.getStringSet("seen_msgs", emptySet()).orEmpty().mapNotNull { e ->
+            val at = e.substringAfter('@', "").toLongOrNull() ?: return@mapNotNull null
+            if (now - at in 0..keep) e.substringBefore('@') to at else null
+        }
+        if (live.any { it.first == fingerprint }) return true
+        prefs.edit().putStringSet("seen_msgs", (live + (fingerprint to now)).takeLast(400).map { "${it.first}@${it.second}" }.toSet()).apply()
+        return false
+    }
+
     fun firstTime(alertKey: String): Boolean {
         val sent = prefs.getStringSet("alerts_sent", emptySet()).orEmpty()
         if (alertKey in sent) return false

@@ -614,7 +614,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             var filedAsTransfers = 0
             scan.debits.forEach { sd ->
                 val item = sd.item
-                val seen = upiKey(item) in dismissed || guard.isDuplicate(item.amount, item.utrRef, item.receivedAt)
+                val seen = upiKey(item) in dismissed || guard.isDuplicate(item.amount, item.utrRef, item.receivedAt) ||
+                    guard.seenMessage(item.rawMessage, item.receivedAt)
                 if (seen) return@forEach
                 val type = guard.classify(sd.parsed, item.receivedAt)
                 if (type == TxnType.TRANSFER) {
@@ -731,7 +732,9 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                 .filter { guard.typeForMerchant(it.merchant, it.category + " " + it.notes) == TxnType.TRANSFER }
                 .forEach { dao.setExpenseType(it.id, TxnType.TRANSFER) }
             val moved = (dao.countTransfers() - before).coerceAtLeast(0)
-            val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses())
+            // Approved payments keep their SMS as a receipt memory with the same time: lets tidy-up spot re-posted copies.
+            val messages = dao.getAllMemories().filter { it.source == CaptureSource.UPI_MESSAGE }.associate { it.createdAt to it.rawContent }
+            val dupes = com.keepsakeai.app.finance.DuplicateFinder.find(dao.getAllExpenses(), messages)
             isCleaning.value = false
             refreshWidget()
             if (dupes.isEmpty()) {
@@ -747,6 +750,9 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         cleanupPlan.value = null
         viewModelScope.launch {
             plan.duplicates.forEach { dao.deleteExpense(it.remove) }
+            // And the receipt memory each removed copy made.
+            val gone = plan.duplicates.map { it.remove.timestamp }.toSet()
+            dao.getAllMemories().filter { it.source == CaptureSource.UPI_MESSAGE && it.createdAt in gone }.forEach { dao.deleteMemory(it) }
             refreshWidget()
             statusMessage.value = "Removed ${plan.duplicates.size} duplicate${if (plan.duplicates.size == 1) "" else "s"}" +
                 if (plan.transfersMoved > 0) " and moved ${plan.transfersMoved} to transfers" else ""

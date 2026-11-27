@@ -26,15 +26,22 @@ object DuplicateFinder {
         else -> 0
     }
 
-    private fun sameEvent(a: ExpenseEntity, b: ExpenseEntity): Boolean {
+    private fun sameEvent(a: ExpenseEntity, b: ExpenseEntity, messages: Map<Long, String>): Boolean {
         val ua = utrOf(a)
         val ub = utrOf(b)
         if (ua != null && ub != null) return ua == ub
+        if (isMessage(a) && isMessage(b)) {
+            val fa = messages[a.timestamp]?.let { MessageFingerprint.of(it) }
+            val fb = messages[b.timestamp]?.let { MessageFingerprint.of(it) }
+            // The same SMS saved again when the notification was re-posted, hours apart.
+            if (fa != null && fb != null) return fa == fb && abs(a.timestamp - b.timestamp) <= 3 * DAY
+        }
         val window = if (isMessage(a) && isMessage(b)) MINUTES_5 else DAY
         return abs(a.timestamp - b.timestamp) <= window
     }
 
-    fun find(all: List<ExpenseEntity>): List<Dupe> {
+    /** [messages]: the original message text of message-sourced payments, keyed by their time, where known. */
+    fun find(all: List<ExpenseEntity>, messages: Map<Long, String> = emptyMap()): List<Dupe> {
         val out = mutableListOf<Dupe>()
         val gone = HashSet<Long>()
         val eligible = all.filter { !it.sourceMethod.equals("Manual", ignoreCase = true) }
@@ -45,7 +52,7 @@ object DuplicateFinder {
                 if (a.id in gone) continue
                 for (j in i + 1 until sorted.size) {
                     val b = sorted[j]
-                    if (b.id in gone || !sameEvent(a, b)) continue
+                    if (b.id in gone || !sameEvent(a, b, messages)) continue
                     val keepA = rank(a) > rank(b) || (rank(a) == rank(b) && (a.type == TxnType.TRANSFER || b.type != TxnType.TRANSFER))
                     val (keep, drop) = if (keepA) a to b else b to a
                     gone.add(drop.id)
