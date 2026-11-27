@@ -878,9 +878,9 @@ private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceVi
     val c = LocalFlow.current
     var open by remember { mutableStateOf(false) }
     GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp)) {
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "transfers between your accounts (${transfers.size}) · not counted as spending",
+                "${transfers.size} transfers between your accounts · excluded",
                 style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f)
             )
             Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.size(18.dp).rotate(if (open) 180f else 0f))
