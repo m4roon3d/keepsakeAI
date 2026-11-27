@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui
 
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.collectLatest
 import android.app.Application
 import android.net.Uri
 import androidx.glance.appwidget.updateAll
@@ -20,7 +22,6 @@ import com.keepsakeai.app.data.local.PersonalFactEntity
 import com.keepsakeai.app.data.local.TxnType
 import com.keepsakeai.app.finance.FinanceGuard
 import com.keepsakeai.app.data.preferences.KeepReminder
-import com.keepsakeai.app.widget.MindSpaceWidget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -312,6 +313,8 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     /** Asks the home hub to switch view (e.g. "TODOS" from the brief). */
     val hubRequest = MutableStateFlow<String?>(null)
+    /** Set by the Capture widget's "note" button: open home with the keyboard on the note box. */
+    val focusNote = MutableStateFlow(false)
 
     /** idle → transcribing → saved(transcript) | failed(message) */
     val journalState = MutableStateFlow<String>("idle")
@@ -375,6 +378,16 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     // ── Reminders found in captures ──────────────────────────────
     private val reminderStore = com.keepsakeai.app.data.preferences.ReminderStore(app)
     val reminders = MutableStateFlow(reminderStore.all())
+
+    // Keep the Today and Coming up widgets in step when to-dos or reminders change in the app.
+    init {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.merge(todos.map { 0 }, reminders.map { 1 }).drop(2).collectLatest {
+                kotlinx.coroutines.delay(1500)
+                runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
+            }
+        }
+    }
 
     fun scheduleReminder(r: KeepReminder) {
         val at = com.keepsakeai.app.worker.ReminderWorker.schedule(app, r).first()
@@ -472,7 +485,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             dao.deleteMemory(memory)
             entityStore.forgetMemory(memory.id)
             entities.value = entityStore.all()
-            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
         }
     }
 
@@ -642,7 +655,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             dao.deleteUpiMemories()
             dao.clearPendingUpi()
             app.getSharedPreferences("upi_prefs", android.content.Context.MODE_PRIVATE).edit().remove("dismissed").apply()
-            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
             statusMessage.value = "Removed $n imported payment${if (n == 1) "" else "s"}"
         }
     }
@@ -838,7 +851,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun refreshWidget() {
         viewModelScope.launch {
-            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
             runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
         }
     }
@@ -866,7 +879,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     actionLabel = "Ask Mind Pilot"
                 )
             )
-            runCatching { MindSpaceWidget().updateAll(app) }
+            runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
         }
     }
 }

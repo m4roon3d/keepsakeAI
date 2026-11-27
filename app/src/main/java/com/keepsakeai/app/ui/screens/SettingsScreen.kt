@@ -62,7 +62,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.glance.appwidget.updateAll
-import com.keepsakeai.app.widget.MindSpaceWidget
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -187,7 +186,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
                             .border(if (selected) 2.dp else 1.dp, if (selected) p.primary else c.glassBorder, shape)
                             .clickable {
                                 ThemeStore.setPalette(context, p)
-                                scope.launch { runCatching { MindSpaceWidget().updateAll(context) } }
+                                scope.launch { runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(context) } }
                             }
                             .padding(vertical = Gap.m),
                         horizontalAlignment = Alignment.CenterHorizontally

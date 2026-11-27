@@ -290,6 +290,7 @@ fun GlassField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     shape: Shape = if (singleLine) RoundedCornerShape(50) else RoundedCornerShape(22.dp),
     bare: Boolean = false,
+    fieldModifier: Modifier = Modifier,
 ) {
     val c = LocalFlow.current
     Row(
@@ -312,7 +313,7 @@ fun GlassField(
             keyboardOptions = keyboardOptions,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.text, fontSize = Ts.title),
             cursorBrush = SolidColor(Flow.Indigo),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).then(fieldModifier),
             decorationBox = { inner ->
                 Box {
                     if (value.isEmpty()) Text(placeholder, color = c.muted, fontSize = Ts.title)
