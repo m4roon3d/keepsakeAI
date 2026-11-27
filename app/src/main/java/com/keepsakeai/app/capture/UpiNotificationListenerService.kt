@@ -53,7 +53,11 @@ class UpiNotificationListenerService : NotificationListenerService() {
         scope.launch {
             val dao = app.database.dao()
             val guard = FinanceGuard(dao, MoneyPrefs(app))
-            val now = System.currentTimeMillis()
+            val clock = System.currentTimeMillis()
+            // The message's own time, not when the notification reached us: a re-posted notification keeps it.
+            val now = sbn.notification.`when`.takeIf { it > 0 && it <= clock + 60_000 && clock - it < 3L * 24 * 60 * 60 * 1000 } ?: clock
+            // The same SMS re-posted by the messaging app hours later is not a new payment.
+            if (guard.seenMessage(parsed.rawSnippet, now)) return@launch
             // Same payment already saved or waiting (UTR, or same amount within minutes, from SMS or email).
             if (guard.isDuplicate(parsed.amount, parsed.utrRef, now)) return@launch
             guard.learnAccounts(listOf(parsed.account))
@@ -67,6 +71,7 @@ class UpiNotificationListenerService : NotificationListenerService() {
                 bankOrApp = parsed.bankOrApp,
                 utrRef = parsed.utrRef,
                 rawMessage = parsed.rawSnippet,
+                receivedAt = now,
                 type = type
             )
             // Between your own accounts: file under Transfers. Anything else waits for review.

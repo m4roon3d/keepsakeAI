@@ -65,4 +65,39 @@ class DuplicateFinderTest {
         val d = DuplicateFinder.find(listOf(sms, mail, ocr))
         assertEquals(setOf(2L, 3L), d.map { it.remove.id }.toSet())
     }
+
+    private val sms = "INR 299.00 spent using ICICI Bank Card XX4321 on 27-Nov-26 on Google YouTube. Avl Limit: INR 1,52,340.00"
+
+    @Test
+    fun theSameSmsSavedAgainHoursLaterIsOnePayment() {
+        val a = e(1, 299.0, "Card · ICICI Bank", t, merchant = "YouTube")
+        val b = e(2, 299.0, "Card · ICICI Bank", t + 4 * hour, merchant = "YouTube")
+        val c = e(3, 299.0, "Card · ICICI Bank", t + 5 * hour, merchant = "YouTube")
+        val d = DuplicateFinder.find(listOf(a, b, c), mapOf(a.timestamp to sms, b.timestamp to sms, c.timestamp to "  " + sms.uppercase() + " "))
+        assertEquals(setOf(2L, 3L), d.map { it.remove.id }.toSet())
+        assertTrue(d.all { it.keep.id == 1L })
+    }
+
+    @Test
+    fun twoRealChargesWithDifferentMessagesStaySeparate() {
+        val a = e(1, 299.0, "Card · ICICI Bank", t, merchant = "YouTube")
+        val b = e(2, 299.0, "Card · ICICI Bank", t + 4 * hour, merchant = "YouTube")
+        val other = sms.replace("1,52,340.00", "1,52,041.00")
+        assertTrue(DuplicateFinder.find(listOf(a, b), mapOf(a.timestamp to sms, b.timestamp to other)).isEmpty())
+    }
+
+    @Test
+    fun withoutMessageTextHoursApartAreNotMerged() {
+        val a = e(1, 299.0, "Card · ICICI Bank", t, merchant = "YouTube")
+        val b = e(2, 299.0, "Card · ICICI Bank", t + 4 * hour, merchant = "YouTube")
+        assertTrue(DuplicateFinder.find(listOf(a, b)).isEmpty())
+    }
+
+    @Test
+    fun fingerprintIgnoresCaseAndSpacingButNotContent() {
+        val f = com.keepsakeai.app.finance.MessageFingerprint
+        assertEquals(f.of(sms), f.of(sms.lowercase().replace(" ", "  ")))
+        assertTrue(f.of(sms) != f.of(sms.replace("299.00", "298.00")))
+        assertEquals(null, f.of("short"))
+    }
 }
