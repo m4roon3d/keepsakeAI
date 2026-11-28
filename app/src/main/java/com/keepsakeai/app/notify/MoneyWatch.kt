@@ -71,7 +71,6 @@ object MoneyWatch {
         }
         ExpiryWatch.check(context)
         // Money lent or borrowed a couple of weeks ago, still open: one gentle nudge each.
-        val now = System.currentTimeMillis()
         com.keepsakeai.app.intents.OwedRules.dueForNudge(com.keepsakeai.app.intents.OwedStore(app).all(), now).forEach { o ->
             if (!prefs.firstTime("owed:${o.id}")) return@forEach
             val amt = o.amount?.let { com.keepsakeai.app.widget.money(app.apiKeyStore.defaultCurrency.ifBlank { "INR" }, it) } ?: "money"
