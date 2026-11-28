@@ -99,14 +99,8 @@ private fun newSnapFile(context: Context) = File(snapsDir(context), "snap_${Syst
 private fun uriFor(context: Context, file: File): Uri =
     FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 
-/** Copies a picked gallery image into trove's own folder (picker access is temporary). */
-private fun importToSnaps(context: Context, source: Uri): Uri? = runCatching {
-    val dest = newSnapFile(context)
-    context.contentResolver.openInputStream(source)?.use { input ->
-        dest.outputStream().use { input.copyTo(it) }
-    } ?: return null
-    Uri.fromFile(dest)
-}.getOrNull()
+/** Copies a picked gallery image into trove's own folder, from the original so its GPS location survives. */
+private fun importToSnaps(context: Context, source: Uri): Uri? = com.keepsakeai.app.capture.ImagePrep.importToSnaps(context, source)
 
 /**
  * Snapsake: point, snap, keep.

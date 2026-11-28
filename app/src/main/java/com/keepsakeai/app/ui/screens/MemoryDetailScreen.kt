@@ -243,7 +243,11 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                         Spacer(Modifier.width(Gap.m))
                         Column(Modifier.weight(1f)) {
                             Text(near.ifBlank { "$lat, $lng" }, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text("where this was taken · open in maps", fontSize = Ts.meta, color = c.muted)
+                            Text(
+                                if (m.photoUrisCsv.isBlank() && m.source != com.keepsakeai.app.data.local.CaptureSource.CAMERA_SCAN) "where you saved this · open in maps"
+                                else "where this was taken · open in maps",
+                                fontSize = Ts.meta, color = c.muted
+                            )
                         }
                         Text(
                             "directions", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,

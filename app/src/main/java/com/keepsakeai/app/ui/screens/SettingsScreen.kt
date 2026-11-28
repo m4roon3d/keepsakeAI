@@ -130,6 +130,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         hasLocation = it.values.any { g -> g }
     }
+    var tagWhere by remember { mutableStateOf(com.keepsakeai.app.data.preferences.NudgePrefs(context).tagSaveLocation) }
     var hasMediaLocation by remember { mutableStateOf(com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(context)) }
     val mediaLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasMediaLocation = it }
     var hasCalendar by remember { mutableStateOf(com.keepsakeai.app.calendar.CalendarReader.hasPermission(context)) }
@@ -248,6 +249,16 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             SlimRow(Icons.Rounded.LocationOn, Flow.Pink, "Location", if (hasLocation) "Weather & nearby answers" else "Off", if (hasLocation) "On" else "Turn on", hasLocation) {
                 if (hasLocation) openAppInfo()
                 else locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+            }
+            HorizontalDivider(color = c.divider)
+            SlimRow(
+                Icons.Rounded.Place, Flow.Pink, "Where I saved it",
+                if (!hasLocation) "Needs location" else if (tagWhere) "Notes, voice and links remember the place" else "Off",
+                if (tagWhere) "On" else "Off", tagWhere && hasLocation
+            ) {
+                tagWhere = !tagWhere
+                com.keepsakeai.app.data.preferences.NudgePrefs(context).tagSaveLocation = tagWhere
+                if (tagWhere && !hasLocation) locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
             }
             HorizontalDivider(color = c.divider)
             SlimRow(Icons.Rounded.CalendarMonth, Flow.Sky, "Calendar", if (hasCalendar) "Events in your brief, home and Pilot" else "Off", if (hasCalendar) "On" else "Turn on", hasCalendar) {

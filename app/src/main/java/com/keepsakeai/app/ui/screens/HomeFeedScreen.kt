@@ -1,5 +1,6 @@
 package com.keepsakeai.app.ui.screens
 
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.ui.focus.focusRequester
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
@@ -521,6 +522,15 @@ private fun MemoryCard(mem: MemoryEntity, score: Float?, onDelete: () -> Unit, o
         Text(mem.title, style = MaterialTheme.typography.titleSmall, color = c.text, maxLines = 3, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(Gap.xs))
         Text(mem.aiSummary, style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 5, overflow = TextOverflow.Ellipsis)
+        val place = remember(mem.rawContent) { com.keepsakeai.app.places.PlaceTag.shortPlace(mem.rawContent) }
+        if (place != null) {
+            Spacer(Modifier.height(Gap.s))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(androidx.compose.material.icons.Icons.Rounded.LocationOn, null, tint = Flow.Pink, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(Gap.xs))
+                Text(place, fontSize = Ts.meta, fontWeight = FontWeight.Medium, color = c.soft, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
         val tag = mem.tagsCsv.split(",").firstOrNull { it.isNotBlank() }
         if (tag != null || score != null) {
             Spacer(Modifier.height(Gap.s))
