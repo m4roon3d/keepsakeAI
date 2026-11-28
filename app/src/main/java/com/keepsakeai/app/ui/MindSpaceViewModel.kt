@@ -138,6 +138,81 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     /** A question to pre-fill in Pilot (set from Spend, widget or reminders). */
     val pilotDraft = MutableStateFlow<String?>(null)
 
+    // ── Pilot about one card ─────────────────────────────────────
+    /** The card Pilot is being asked about (shown as a chip in Pilot), or null. */
+    val pilotFocus = MutableStateFlow<MemoryEntity?>(null)
+    /** The question behind the answers on screen, for saving them. */
+    val pilotLastQuestion = MutableStateFlow("")
+    /** Card ids being re-summarised, for a spinner on the button. */
+    val refreshingSummary = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** Open Pilot to ask your own questions about [m]; answers can then be added to it. */
+    fun askAbout(m: MemoryEntity) {
+        pilotFocus.value = m
+        pilotResponses.value = emptyList()
+        closeAllMemories()
+        pilotDraft.value = ""   // switches to Pilot; a blank draft asks nothing
+    }
+
+    private fun today() = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.ENGLISH).format(java.util.Date())
+
+    private suspend fun saveWithEmbedding(m: MemoryEntity) {
+        val vec = app.vectorSearch.embedText(com.keepsakeai.app.explore.Explorations.embedText(m.title, m.aiSummary, m.rawContent, m.tagsCsv))
+        dao.updateMemory(m.copy(embeddingCsv = app.vectorSearch.encodeVector(vec)))
+    }
+
+    /** Adds a Pilot answer, with its question, to the end of a card (the focused one unless [targetId] is given). */
+    fun addPilotAnswerToCard(resp: MindPilotResponse, targetId: Long? = null) {
+        val id = targetId ?: pilotFocus.value?.id ?: return
+        viewModelScope.launch {
+            val card = dao.observeMemory(id).first() ?: return@launch
+            val answer = com.keepsakeai.app.explore.Explorations.clean(com.keepsakeai.app.ai.PlaceMarkers.parse(resp.content).text)
+            val q = pilotLastQuestion.value.ifBlank { "Explored with Pilot" }
+            val updated = card.copy(rawContent = com.keepsakeai.app.explore.Explorations.add(card.rawContent, com.keepsakeai.app.explore.Explorations.Item(today(), q, answer)))
+            saveWithEmbedding(updated)
+            if (pilotFocus.value?.id == id) pilotFocus.value = updated
+            statusMessage.value = "Added to ${card.title}"
+        }
+    }
+
+    /** Keeps a Pilot answer as a memory of its own. */
+    fun savePilotAnswerAsMemory(resp: MindPilotResponse) {
+        viewModelScope.launch {
+            val answer = com.keepsakeai.app.explore.Explorations.clean(com.keepsakeai.app.ai.PlaceMarkers.parse(resp.content).text)
+            val q = pilotLastQuestion.value.ifBlank { "Pilot answer" }
+            val m = MemoryEntity(
+                title = q.replace(Regex("\\s+"), " ").trim().take(70),
+                rawContent = "Asked Pilot: $q\n\n$answer",
+                aiSummary = answer.replace(Regex("[#*_`>]"), "").replace(Regex("\\s+"), " ").take(220),
+                collectionName = "Pilot answers",
+                source = CaptureSource.TEXT_NOTE,
+                tagsCsv = "pilot",
+            )
+            val vec = app.vectorSearch.embedText("${m.title} ${m.aiSummary} ${answer.take(600)}")
+            dao.insertMemory(m.copy(embeddingCsv = app.vectorSearch.encodeVector(vec)))
+            statusMessage.value = "Saved as a memory"
+        }
+    }
+
+    /** Removes one saved exploration from a card. */
+    fun removeExploration(m: MemoryEntity, index: Int) {
+        viewModelScope.launch { saveWithEmbedding(m.copy(rawContent = com.keepsakeai.app.explore.Explorations.remove(m.rawContent, index))) }
+    }
+
+    /** Rewrites a card's summary so it covers what was explored too (one AI call). */
+    fun refreshSummary(m: MemoryEntity) {
+        if (m.id in refreshingSummary.value) return
+        refreshingSummary.value = refreshingSummary.value + m.id
+        viewModelScope.launch {
+            val text = "${m.title}\n\n${m.rawContent}"
+            val fresh = runCatching { app.mindPilotClient.analyzeCapture(text).summary }.getOrNull()?.trim().orEmpty()
+            refreshingSummary.value = refreshingSummary.value - m.id
+            if (fresh.length < 20) { statusMessage.value = "Couldn't refresh the summary right now"; return@launch }
+            saveWithEmbedding(m.copy(aiSummary = fresh))
+            statusMessage.value = "Summary refreshed"
+        }
+    }
+
     /** Memories kept within a few hundred metres of where the phone is now. */
     val nearHere = MutableStateFlow<List<com.keepsakeai.app.places.NearHere.Hit>>(emptyList())
 
@@ -502,19 +577,25 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun runMindPilot(query: String) {
         if (query.isBlank()) return
+        val focus = pilotFocus.value
+        pilotLastQuestion.value = query.trim()
         viewModelScope.launch {
             isAskingPilot.value = true
-            val contextMemories = if (useMemoryContext.value) {
+            val ranked = if (useMemoryContext.value) {
                 val all = dao.getRecentMemories(100)
                 val topSemantic = app.vectorSearch.rankMemories(query, all, topK = 8).map { it.memory }
                 topSemantic.ifEmpty { all.take(10) }
             } else {
                 emptyList()
             }
+            // Asking about one card: it goes first, as [1], whatever the memory setting.
+            val contextMemories = if (focus != null) {
+                listOf(dao.observeMemory(focus.id).first() ?: focus) + ranked.filter { it.id != focus.id }.take(7)
+            } else ranked
             val used = contextMemories.take(12)
             pilotSources.value = used.associateBy { it.id }
             pilotResponses.value = app.mindPilotClient.askMindPilot(
-                query = query,
+                query = if (focus != null) "This is about my saved memory \"${focus.title}\" (memory [1]). $query" else query,
                 providers = selectedProviders.value,
                 memories = contextMemories,
                 agentMode = agentModeEnabled.value,

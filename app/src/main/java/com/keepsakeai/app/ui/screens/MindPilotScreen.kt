@@ -89,6 +89,8 @@ fun MindPilotScreen(
     val responses by viewModel.pilotResponses.collectAsState()
     val place by viewModel.currentPlace.collectAsState()
     val sources by viewModel.pilotSources.collectAsState()
+    val focus by viewModel.pilotFocus.collectAsState()
+    var attachFor by remember { mutableStateOf<com.keepsakeai.app.ai.MindPilotResponse?>(null) }
 
     var query by rememberSaveable { mutableStateOf("") }
     var hasLocation by remember { mutableStateOf(DeviceContext.hasLocationPermission(context)) }
@@ -128,7 +130,7 @@ fun MindPilotScreen(
             ) {
                 GlassButton(
                     "new",
-                    onClick = { query = ""; viewModel.pilotResponses.value = emptyList() },
+                    onClick = { query = ""; viewModel.pilotResponses.value = emptyList(); viewModel.pilotFocus.value = null },
                     icon = Icons.Rounded.Add
                 )
             }
@@ -183,12 +185,37 @@ fun MindPilotScreen(
             }
         }
 
+        focus?.let { f ->
+            item {
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Flow.Indigo.copy(alpha = 0.12f))
+                        .padding(start = Gap.m, end = Gap.xs, top = Gap.xs, bottom = Gap.xs),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.AutoAwesome, null, tint = Flow.Indigo, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(Gap.s))
+                    Text(
+                        "about: ${f.title}", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Text(
+                        "×", fontSize = Ts.lead, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+                        modifier = Modifier.clip(CircleShape).clickable { viewModel.pilotFocus.value = null }.padding(horizontal = Gap.s)
+                    )
+                }
+            }
+        }
+
         item {
             GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.s)) {
                 GlassField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = if (agentMode) "Give Agent mode a multi-step goal…" else "Ask anything…",
+                    placeholder = when {
+                        focus != null -> "Ask about ${focus?.title}…"
+                        agentMode -> "Give Agent mode a multi-step goal…"
+                        else -> "Ask anything…"
+                    },
                     singleLine = false,
                     minLines = 2,
                     bare = true,
@@ -279,6 +306,21 @@ fun MindPilotScreen(
                         }
                     }
                 }
+                if (!resp.isError && !isAsking) {
+                    var saved by remember(resp) { mutableStateOf(false) }
+                    Spacer(Modifier.height(Gap.m))
+                    Row(horizontalArrangement = Arrangement.spacedBy(Gap.s), verticalAlignment = Alignment.CenterVertically) {
+                        val f = focus
+                        if (saved) {
+                            Text("saved ✓", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald, modifier = Modifier.padding(Gap.s))
+                        } else if (f != null) {
+                            SaveChip("add to ${f.title.take(28)}", Flow.Indigo) { viewModel.addPilotAnswerToCard(resp); saved = true }
+                        } else {
+                            SaveChip("save as memory", Flow.Indigo) { viewModel.savePilotAnswerAsMemory(resp); saved = true }
+                            SaveChip("add to a card…", c.soft) { attachFor = resp }
+                        }
+                    }
+                }
                 if (resp.cited.isNotEmpty()) {
                     Spacer(Modifier.height(Gap.m))
                     Text("FROM YOUR MEMORIES", style = MaterialTheme.typography.labelSmall, color = c.muted)
@@ -304,4 +346,50 @@ fun MindPilotScreen(
             }
         }
     }
+    attachFor?.let { resp ->
+        AttachToCardDialog(viewModel, onPick = { id -> viewModel.addPilotAnswerToCard(resp, id); attachFor = null }, onDismiss = { attachFor = null })
+    }
+}
+
+@Composable
+private fun SaveChip(label: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Text(
+        label, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.12f)).clickable(onClick = onClick)
+            .padding(horizontal = Gap.m, vertical = Gap.s)
+    )
+}
+
+/** Pick which saved card a Pilot answer should be added to. */
+@Composable
+private fun AttachToCardDialog(viewModel: MindSpaceViewModel, onPick: (Long) -> Unit, onDismiss: () -> Unit) {
+    val c = LocalFlow.current
+    val all by viewModel.allMemories.collectAsState()
+    var q by remember { mutableStateOf("") }
+    val shown = remember(all, q) {
+        val t = q.trim().lowercase()
+        (if (t.isEmpty()) all else all.filter { it.title.lowercase().contains(t) || it.aiSummary.lowercase().contains(t) })
+            .filter { it.source != com.keepsakeai.app.data.local.CaptureSource.EMAIL && it.source != com.keepsakeai.app.data.local.CaptureSource.UPI_MESSAGE }
+            .take(8)
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to which card?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
+                GlassField(q, { q = it }, "Search your cards", Modifier.fillMaxWidth())
+                shown.forEach { m ->
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onPick(m.id) }.padding(Gap.s)
+                    ) {
+                        Text(m.title, fontSize = Ts.body, fontWeight = FontWeight.SemiBold, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(m.collectionName, fontSize = Ts.meta, color = c.muted, maxLines = 1)
+                    }
+                }
+                if (shown.isEmpty()) Text("No cards match.", fontSize = Ts.meta, color = c.muted)
+            }
+        },
+        confirmButton = {},
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("cancel") } }
+    )
 }
