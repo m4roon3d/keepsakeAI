@@ -306,15 +306,16 @@ fun MindPilotScreen(
                         }
                     }
                 }
-                if (!resp.isError && !isAsking) {
+                val isDemo = resp.content.trimStart().let { it.startsWith("[Ask Mode Demo]") || it.startsWith("[Agent Mode Demo]") }
+                if (!resp.isError && !isDemo && !isAsking) {
                     var saved by remember(resp) { mutableStateOf(false) }
                     Spacer(Modifier.height(Gap.m))
                     Row(horizontalArrangement = Arrangement.spacedBy(Gap.s), verticalAlignment = Alignment.CenterVertically) {
                         val f = focus
                         if (saved) {
-                            Text("saved ✓", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald, modifier = Modifier.padding(Gap.s))
+                            Text(if (f != null) "added to the card ✓" else "saved ✓", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Emerald, modifier = Modifier.padding(Gap.s))
                         } else if (f != null) {
-                            SaveChip("add to ${f.title.take(28)}", Flow.Indigo) { viewModel.addPilotAnswerToCard(resp); saved = true }
+                            SaveChip("＋ add this answer to the card", Flow.Indigo) { viewModel.addPilotAnswerToCard(resp); saved = true }
                         } else {
                             SaveChip("save as memory", Flow.Indigo) { viewModel.savePilotAnswerAsMemory(resp); saved = true }
                             SaveChip("add to a card…", c.soft) { attachFor = resp }
