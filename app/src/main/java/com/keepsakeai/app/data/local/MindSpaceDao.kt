@@ -58,6 +58,12 @@ interface MindSpaceDao {
     @Query("SELECT * FROM expenses WHERE type = 'INVESTMENT' ORDER BY timestamp DESC")
     fun observeInvestments(): Flow<List<ExpenseEntity>>
 
+    @Query("UPDATE expenses SET category = :category WHERE id = :id")
+    suspend fun setExpenseCategory(id: Long, category: String)
+
+    @Query("UPDATE expenses SET category = :category WHERE type = 'EXPENSE' AND LOWER(merchant) = LOWER(:merchant)")
+    suspend fun setCategoryForMerchant(merchant: String, category: String): Int
+
     @Query("UPDATE expenses SET merchant = :merchant WHERE id = :id")
     suspend fun setExpenseMerchant(id: Long, merchant: String)
 

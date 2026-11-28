@@ -1,5 +1,6 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.spend.CategoryDialog
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
 import com.keepsakeai.app.ui.theme.Display
@@ -224,6 +225,7 @@ fun ExpensesScreen(
     var confirmDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
     var actionFor by remember { mutableStateOf<ExpenseEntity?>(null) }
     var splitFor by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var categoryFor by remember { mutableStateOf<ExpenseEntity?>(null) }
     var editBudgets by remember { mutableStateOf(false) }
     val moneyPrefs = remember { MoneyPrefs(context) }
     var budgets by remember { mutableStateOf(moneyPrefs.budgets) }
@@ -331,10 +333,19 @@ fun ExpensesScreen(
             onDelete = { confirmDelete = exp; actionFor = null },
             onDismiss = { actionFor = null },
             onTransfer = { viewModel.setExpenseTransfer(exp, true); actionFor = null },
-            onInvestment = { viewModel.setExpenseInvestment(exp, true); actionFor = null }
+            onInvestment = { viewModel.setExpenseInvestment(exp, true); actionFor = null },
+            category = exp.category,
+            onCategory = { categoryFor = exp; actionFor = null }
         )
     }
     splitFor?.let { exp -> SplitDialog(exp) { splitFor = null } }
+    categoryFor?.let { exp ->
+        CategoryDialog(
+            merchant = exp.merchant, current = exp.category, categories = categories,
+            onPick = { cat, all -> viewModel.setExpenseCategory(exp, cat, all); categoryFor = null },
+            onDismiss = { categoryFor = null }
+        )
+    }
     if (editBudgets) {
         BudgetDialog(
             current = budgets,
@@ -938,6 +949,7 @@ private fun ExcludedCard(
 
 @Composable
 private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val c = LocalFlow.current
     val pendingUpi by viewModel.pendingUpi.collectAsState()
     val shape = RoundedCornerShape(26.dp)
@@ -971,7 +983,9 @@ private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String)
         }
         if (open) {
             pendingUpi.forEach { item ->
-                var selectedCat by remember(item.id) { mutableStateOf(item.suggestedCategory) }
+                var selectedCat by remember(item.id) {
+                    mutableStateOf(com.keepsakeai.app.data.preferences.MoneyPrefs(context).categoryFor(item.merchant) ?: item.suggestedCategory)
+                }
                 GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.m)) {
                     Row {
                         Text(item.merchant, style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)

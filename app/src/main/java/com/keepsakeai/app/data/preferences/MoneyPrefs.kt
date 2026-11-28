@@ -10,6 +10,14 @@ import org.json.JSONObject
 class MoneyPrefs(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("money_prefs", Context.MODE_PRIVATE)
 
+    /** Categories you chose for a merchant ("zepto" → "Food"), used to pre-select future payments. */
+    fun categoryFor(merchant: String): String? =
+        prefs.getString("cat:" + merchant.trim().lowercase(), null)
+
+    fun rememberCategory(merchant: String, category: String) {
+        if (merchant.isNotBlank()) prefs.edit().putString("cat:" + merchant.trim().lowercase(), category).apply()
+    }
+
     var budgets: Map<String, Double>
         get() = runCatching {
             val o = JSONObject(prefs.getString("budgets", "{}")!!)

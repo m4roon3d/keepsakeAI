@@ -875,6 +875,21 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         return n
     }
 
+    /** Changes a saved payment's category; with [allFromMerchant], every payment from that merchant, and future ones. */
+    fun setExpenseCategory(expense: ExpenseEntity, category: String, allFromMerchant: Boolean) {
+        viewModelScope.launch {
+            if (allFromMerchant) {
+                val n = dao.setCategoryForMerchant(expense.merchant, category)
+                com.keepsakeai.app.data.preferences.MoneyPrefs(app).rememberCategory(expense.merchant, category)
+                statusMessage.value = "$n ${expense.merchant} payment${if (n == 1) "" else "s"} now in ${category.lowercase()}"
+            } else {
+                dao.setExpenseCategory(expense.id, category)
+                statusMessage.value = "Moved to ${category.lowercase()}"
+            }
+            refreshWidget()
+        }
+    }
+
     /** Move a payment into Investments (or back into spending). */
     fun setExpenseInvestment(expense: ExpenseEntity, investment: Boolean) {
         viewModelScope.launch {
