@@ -342,11 +342,10 @@ fun CategoryDialog(
         title = { Text("Category") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(Gap.s),
-                    verticalArrangement = Arrangement.spacedBy(Gap.s)
-                ) {
-                    categories.forEach { cat -> Pill(cat.lowercase(), picked == cat, { picked = cat }) }
+                categories.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
+                        row.forEach { cat -> Pill(cat.lowercase(), picked == cat, { picked = cat }) }
+                    }
                 }
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { all = !all }.padding(vertical = Gap.s),
