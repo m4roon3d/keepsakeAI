@@ -1,5 +1,8 @@
 package com.keepsakeai.app.ui.spend
 
+import com.keepsakeai.app.ui.components.Pill
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
@@ -291,18 +294,70 @@ fun PaymentActionsDialog(
     onDismiss: () -> Unit,
     onTransfer: (() -> Unit)? = null,
     onInvestment: (() -> Unit)? = null,
+    category: String? = null,
+    onCategory: (() -> Unit)? = null,
 ) {
+    val c = LocalFlow.current
+    @Composable
+    fun option(label: String, sub: String?, color: Color, onClick: () -> Unit) {
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)
+                .padding(horizontal = Gap.s, vertical = Gap.m)
+        ) {
+            Text(label, fontSize = Ts.title, fontWeight = FontWeight.SemiBold, color = color)
+            if (sub != null) Text(sub, fontSize = Ts.meta, color = c.muted)
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text("What would you like to do with this payment?") },
-        confirmButton = { GradientButton("split bill", onClick = onSplit, brush = Flow.spendGradient) },
-        dismissButton = {
-            Row {
-                if (onInvestment != null) TextButton(onClick = onInvestment) { Text("investment", fontWeight = FontWeight.Bold) }
-                if (onTransfer != null) TextButton(onClick = onTransfer) { Text("transfer", fontWeight = FontWeight.Bold) }
-                TextButton(onClick = onDelete) { Text("delete", color = Flow.Rose, fontWeight = FontWeight.Bold) }
+        text = {
+            Column {
+                if (onCategory != null) option("change category", category?.let { "now: ${it.lowercase()}" }, c.text, onCategory)
+                option("split bill", "share it with friends over UPI", c.text, onSplit)
+                if (onInvestment != null) option("it's an investment", "keep it out of spending", c.text, onInvestment)
+                if (onTransfer != null) option("it's a transfer", "between your own accounts", c.text, onTransfer)
+                option("delete", null, Flow.Rose, onDelete)
             }
-        }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("close") } }
+    )
+}
+
+/** Pick a new category for a payment, optionally for every payment from the same merchant. */
+@Composable
+fun CategoryDialog(
+    merchant: String,
+    current: String,
+    categories: List<String>,
+    onPick: (category: String, allFromMerchant: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = LocalFlow.current
+    var picked by remember { mutableStateOf(current) }
+    var all by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Category") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Gap.s)) {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Gap.s),
+                    verticalArrangement = Arrangement.spacedBy(Gap.s)
+                ) {
+                    categories.forEach { cat -> Pill(cat.lowercase(), picked == cat, { picked = cat }) }
+                }
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { all = !all }.padding(vertical = Gap.s),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Checkbox(checked = all, onCheckedChange = { all = it })
+                    Text("also for all $merchant payments, and from now on", fontSize = Ts.body, color = c.text)
+                }
+            }
+        },
+        confirmButton = { GradientButton("save", onClick = { onPick(picked, all) }, brush = Flow.spendGradient) },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("cancel") } }
     )
 }
