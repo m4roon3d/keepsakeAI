@@ -55,7 +55,8 @@ object UpiSmsInboxScanner {
                     val ts = if (dateIdx >= 0) cursor.getLong(dateIdx) else System.currentTimeMillis()
                     // Banks and UPI apps send from short codes (e.g. AX-ICICIT); skip personal numbers.
                     if (Regex("""^\+?[0-9 ()-]{7,}$""").matches(sender.trim())) continue
-                    com.keepsakeai.app.finance.InvestmentMatcher.parseDeposit(body, sender)?.let { deposits.add(it to ts); continue }
+                    val deposit = com.keepsakeai.app.finance.InvestmentMatcher.parseDeposit(body, sender)
+                    if (deposit != null) { deposits.add(deposit to ts); continue }
                     val parsed = UpiMessageParser.parse(sender, body)
                     if (parsed == null) {
                         UpiMessageParser.parseCredit(sender, body)?.let { credit ->
