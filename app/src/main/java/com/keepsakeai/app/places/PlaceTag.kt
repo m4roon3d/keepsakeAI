@@ -18,6 +18,15 @@ object PlaceTag {
         return if (rest.isBlank()) line else "$line\n$rest"
     }
 
+    /**
+     * A short place for a card: the named spot if there is one, otherwise the first two parts of the
+     * address ("Linto Coffee, J. P. Nagar"), or null when the memory has no place.
+     */
+    fun shortPlace(raw: String): String? {
+        val full = placeOf(raw) ?: plainPlace(raw) ?: return null
+        return full.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(2).joinToString(", ").take(48).ifBlank { null }
+    }
+
     /** "Place: X" when no coordinates were available. */
     fun plainPlace(raw: String): String? = raw.lineSequence().firstOrNull { it.startsWith("Place: ") }?.removePrefix("Place: ")?.trim()?.takeIf { it.isNotBlank() }
 }

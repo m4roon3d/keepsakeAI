@@ -47,10 +47,11 @@ class CapturePipeline(private val app: MindSpaceApp) {
         val enriched = if (fetched != null) "$text\n\n${fetched.platform}: ${fetched.title}\n${fetched.bodyText.take(3000)}" else text
 
         // Where and when the photo or video was taken, so Gemini can name the café or place.
-        val tag = withContext(Dispatchers.IO) { locate(photoUri, source, geo) }
+        val tag = withContext(Dispatchers.IO) { locate(photoUri, source, geo) } ?: whereSaved(source, photoUri, at)
         val metaText = tag?.let { MediaMeta.describe(it) }.orEmpty()
         val withMeta = if (metaText.isNotBlank()) "$enriched\n\n$metaText" else enriched
-        val placeHint = if (tag?.hasLocation == true) PLACE_HINT else null
+        // Only photos and videos are "of" a place; a note saved somewhere is not about it.
+        val placeHint = if (tag?.hasLocation == true && (photoUri != null || geo != null)) PLACE_HINT else null
         val fullHint = listOfNotNull(hint, placeHint).joinToString("\n").ifBlank { null }
 
         // Let Gemini see the photo too (Tamil text, handwriting, posters), not just on-device OCR.
@@ -123,6 +124,17 @@ class CapturePipeline(private val app: MindSpaceApp) {
             ReminderStore(app).add(KeepReminder(id = now + memoryId, title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId, hasTime = r.hasTime))
         }
         return Saved(memoryId, analyzed, newTodos.size, expenseAdded)
+    }
+
+    /** For a note, voice memo or link saved just now: where you were (if you allow it), with the area's name. */
+    private suspend fun whereSaved(source: CaptureSource, photoUri: String?, at: Long?): GeoTag? {
+        if (photoUri != null) return null
+        if (source !in setOf(CaptureSource.TEXT_NOTE, CaptureSource.VOICE_MEMO, CaptureSource.LINK_CAPTURE, CaptureSource.SHARE_SHEET)) return null
+        if (at != null && kotlin.math.abs(System.currentTimeMillis() - at) > 10 * 60_000L) return null   // saved later from a queue
+        if (!com.keepsakeai.app.data.preferences.NudgePrefs(app).tagSaveLocation || !DeviceContext.hasLocationPermission(app)) return null
+        val (lat, lng) = DeviceContext.currentLatLng(app) ?: return null
+        val place = withContext(Dispatchers.IO) { MediaMeta.address(app, lat, lng) }?.ifBlank { null }
+        return GeoTag(lat, lng, null, place)
     }
 
     /** GPS from the photo itself; for a photo taken just now with no GPS, the phone's current location. */

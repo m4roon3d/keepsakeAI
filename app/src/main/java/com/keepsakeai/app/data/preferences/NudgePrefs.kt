@@ -10,6 +10,11 @@ class NudgePrefs(context: Context) {
         get() = prefs.getBoolean("brief", true)
         set(v) = prefs.edit().putBoolean("brief", v).apply()
 
+    /** Tag notes, voice memos and links with where you were when you saved them. */
+    var tagSaveLocation: Boolean
+        get() = prefs.getBoolean("tag_save_location", true)
+        set(v) = prefs.edit().putBoolean("tag_save_location", v).apply()
+
     var eveningJournal: Boolean
         get() = prefs.getBoolean("journal", true)
         set(v) = prefs.edit().putBoolean("journal", v).apply()
