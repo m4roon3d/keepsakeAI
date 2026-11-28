@@ -46,7 +46,8 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 "facts" (array, at most 3, of lasting facts ABOUT THE USER that the content clearly states, as objects {"fact": short sentence, "category": one of "Profile", "Preferences", "Health", "Work", "People", "Places", "Money"}; empty array if none — never guess),
                 "reminder" (null, OR {"title": short action like "Pay BESCOM bill" or "Harris Jayaraj concert", "datetime": ISO 8601 local date-time like 2026-11-28T19:00 (use 09:00 when no time is given), "has_time": true only if a start time is actually stated, "kind": "due" | "event" | "deadline" | "expiry"} when the content has a specific FUTURE date worth remembering; for posters and tickets put the venue in the summary. Use kind "expiry" for the END date of a warranty, guarantee, insurance policy, membership, subscription, passport, visa, licence or coupon, with the item in the title like "Samsung TV warranty ends"; when only a purchase date and a warranty period are given (for example 1 year), work out the end date yourself. If the content has both a payment due date and an expiry, use the payment due date).
                 "entities" (array, at most 6, of specific people, places, projects or organisations named in the content, as {"name": proper name as written, "type": "person" | "place" | "project" | "org", "note": one short fact this content adds about them, e.g. "recommended Toit for dinner", "phone 98450 12345", "venue of the Dec 14 concert"}; no generic words like "bank" or "friend"),
-                "todos" (array, at most 4, of concrete actions the USER needs to take that the content implies, as {"text": short imperative like "Pay BESCOM bill" or "Book Goa hotel", "due": ISO date like 2026-11-28 or null}; empty if nothing is actionable).
+                "todos" (array, at most 4, of concrete actions the USER needs to take that the content implies, as {"text": short imperative like "Pay BESCOM bill" or "Book Goa hotel", "due": ISO date like 2026-11-28 or null}; empty if nothing is actionable),
+                "product" (null, OR {"name": what it is with brand and model when visible, e.g. "Sony WH-1000XM5 wireless headphones", "brand": string or null, "model": string or null} when the capture is mainly a specific thing someone could buy: electronics, gadgets, appliances, clothes, shoes, books, toys, furniture, packaged goods or medicines. Null for receipts, food being eaten, places, people, documents and notes).
 
                 Captured content:
                 {{RAW}}
@@ -73,6 +74,28 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     }
 
     /** Transcribes a voice journal (any language mix); returns null without a key or on failure. */
+    /**
+     * Where to buy a product in India, using Google Search: the exact model, a price range, online stores with links,
+     * and shops near [near] with Google Maps links. Short markdown, or null without a Gemini key or on failure.
+     */
+    suspend fun whereToBuy(product: String, near: String?): String? = withContext(Dispatchers.IO) {
+        val key = keyStore.geminiKey
+        if (key.isBlank()) return@withContext null
+        val prompt = """
+            I saw this product and may want to buy it: "$product". I'm in India${near?.let { ", near $it" } ?: ""}.
+            Use Google Search and reply in short markdown with exactly these parts:
+            **What it is**: the exact model and one line on what it's for.
+            **Price**: a typical price range in INR right now (say if prices vary a lot).
+            **Buy online**: 2-4 stores (Amazon.in, Flipkart, the brand's own store, Croma, Reliance Digital or similar) as
+            markdown links [Store name](url) to the product or a search for it on that store, with the price there if you found it.
+            ${if (near != null) "**Nearby**: 1-3 physical stores near $near that sell it, each as [Shop name](https://www.google.com/maps/search/?api=1&query=URL-encoded shop name and area)." else ""}
+            **Tip**: one line, e.g. an older model that is better value, or what to check before buying.
+            No preamble. Don't invent stores or prices; leave a part out if you found nothing.
+        """.trimIndent()
+        val r = callGemini(key, prompt, grounded = true, feature = "where to buy")
+        if (r.isError || r.content.isBlank()) null else r.content.trim()
+    }
+
     suspend fun transcribeAudio(m4a: ByteArray): String? = withContext(Dispatchers.IO) {
         val key = keyStore.geminiKey
         if (key.isBlank()) return@withContext null
@@ -447,6 +470,11 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                     val title = r.optString("title")
                     if (at != null && at > System.currentTimeMillis() - 12 * 60 * 60 * 1000 && title.isNotBlank())
                         ReminderSuggestion(title.take(60), at, r.optString("kind", "event"), r.optBoolean("has_time", true)) else null
+                },
+                product = obj.optJSONObject("product")?.let { p ->
+                    val name = p.optString("name").trim()
+                    if (name.length < 3) null
+                    else ProductInfo(name.take(80), p.optString("brand").takeIf { it.isNotBlank() && it != "null" }, p.optString("model").takeIf { it.isNotBlank() && it != "null" })
                 }
             )
         }.getOrNull()

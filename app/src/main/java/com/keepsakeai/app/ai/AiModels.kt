@@ -29,7 +29,12 @@ data class AnalyzedCapture(
     val todos: List<TodoSuggestion> = emptyList(),
     /** False for promos and noise (only asked for background sources like email). */
     val worthKeeping: Boolean = true,
+    /** Set when the capture is mainly something you could buy. */
+    val product: ProductInfo? = null,
 )
+
+/** A purchasable thing seen in a capture: "Sony WH-1000XM5 headphones". */
+data class ProductInfo(val name: String, val brand: String?, val model: String?)
 
 /** A person, place, project or organisation mentioned in a capture. */
 data class EntityMention(val name: String, val type: String, val note: String)
