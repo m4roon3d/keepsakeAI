@@ -290,6 +290,7 @@ fun PaymentActionsDialog(
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     onTransfer: (() -> Unit)? = null,
+    onInvestment: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -298,7 +299,8 @@ fun PaymentActionsDialog(
         confirmButton = { GradientButton("split bill", onClick = onSplit, brush = Flow.spendGradient) },
         dismissButton = {
             Row {
-                if (onTransfer != null) TextButton(onClick = onTransfer) { Text("it's a transfer", fontWeight = FontWeight.Bold) }
+                if (onInvestment != null) TextButton(onClick = onInvestment) { Text("investment", fontWeight = FontWeight.Bold) }
+                if (onTransfer != null) TextButton(onClick = onTransfer) { Text("transfer", fontWeight = FontWeight.Bold) }
                 TextButton(onClick = onDelete) { Text("delete", color = Flow.Rose, fontWeight = FontWeight.Bold) }
             }
         }

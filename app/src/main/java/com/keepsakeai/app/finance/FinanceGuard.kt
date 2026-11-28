@@ -23,8 +23,9 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
         if (add.isNotEmpty() && !prefs.ownAccounts.containsAll(add)) prefs.ownAccounts = prefs.ownAccounts + add
     }
 
-    /** TRANSFER when the debit moved money between the user's own accounts, otherwise EXPENSE. */
+    /** INVESTMENT for deposits, funds and the like; TRANSFER when the debit moved money between own accounts; else EXPENSE. */
     suspend fun classify(p: ParsedUpiTransaction, at: Long): String {
+        if (InvestmentMatcher.isInvestment("${p.rawSnippet} ${p.merchant}")) return TxnType.INVESTMENT
         val credits = dao.creditsSince(at - CREDIT_LOOKBACK).map { TransferMatcher.Credit(it.amount, it.utrRef, it.account, it.receivedAt) }
         val debit = TransferMatcher.Debit(p.amount, p.utrRef, p.account, p.toAccount, p.merchant, at)
         val own = prefs.ownAccounts
@@ -39,7 +40,12 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
      * through review. It stays visible in the Transfers card, where "not a transfer" puts it back.
      */
     suspend fun saveTransfer(item: PendingUpiTransactionEntity) {
-        val merchant = if (item.merchant.endsWith(" payment") || item.merchant == "Bank transfer") "Own account transfer" else item.merchant
+        val invest = item.type == TxnType.INVESTMENT
+        val merchant = when {
+            invest -> InvestmentMatcher.label("${item.rawMessage} ${item.merchant} ${item.bankOrApp}", item.merchant)
+            item.merchant.endsWith(" payment") || item.merchant == "Bank transfer" -> "Own account transfer"
+            else -> item.merchant
+        }
         dao.insertExpense(
             ExpenseEntity(
                 merchant = merchant,
@@ -49,13 +55,14 @@ class FinanceGuard(private val dao: MindSpaceDao, private val prefs: MoneyPrefs)
                 notes = item.utrRef?.let { "UTR: $it" } ?: item.bankOrApp,
                 sourceMethod = if (" · " in item.bankOrApp) item.bankOrApp else "UPI · ${item.bankOrApp}",
                 timestamp = item.receivedAt,
-                type = TxnType.TRANSFER
+                type = if (invest) TxnType.INVESTMENT else TxnType.TRANSFER
             )
         )
     }
 
     /** For payments with no account details to go on (bank emails, receipts): the user's own name, or a payee they marked. */
     fun typeForMerchant(merchant: String, category: String = ""): String {
+        if (InvestmentMatcher.isInvestment("$merchant $category")) return TxnType.INVESTMENT
         if (TransferMatcher.isCardBill("$merchant $category")) return TxnType.TRANSFER
         val names = listOf(prefs.payeeName, prefs.upiId).filter { it.isNotBlank() }
         return if (TransferMatcher.isOwnPayee(merchant, names) || TransferMatcher.isKnownTransferPayee(merchant, prefs.transferPayees)) TxnType.TRANSFER else TxnType.EXPENSE

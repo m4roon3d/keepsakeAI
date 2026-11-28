@@ -24,7 +24,9 @@ object ExpiryWatch {
             val whenText = when (d) { 0 -> "today"; 1 -> "tomorrow"; else -> "in $d days" }
             Notifier.show(
                 app, Notifier.REMINDERS, ("expiry" + r.id + stage).hashCode(),
-                r.title, "Ends $whenText (${fmt.format(Date(r.atMillis))}). Claim or renew before then.",
+                r.title,
+                if (r.title.endsWith(" matures")) "Matures $whenText (${fmt.format(Date(r.atMillis))}). Decide whether to renew or withdraw."
+                else "Ends $whenText (${fmt.format(Date(r.atMillis))}). Claim or renew before then.",
                 openTab = "home"
             )
         }

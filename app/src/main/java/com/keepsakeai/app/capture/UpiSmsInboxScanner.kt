@@ -14,7 +14,12 @@ object UpiSmsInboxScanner {
     data class ScannedDebit(val item: PendingUpiTransactionEntity, val parsed: ParsedUpiTransaction)
 
     /** Debits to review, plus the credit messages seen (used to spot transfers between own accounts). */
-    data class InboxScan(val debits: List<ScannedDebit>, val credits: List<Pair<ParsedCredit, Long>>, val accounts: List<String>)
+    data class InboxScan(
+        val debits: List<ScannedDebit>,
+        val credits: List<Pair<ParsedCredit, Long>>,
+        val accounts: List<String>,
+        val deposits: List<Pair<com.keepsakeai.app.finance.InvestmentMatcher.Deposit, Long>> = emptyList(),
+    )
 
     /** Reads inbox SMS from the last [days] days (newest first) and parses UPI/bank debits. Call off the main thread. */
     fun scanRecentInbox(context: Context, days: Int = 30, maxMessages: Int = 5000): List<PendingUpiTransactionEntity> =
@@ -25,6 +30,7 @@ object UpiSmsInboxScanner {
         val results = mutableListOf<ScannedDebit>()
         val credits = mutableListOf<Pair<ParsedCredit, Long>>()
         val accounts = mutableListOf<String>()
+        val deposits = mutableListOf<Pair<com.keepsakeai.app.finance.InvestmentMatcher.Deposit, Long>>()
         val projection = arrayOf(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
@@ -49,6 +55,7 @@ object UpiSmsInboxScanner {
                     val ts = if (dateIdx >= 0) cursor.getLong(dateIdx) else System.currentTimeMillis()
                     // Banks and UPI apps send from short codes (e.g. AX-ICICIT); skip personal numbers.
                     if (Regex("""^\+?[0-9 ()-]{7,}$""").matches(sender.trim())) continue
+                    com.keepsakeai.app.finance.InvestmentMatcher.parseDeposit(body, sender)?.let { deposits.add(it to ts); continue }
                     val parsed = UpiMessageParser.parse(sender, body)
                     if (parsed == null) {
                         UpiMessageParser.parseCredit(sender, body)?.let { credit ->
@@ -76,7 +83,7 @@ object UpiSmsInboxScanner {
                 }
             }
         }
-        return InboxScan(dedupe(results), credits, accounts)
+        return InboxScan(dedupe(results), credits, accounts, deposits)
     }
 
     /**

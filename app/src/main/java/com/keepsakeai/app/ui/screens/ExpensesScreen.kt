@@ -199,6 +199,7 @@ fun ExpensesScreen(
     val expenses by viewModel.expenses.collectAsState()
     val pendingUpi by viewModel.pendingUpi.collectAsState()
     val transfers by viewModel.transfers.collectAsState()
+    val investments by viewModel.investments.collectAsState()
     val cleaning by viewModel.isCleaning.collectAsState()
     val cleanupPlan by viewModel.cleanupPlan.collectAsState()
     val currency = (context.applicationContext as MindSpaceApp).apiKeyStore.defaultCurrency.ifBlank { "INR" }
@@ -329,7 +330,8 @@ fun ExpensesScreen(
             onSplit = { splitFor = exp; actionFor = null },
             onDelete = { confirmDelete = exp; actionFor = null },
             onDismiss = { actionFor = null },
-            onTransfer = { viewModel.setExpenseTransfer(exp, true); actionFor = null }
+            onTransfer = { viewModel.setExpenseTransfer(exp, true); actionFor = null },
+            onInvestment = { viewModel.setExpenseInvestment(exp, true); actionFor = null }
         )
     }
     splitFor?.let { exp -> SplitDialog(exp) { splitFor = null } }
@@ -413,6 +415,15 @@ fun ExpensesScreen(
 
         if (pendingUpi.isNotEmpty()) {
             item { PendingCard(viewModel, currencyFallback = currency) }
+        }
+
+        if (investments.isNotEmpty()) {
+            item {
+                ExcludedCard(
+                    "${investments.size} investment${if (investments.size == 1) "" else "s"} · ${money(currency, investments.sumOf { it.amount })} · excluded",
+                    investments, currency, Flow.Purple, "not an investment"
+                ) { viewModel.setExpenseInvestment(it, false) }
+            }
         }
 
         if (transfers.isNotEmpty()) {
@@ -877,13 +888,31 @@ private fun ImportCard(
 
 /** Payments that only moved between the user's own accounts: listed here, left out of every spending total. */
 @Composable
-private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceViewModel, currency: String) {
+private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceViewModel, currency: String) =
+    ExcludedCard("${transfers.size} transfers between your accounts · excluded", transfers, currency, null, "not a transfer") {
+        viewModel.setExpenseTransfer(it, false)
+    }
+
+/** A folded list of payments kept out of spending (transfers, investments), each with a way to put it back. */
+@Composable
+private fun ExcludedCard(
+    heading: String,
+    transfers: List<ExpenseEntity>,
+    currency: String,
+    accent: Color?,
+    undoLabel: String,
+    onUndo: (ExpenseEntity) -> Unit,
+) {
     val c = LocalFlow.current
     var open by remember { mutableStateOf(false) }
     GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.l)) {
         Row(Modifier.fillMaxWidth().clickable { open = !open }, verticalAlignment = Alignment.CenterVertically) {
+            if (accent != null) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(accent))
+                Spacer(Modifier.width(Gap.s))
+            }
             Text(
-                "${transfers.size} transfers between your accounts · excluded",
+                heading,
                 style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f)
             )
             Icon(Icons.Rounded.ExpandMore, null, tint = c.muted, modifier = Modifier.size(18.dp).rotate(if (open) 180f else 0f))
@@ -896,8 +925,8 @@ private fun TransfersCard(transfers: List<ExpenseEntity>, viewModel: MindSpaceVi
                         Text("${money(t.currency.ifBlank { currency }, t.amount)} · ${dayLabel(startOfDay(t.timestamp))}", fontSize = Ts.meta, color = c.muted)
                     }
                     Text(
-                        "not a transfer", color = Flow.Emerald, fontWeight = FontWeight.SemiBold, fontSize = Ts.meta,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { viewModel.setExpenseTransfer(t, false) }.padding(Gap.s)
+                        undoLabel, color = Flow.Emerald, fontWeight = FontWeight.SemiBold, fontSize = Ts.meta,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { onUndo(t) }.padding(Gap.s)
                     )
                 }
             }
