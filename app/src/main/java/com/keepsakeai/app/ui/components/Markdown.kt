@@ -15,7 +15,9 @@ import androidx.compose.ui.text.withStyle
 /** Minimal markdown for AI answers: headings, bullets, **bold**, *italic*, `code`, and tappable [links](url) and bare URLs. */
 fun simpleMarkdown(src: String, citeColor: Color = Color.Unspecified): AnnotatedString = buildAnnotatedString {
     val lines = src.replace("\r", "").lines()
-    lines.forEachIndexed { idx, raw ->
+    lines.forEachIndexed { idx, rawLine ->
+        // "Google Maps Link: [View on Google Maps](…)" reads oddly: keep just the link, which is shown as "Google Maps".
+        val raw = rawLine.replace(mapsLabel, "")
         var line = raw
         var heading = false
         val trimmed = line.trimStart()
@@ -33,7 +35,11 @@ private val citation = Regex("""^\[(\d{1,2})]""")
 private val mdLink = Regex("""^\[([^\]\n]{1,160})]\((https?://[^)\s]+)\)""")
 private val bareUrl = Regex("""^https?://[^\s)\]]+""")
 
-private fun AnnotatedString.Builder.link(label: String, url: String, color: Color) {
+private val mapsLabel = Regex("""(?i)\*{0,2}(?:google )?maps?(?: link)?:\*{0,2}\s*(?=\[[^\]]*]\(https?://(?:www\.)?(?:google\.[a-z.]+/maps|maps\.google|maps\.app\.goo\.gl|goo\.gl/maps))""")
+private val mapsUrl = Regex("""(?i)^https?://(?:www\.)?(?:google\.[a-z.]+/maps|maps\.google|maps\.app\.goo\.gl|goo\.gl/maps)""")
+
+private fun AnnotatedString.Builder.link(text: String, url: String, color: Color) {
+    val label = if (mapsUrl.containsMatchIn(url)) "Google Maps" else text
     val c = if (color == Color.Unspecified) Color(0xFF4F46E5) else color
     withLink(LinkAnnotation.Url(url, TextLinkStyles(SpanStyle(color = c, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)))) {
         append(label)
