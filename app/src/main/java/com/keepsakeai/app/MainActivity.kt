@@ -1,5 +1,13 @@
 package com.keepsakeai.app
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -136,18 +144,41 @@ class MainActivity : FragmentActivity() {
                     projectionLauncher.launch(mgr.createScreenCaptureIntent())
                 }
 
+                // Swipe order matches the dock left to right, with the Pilot orb last.
+                val pageOrder = remember { listOf(TAB_HOME, TAB_SNAPSAKE, TAB_SPEND, TAB_SETTINGS, TAB_PILOT) }
+                val pager = rememberPagerState(initialPage = pageOrder.indexOf(selectedTab).coerceAtLeast(0)) { pageOrder.size }
+                LaunchedEffect(selectedTab) {
+                    val p = pageOrder.indexOf(selectedTab)
+                    if (p >= 0 && pager.currentPage != p) pager.animateScrollToPage(p, animationSpec = tween(380, easing = FastOutSlowInEasing))
+                }
+                LaunchedEffect(pager) {
+                    snapshotFlow { pager.settledPage }.collect { p -> if (selectedTab != pageOrder[p]) selectedTab = pageOrder[p] }
+                }
+                val openMemories by viewModel.memoryStack.collectAsState()
+                val openOverlay by viewModel.overlay.collectAsState()
+
                 AuroraBackground {
                     val contentModifier = Modifier
                         .fillMaxSize()
                         .statusBarsPadding()
                         .imePadding()
-                    AnimatedContent(
-                        targetState = selectedTab,
-                        transitionSpec = {
-                            (fadeIn(tween(240)) + scaleIn(tween(240), initialScale = 0.985f)) togetherWith fadeOut(tween(140))
-                        },
-                        label = "tabs"
-                    ) { tab ->
+                    HorizontalPager(
+                        state = pager,
+                        userScrollEnabled = openMemories.isEmpty() && openOverlay == null,
+                        beyondViewportPageCount = 0,
+                        key = { pageOrder[it] },
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                    val tab = pageOrder[page]
+                    // Depth while swiping: the page leaving shrinks and fades a little.
+                    val pageModifier = Modifier.graphicsLayer {
+                        val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                        val d = kotlin.math.abs(off)
+                        val s = 1f - 0.06f * d
+                        scaleX = s; scaleY = s
+                        alpha = 1f - 0.35f * d
+                    }
+                    Box(pageModifier) {
                     when (tab) {
                         TAB_HOME -> HomeFeedScreen(
                             viewModel = viewModel,
@@ -177,11 +208,13 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     }
+                    }
 
                     StatusToast(viewModel, Modifier.align(Alignment.TopCenter).statusBarsPadding())
 
                     FloatingDock(
                         selectedTab = selectedTab,
+                        position = { pager.currentPage + pager.currentPageOffsetFraction },
                         pendingUpi = viewModel.pendingUpi.collectAsState().value.size,
                         onSelect = { selectedTab = it },
                         modifier = Modifier
@@ -191,11 +224,17 @@ class MainActivity : FragmentActivity() {
 
                     // Full-screen overlays: weekly review, AI activity log
                     val overlay by viewModel.overlay.collectAsState()
-                    if (overlay != null) {
+                    var shownOverlay by remember { mutableStateOf<String?>(null) }
+                    overlay?.let { shownOverlay = it }
+                    AnimatedVisibility(
+                        visible = overlay != null,
+                        enter = slideInVertically(tween(320, easing = FastOutSlowInEasing)) { it / 6 } + fadeIn(tween(240)),
+                        exit = slideOutVertically(tween(240)) { it / 6 } + fadeOut(tween(180))
+                    ) {
                         BackHandler { viewModel.overlay.value = null }
                         AuroraBackground(Modifier.fillMaxSize()) {
                             val m = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                            when (overlay) {
+                            when (shownOverlay) {
                                 OVERLAY_REVIEW -> WeeklyReviewScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_AI_LOG -> AiLogScreen(viewModel, onClose = { viewModel.overlay.value = null }, modifier = m)
                                 OVERLAY_BRIEF -> MorningBriefScreen(
