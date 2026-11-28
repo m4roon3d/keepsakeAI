@@ -54,6 +54,8 @@ class MindSpaceApp : Application() {
         com.keepsakeai.app.worker.EmailSyncWorker.schedule(this)
         // Places visited was removed: stop the background check an earlier build scheduled.
         androidx.work.WorkManager.getInstance(this).cancelUniqueWork("places_visited")
+        // Geofences don't survive a reboot or reinstall: put the errand alerts back.
+        runCatching { com.keepsakeai.app.intents.PlaceAlerts.sync(this) }
     }
 
     private fun scheduleDailyMindSuggest() {

@@ -47,7 +47,16 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                 "reminder" (null, OR {"title": short action like "Pay BESCOM bill" or "Harris Jayaraj concert", "datetime": ISO 8601 local date-time like 2026-11-28T19:00 (use 09:00 when no time is given), "has_time": true only if a start time is actually stated, "kind": "due" | "event" | "deadline" | "expiry"} when the content has a specific FUTURE date worth remembering; for posters and tickets put the venue in the summary. Use kind "expiry" for the END date of a warranty, guarantee, insurance policy, membership, subscription, passport, visa, licence or coupon, with the item in the title like "Samsung TV warranty ends"; when only a purchase date and a warranty period are given (for example 1 year), work out the end date yourself. If the content has both a payment due date and an expiry, use the payment due date).
                 "entities" (array, at most 6, of specific people, places, projects or organisations named in the content, as {"name": proper name as written, "type": "person" | "place" | "project" | "org", "note": one short fact this content adds about them, e.g. "recommended Toit for dinner", "phone 98450 12345", "venue of the Dec 14 concert"}; no generic words like "bank" or "friend"),
                 "todos" (array, at most 4, of concrete actions the USER needs to take that the content implies, as {"text": short imperative like "Pay BESCOM bill" or "Book Goa hotel", "due": ISO date like 2026-11-28 or null}; empty if nothing is actionable),
-                "product" (null, OR {"name": what it is with brand and model when visible, e.g. "Sony WH-1000XM5 wireless headphones", "brand": string or null, "model": string or null} when the capture is mainly a specific thing someone could buy: electronics, gadgets, appliances, clothes, shoes, books, toys, furniture, packaged goods or medicines. Null for receipts, food being eaten, places, people, documents and notes).
+                "product" (null, OR {"name": what it is with brand and model when visible, e.g. "Sony WH-1000XM5 wireless headphones", "brand": string or null, "model": string or null} when the capture is mainly a specific thing someone could buy: electronics, gadgets, appliances, clothes, shoes, books, toys, furniture, packaged goods or medicines. ALSO set it when the user says they want, are looking for, are thinking of getting, or are comparing such things (in a note, voice memo or link), even with no photo; when they weigh 2-3 options, join them in "name" with " vs ", e.g. "Apple Mac mini vs Apple Mac Studio", and leave brand/model null. Null for receipts, things already bought, food being eaten, places, people, services and documents),
+                "intents" (array, at most 4, of things the user means to do that the content states, each one of:
+                  {"type": "gift", "subject": the gift idea, "person": who it's for} for gift ideas ("Priya would love that blue scarf");
+                  {"type": "owe", "subject": what for or "", "person": the other person, "amount": number or null, "direction": "owed_to_me" | "i_owe"} for money lent or borrowed ("lent Ravi 2000", "Arun owes me for dinner", "I owe Meera 500");
+                  {"type": "watch", "subject": film or show title with season} or {"type": "read", "subject": book title and author} for things to watch or read later;
+                  {"type": "place_task", "subject": short task like "buy batteries", "place": where, as said, e.g. "a mall", "a pharmacy", "Phoenix Marketcity"} for things to do when at or near a kind of place or a named place;
+                  {"type": "try_place", "subject": the restaurant, café, shop or place name, "place": area or city if said} for places to try or visit some day;
+                  {"type": "trip", "subject": destination, "place": when, e.g. "January", or null} for a trip being planned;
+                  {"type": "cancel", "subject": the service or subscription} for something to cancel.
+                  Empty array if none. Don't repeat a plain reminder or to-do here unless it is one of these types).
 
                 Captured content:
                 {{RAW}}
@@ -81,7 +90,17 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
     suspend fun whereToBuy(product: String, near: String?): String? = withContext(Dispatchers.IO) {
         val key = keyStore.geminiKey
         if (key.isBlank()) return@withContext null
-        val prompt = """
+        val options = product.split(Regex("\\s+vs\\.?\\s+", RegexOption.IGNORE_CASE)).map { it.trim() }.filter { it.isNotEmpty() }
+        val prompt = if (options.size > 1) """
+            I'm deciding between: ${options.joinToString(" / ") { "\"$it\"" }}. I'm in India${near?.let { ", near $it" } ?: ""}.
+            Use Google Search and reply in short markdown:
+            For each option, a heading **<name>** then: the current model in one line, a typical price range in INR, and
+            2-3 stores to buy it as markdown links [Store name](url) (Apple Store India, Amazon.in, Flipkart, Croma,
+            Reliance Digital, Imagine or similar), with the price there if you found it.
+            ${if (near != null) "**Nearby**: 1-3 physical stores near $near that sell them, each as [Shop name](https://www.google.com/maps/search/?api=1&query=URL-encoded shop name and area)." else ""}
+            **Which one**: two or three lines on who each suits and the main trade-off.
+            No preamble. Don't invent stores or prices; leave a part out if you found nothing.
+        """.trimIndent() else """
             I saw this product and may want to buy it: "$product". I'm in India${near?.let { ", near $it" } ?: ""}.
             Use Google Search and reply in short markdown with exactly these parts:
             **What it is**: the exact model and one line on what it's for.
@@ -93,6 +112,46 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
             No preamble. Don't invent stores or prices; leave a part out if you found nothing.
         """.trimIndent()
         val r = callGemini(key, prompt, grounded = true, feature = "where to buy")
+        if (r.isError || r.content.isBlank()) null else r.content.trim()
+    }
+
+    /**
+     * Web-searched help for an intent, as short markdown: where to watch or buy a book, a trip outline, how to cancel.
+     * Null without a Gemini key or on failure.
+     */
+    suspend fun intentLookup(type: String, subject: String, near: String?, `when`: String? = null): String? = withContext(Dispatchers.IO) {
+        val key = keyStore.geminiKey
+        if (key.isBlank()) return@withContext null
+        val task = when (type) {
+            "watch" -> """
+                Where can I watch "$subject" in India right now? Use Google Search. Reply in short markdown:
+                **Streaming**: the services it's on (Netflix, Prime Video, JioHotstar, SonyLIV, ZEE5 and so on) as links [Service](url),
+                saying if it's included or rent/buy. **What it is**: one line, with the year and a rating if you find one.
+            """
+            "read" -> """
+                I want to read "$subject". Use Google Search. Reply in short markdown:
+                **What it is**: author, year, one line on what it's about. **Buy in India**: 2-3 links [Store](url)
+                (Amazon.in, Flipkart, the Kindle edition, Audible if there is an audiobook) with prices if you find them.
+            """
+            "trip" -> """
+                I'm planning a trip to $subject${`when`?.let { " in $it" } ?: ""}, from ${near ?: "India"}. Use Google Search. Reply in short markdown:
+                **Best time**: one line, and how ${`when` ?: "the season"} fits. **Getting there**: options and rough time.
+                **Rough budget**: per person per day in INR (budget / mid-range). **Don't miss**: 3-5 places or things, each with a
+                [Google Maps](https://www.google.com/maps/search/?api=1&query=URL-encoded name and $subject) link.
+                **Checklist**: 4-6 short items to book or pack.
+            """
+            "cancel" -> """
+                How do I cancel my "$subject" subscription in India? Use Google Search. Reply in short markdown:
+                **Steps**: 2-5 short numbered steps (app or website), with a direct link [Cancel page](url) to the account or
+                cancellation page if there is one. **Good to know**: one line on refunds or when access ends.
+            """
+            "nearby" -> """
+                List up to 3 real, currently open places that are "$subject" closest to $near. Use Google Search.
+                Reply ONLY with JSON: [{"name": "...", "area": "neighbourhood, city"}]. No other text.
+            """
+            else -> return@withContext null
+        }.trimIndent() + if (type != "nearby") "\nNo preamble. Don't invent links or prices; leave a part out if you found nothing." else ""
+        val r = callGemini(key, task, grounded = true, feature = "help with $type")
         if (r.isError || r.content.isBlank()) null else r.content.trim()
     }
 
@@ -471,6 +530,20 @@ class MultiModelMindPilotClient(private val keyStore: ApiKeyStore) {
                     if (at != null && at > System.currentTimeMillis() - 12 * 60 * 60 * 1000 && title.isNotBlank())
                         ReminderSuggestion(title.take(60), at, r.optString("kind", "event"), r.optBoolean("has_time", true)) else null
                 },
+                intents = obj.optJSONArray("intents")?.let { arr ->
+                    List(arr.length()) { i -> arr.optJSONObject(i) }.filterNotNull().mapNotNull { o ->
+                        val type = o.optString("type").trim().lowercase()
+                        val subject = o.optString("subject").trim()
+                        fun str(k: String) = o.optString(k).trim().takeIf { it.isNotBlank() && it != "null" }
+                        if (type !in setOf("gift", "owe", "watch", "read", "place_task", "try_place", "trip", "cancel")) null
+                        else if (subject.isBlank() && type != "owe") null
+                        else CaptureIntent(
+                            type, subject.take(100), str("person")?.take(48), str("place")?.take(80),
+                            o.optDouble("amount", Double.NaN).takeIf { !it.isNaN() && it > 0 },
+                            str("direction")
+                        )
+                    }.take(4)
+                } ?: emptyList(),
                 product = obj.optJSONObject("product")?.let { p ->
                     val name = p.optString("name").trim()
                     if (name.length < 3) null

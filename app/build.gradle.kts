@@ -151,6 +151,9 @@ dependencies {
     // Vector map view: MapLibre (BSD) drawing free OpenFreeMap tiles, no API key
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+    // Geofences for "when I'm near a mall" errands
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // Email receipts, orders, tickets and bills over IMAP (Gmail, Yahoo, others) with app passwords
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")

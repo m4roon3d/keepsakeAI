@@ -106,6 +106,8 @@ fun buildBrief(
     now: Long = System.currentTimeMillis(),
     events: List<com.keepsakeai.app.calendar.CalEvent> = emptyList(),
     entities: List<com.keepsakeai.app.data.preferences.Entity> = emptyList(),
+    owed: List<com.keepsakeai.app.intents.Owed> = emptyList(),
+    errands: List<com.keepsakeai.app.intents.PlaceTask> = emptyList(),
 ): Brief {
     val today = startOfDay(now)
     val tomorrow = today + DAY
@@ -172,11 +174,28 @@ fun buildBrief(
     val peopleLines = mutableListOf<BriefLine>()
     com.keepsakeai.app.people.PeopleNudges.birthdays(entities, now).forEach { b ->
         val whenText = when (b.daysAway) { 0 -> "today"; 1 -> "tomorrow"; else -> "in ${b.daysAway} days" }
-        val line = BriefLine("${b.entity.name}'s birthday", whenText, memoryId = b.memoryId.takeIf { it > 0 }, urgent = b.daysAway == 0)
+        // A gift idea you noted for them, if any.
+        val gift = b.entity.notes.sortedByDescending { it.at }.firstOrNull { it.note.startsWith("gift idea: ") }
+        val sub = whenText + (gift?.let { " · gift idea: " + it.note.removePrefix("gift idea: ") } ?: "")
+        val line = BriefLine("${b.entity.name}'s birthday", sub, memoryId = (gift?.memoryId ?: b.memoryId).takeIf { it > 0 }, urgent = b.daysAway == 0)
         if (b.daysAway <= 1) todayLines += line else peopleLines += line
     }
     com.keepsakeai.app.people.PeopleNudges.catchUpToday(entities, now)?.let { c ->
         peopleLines += BriefLine("Catch up with ${c.entity.name}", "last in your notes ${c.daysQuiet} days ago", memoryId = c.memoryId.takeIf { it > 0 })
+    }
+
+    // Money lent or borrowed a while ago and still open.
+    com.keepsakeai.app.intents.OwedRules.dueForNudge(owed, now).take(2).forEach { o ->
+        val amt = o.amount?.let { rupees(it) } ?: "money"
+        moneyLines += BriefLine(
+            if (o.owedToMe) "${o.person} owes you $amt" else "You owe ${o.person} $amt",
+            "${com.keepsakeai.app.intents.OwedRules.daysOpen(o, now)} days ago" + (o.what.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
+            tab = "spend"
+        )
+    }
+    // Errands waiting for the right place.
+    errands.take(2).forEach { t ->
+        todayLines += BriefLine(t.task.replaceFirstChar { it.uppercase() }, "when you're at ${t.spots.firstOrNull()?.name ?: t.placeAsSaid}", memoryId = t.memoryId.takeIf { it > 0 })
     }
 
     return Brief(todayLines, moneyLines, revisit, echoes, peopleLines)
@@ -199,7 +218,8 @@ fun MorningBriefScreen(viewModel: MindSpaceViewModel, onClose: () -> Unit, onOpe
         if (granted) viewModel.refreshCalendar()
     }
     val brief = remember(reminders, todos, memories, expenses, pending, events, entities) {
-        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed, events = events, entities = entities)
+        buildBrief(reminders, todos, memories, expenses, pending.size, MoneyPrefs(context).budgets, NudgePrefs(context).viewed, events = events, entities = entities,
+            owed = com.keepsakeai.app.intents.OwedStore(context).all(), errands = com.keepsakeai.app.intents.PlaceTaskStore(context).open(context))
     }
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greet = when (hour) { in 5..11 -> "good morning"; in 12..16 -> "good afternoon"; else -> "good evening" }

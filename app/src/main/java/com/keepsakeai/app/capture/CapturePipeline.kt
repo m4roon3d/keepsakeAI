@@ -127,6 +127,12 @@ class CapturePipeline(private val app: MindSpaceApp) {
         }
         // Something you could buy: look up price and where to buy it, in the background, and add it to the card.
         analyzed.product?.let { p -> app.appScope.launch { findWhereToBuy(memoryId, p.name, tag?.place) } }
+        // Gift ideas, money owed, watch later, errands, places to try, trips, cancellations.
+        if (analyzed.intents.isNotEmpty()) app.appScope.launch {
+            com.keepsakeai.app.intents.IntentActions.apply(app, memoryId, analyzed.intents, tag?.place, productHandled = analyzed.product != null) { item ->
+                findWhereToBuy(memoryId, item, tag?.place)
+            }
+        }
         return Saved(memoryId, analyzed, newTodos.size, expenseAdded)
     }
 

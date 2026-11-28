@@ -51,6 +51,7 @@ class DailyDigestWorker(
             )
         }
         runCatching { com.keepsakeai.app.notify.MoneyWatch.check(app) }
+        runCatching { com.keepsakeai.app.intents.PlaceAlerts.sync(app) }
         runCatching { weeklyReviewNudge(app) }
         runCatching { com.keepsakeai.app.widget.TroveWidgets.updateAll(app) }
         return Result.success()
