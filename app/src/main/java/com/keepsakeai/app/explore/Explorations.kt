@@ -29,9 +29,12 @@ object Explorations {
     const val WHERE_TO_BUY = "Where to buy"
 
     /** Puts a fresh where-to-buy answer on the card, replacing an older one. */
-    fun setWhereToBuy(raw: String, date: String, product: String, answer: String): String {
+    fun setWhereToBuy(raw: String, date: String, product: String, answer: String): String = setLookup(raw, date, WHERE_TO_BUY, product, answer)
+
+    /** Puts a fresh "<label>: <subject>" answer on the card, replacing an older one with the same label. */
+    fun setLookup(raw: String, date: String, label: String, subject: String, answer: String): String {
         val (base, items) = split(raw)
-        return join(base, items.filterNot { it.question.startsWith(WHERE_TO_BUY) } + Item(date, "$WHERE_TO_BUY: $product", answer))
+        return join(base, items.filterNot { it.question.startsWith("$label:") } + Item(date, "$label: $subject", answer))
     }
 
     fun whereToBuyProduct(raw: String): String? =

@@ -31,6 +31,22 @@ data class AnalyzedCapture(
     val worthKeeping: Boolean = true,
     /** Set when the capture is mainly something you could buy. */
     val product: ProductInfo? = null,
+    /** Things the user means to do that trove can help with: gift ideas, money owed, watch later, place errands… */
+    val intents: List<CaptureIntent> = emptyList(),
+)
+
+/**
+ * One intent found in a capture. [type] is one of gift, owe, watch, read, place_task, try_place, trip, cancel.
+ * [subject]: the item, title, task, place name, destination or service. [person]: who (gift, owe).
+ * [place]: where (place_task: "a mall" or a named place; try_place: the area). [direction]: owed_to_me | i_owe.
+ */
+data class CaptureIntent(
+    val type: String,
+    val subject: String,
+    val person: String? = null,
+    val place: String? = null,
+    val amount: Double? = null,
+    val direction: String? = null,
 )
 
 /** A purchasable thing seen in a capture: "Sony WH-1000XM5 headphones". */

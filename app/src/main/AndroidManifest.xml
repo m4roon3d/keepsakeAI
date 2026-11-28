@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <!-- Errand alerts ("buy batteries when I'm near a mall") fire while trove is closed -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.READ_SMS" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -133,6 +135,10 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_comingup_info" />
         </receiver>
+        <receiver
+            android:name=".intents.PlaceAlertReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".widget.WidgetConfigActivity"
             android:exported="true"

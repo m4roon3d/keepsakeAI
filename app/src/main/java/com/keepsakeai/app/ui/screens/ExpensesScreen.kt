@@ -417,6 +417,8 @@ fun ExpensesScreen(
             item { PendingCard(viewModel, currencyFallback = currency) }
         }
 
+        item { OwedCard(currency) }
+
         if (investments.isNotEmpty()) {
             item {
                 ExcludedCard(
@@ -999,6 +1001,54 @@ private fun PendingCard(viewModel: MindSpaceViewModel, currencyFallback: String)
                         GradientButton("Approve", onClick = { viewModel.approvePendingUpi(item, selectedCat) }, brush = Flow.spendGradient)
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Money lent or borrowed ("Lent Ravi ₹2,000"), from notes and voice memos, until marked settled. */
+@Composable
+private fun OwedCard(currency: String) {
+    val c = LocalFlow.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val store = remember { com.keepsakeai.app.intents.OwedStore(context) }
+    var all by remember { mutableStateOf(store.all()) }
+    val open = com.keepsakeai.app.intents.OwedRules.open(all)
+    if (open.isEmpty()) return
+    val now = System.currentTimeMillis()
+    val toMe = open.filter { it.owedToMe }.sumOf { it.amount ?: 0.0 }
+    val iOwe = open.filter { !it.owedToMe }.sumOf { it.amount ?: 0.0 }
+    GlassCard(Modifier.fillMaxWidth(), padding = PaddingValues(Gap.l)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(Flow.Amber))
+            Spacer(Modifier.width(Gap.s))
+            Text("money owed", style = MaterialTheme.typography.titleSmall, color = c.text, modifier = Modifier.weight(1f))
+            Text(
+                listOfNotNull(
+                    if (toMe > 0) "owed to you ${money(currency, toMe)}" else null,
+                    if (iOwe > 0) "you owe ${money(currency, iOwe)}" else null,
+                ).joinToString(" · "),
+                fontSize = Ts.meta, color = c.muted
+            )
+        }
+        open.forEach { o ->
+            Spacer(Modifier.height(Gap.s))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        (if (o.owedToMe) "${o.person} owes you" else "You owe ${o.person}") + (o.amount?.let { " " + money(currency, it) } ?: ""),
+                        fontSize = Ts.body, fontWeight = FontWeight.SemiBold, color = c.text
+                    )
+                    val days = com.keepsakeai.app.intents.OwedRules.daysOpen(o, now)
+                    Text(
+                        (if (days == 0) "today" else "$days days ago") + (o.what.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
+                        fontSize = Ts.meta, color = if (days >= com.keepsakeai.app.intents.OwedRules.NUDGE_DAYS) Flow.Amber else c.muted
+                    )
+                }
+                Text(
+                    "settled", color = Flow.Emerald, fontWeight = FontWeight.SemiBold, fontSize = Ts.meta,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).clickable { store.setSettled(o.id); all = store.all() }.padding(Gap.s)
+                )
             }
         }
     }

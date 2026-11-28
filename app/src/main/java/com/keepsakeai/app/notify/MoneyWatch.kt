@@ -70,5 +70,17 @@ object MoneyWatch {
                 }
         }
         ExpiryWatch.check(context)
+        // Money lent or borrowed a couple of weeks ago, still open: one gentle nudge each.
+        val now = System.currentTimeMillis()
+        com.keepsakeai.app.intents.OwedRules.dueForNudge(com.keepsakeai.app.intents.OwedStore(app).all(), now).forEach { o ->
+            if (!prefs.firstTime("owed:${o.id}")) return@forEach
+            val amt = o.amount?.let { com.keepsakeai.app.widget.money(app.apiKeyStore.defaultCurrency.ifBlank { "INR" }, it) } ?: "money"
+            Notifier.show(
+                app, Notifier.MONEY, ("owed" + o.id).hashCode(),
+                if (o.owedToMe) "${o.person} still owes you $amt" else "You still owe ${o.person} $amt",
+                "From ${com.keepsakeai.app.intents.OwedRules.daysOpen(o, now)} days ago${o.what.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""}. Mark it settled in Spend when it's done.",
+                openTab = "spend"
+            )
+        }
     }
 }

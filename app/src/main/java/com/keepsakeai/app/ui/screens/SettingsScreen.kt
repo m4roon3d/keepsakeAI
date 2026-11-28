@@ -130,6 +130,11 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         hasLocation = it.values.any { g -> g }
     }
+    var errandAlerts by remember { mutableStateOf(com.keepsakeai.app.intents.PlaceAlerts.canWatch(context)) }
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        errandAlerts = com.keepsakeai.app.intents.PlaceAlerts.canWatch(context)
+        if (ok) com.keepsakeai.app.intents.PlaceAlerts.sync(context)
+    }
     var tagWhere by remember { mutableStateOf(com.keepsakeai.app.data.preferences.NudgePrefs(context).tagSaveLocation) }
     var hasMediaLocation by remember { mutableStateOf(com.keepsakeai.app.capture.MediaMeta.canReadPhotoLocation(context)) }
     val mediaLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasMediaLocation = it }
@@ -249,6 +254,24 @@ fun SettingsScreen(modifier: Modifier = Modifier, viewModel: com.keepsakeai.app.
             SlimRow(Icons.Rounded.LocationOn, Flow.Pink, "Location", if (hasLocation) "Weather & nearby answers" else "Off", if (hasLocation) "On" else "Turn on", hasLocation) {
                 if (hasLocation) openAppInfo()
                 else locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+            }
+            HorizontalDivider(color = c.divider)
+            SlimRow(
+                Icons.Rounded.Place, Flow.Amber, "Errand alerts",
+                when {
+                    errandAlerts -> "Notifies you near the places in your errands"
+                    !hasLocation -> "Needs location first"
+                    else -> "Needs location set to \"Allow all the time\""
+                },
+                if (errandAlerts) "On" else "Turn on", errandAlerts
+            ) {
+                when {
+                    errandAlerts -> context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null))
+                    )
+                    !hasLocation -> locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+                    else -> backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
             }
             HorizontalDivider(color = c.divider)
             SlimRow(
