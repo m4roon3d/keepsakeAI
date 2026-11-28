@@ -1,5 +1,6 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.components.simpleMarkdown
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
 import android.content.Intent
@@ -100,6 +101,8 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
 
     val m = memory
     LaunchedEffect(m?.id, m?.title) { if (m != null) related = viewModel.relatedTo(m) }
+    val explored = remember(m?.rawContent) { m?.let { com.keepsakeai.app.explore.Explorations.split(it.rawContent) } }
+    val refreshing by viewModel.refreshingSummary.collectAsState()
     LaunchedEffect(id) { viewModel.markViewed(id) }
     if (m == null) return
     if (placeDialog) {
@@ -145,7 +148,7 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 Spacer(Modifier.weight(1f))
                 if (!editing) {
                     IconPill(Icons.Rounded.Edit, "edit") {
-                        title = m.title; summary = m.aiSummary; body = m.rawContent; editing = true
+                        title = m.title; summary = m.aiSummary; body = explored?.first ?: m.rawContent; editing = true
                     }
                     Spacer(Modifier.width(Gap.s))
                     IconPill(Icons.Rounded.IosShare, "share") {
@@ -211,6 +214,16 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 Spacer(Modifier.height(Gap.s))
                 if (editing) GlassField(summary, { summary = it }, "Summary", Modifier.fillMaxWidth(), singleLine = false, minLines = 2)
                 else Text(m.aiSummary, style = MaterialTheme.typography.bodyLarge, color = c.text)
+                if (!editing && explored?.second?.isNotEmpty() == true) {
+                    Spacer(Modifier.height(Gap.s))
+                    val busy = m.id in refreshing
+                    Text(
+                        if (busy) "refreshing summary…" else "refresh summary with what you explored",
+                        fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo,
+                        modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .clickable(enabled = !busy) { viewModel.refreshSummary(m) }.padding(vertical = Gap.xs)
+                    )
+                }
                 if (m.tagsCsv.isNotBlank()) {
                     Spacer(Modifier.height(Gap.m))
                     Text(m.tagsCsv.split(",").filter { it.isNotBlank() }.joinToString("  ") { "#${it.trim()}" }, fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Sky)
@@ -271,7 +284,41 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 SectionLabel("full text")
                 Spacer(Modifier.height(Gap.s))
                 if (editing) GlassField(body, { body = it }, "Notes", Modifier.fillMaxWidth(), singleLine = false, minLines = 4)
-                else SelectionContainer { Text(m.rawContent, style = MaterialTheme.typography.bodyMedium, color = c.text) }
+                else SelectionContainer { Text(explored?.first ?: m.rawContent, style = MaterialTheme.typography.bodyMedium, color = c.text) }
+            }
+        }
+        val exploredItems = explored?.second.orEmpty()
+        if (exploredItems.isNotEmpty()) {
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    SectionLabel("explored with pilot")
+                    exploredItems.forEachIndexed { i, e ->
+                        var open by remember(m.id, i, e.question) { mutableStateOf(i == exploredItems.lastIndex) }
+                        Spacer(Modifier.height(Gap.s))
+                        Row(
+                            Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).clickable { open = !open }
+                                .padding(vertical = Gap.xs),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Rounded.AutoAwesome, null, tint = Flow.Indigo, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(Gap.s))
+                            Column(Modifier.weight(1f)) {
+                                Text(e.question, style = MaterialTheme.typography.titleSmall, color = c.text)
+                                Text(e.date, fontSize = Ts.meta, color = c.muted)
+                            }
+                            Text(if (open) "hide" else "show", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Indigo)
+                        }
+                        if (open) {
+                            Spacer(Modifier.height(Gap.xs))
+                            SelectionContainer { Text(simpleMarkdown(e.answer, citeColor = Flow.Indigo), style = MaterialTheme.typography.bodyMedium, color = c.text) }
+                            Text(
+                                "remove", fontSize = Ts.meta, fontWeight = FontWeight.SemiBold, color = Flow.Rose,
+                                modifier = Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                    .clickable { viewModel.removeExploration(m, i) }.padding(vertical = Gap.s)
+                            )
+                        }
+                    }
+                }
             }
         }
         if (editing) {
@@ -279,7 +326,10 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                 Row(horizontalArrangement = Arrangement.spacedBy(Gap.s)) {
                     GlassButton("cancel", onClick = { editing = false }, modifier = Modifier.weight(1f))
                     GradientButton("save", onClick = {
-                        viewModel.updateMemory(m.copy(title = title.ifBlank { m.title }, aiSummary = summary, rawContent = body))
+                        viewModel.updateMemory(m.copy(
+                            title = title.ifBlank { m.title }, aiSummary = summary,
+                            rawContent = com.keepsakeai.app.explore.Explorations.join(body, explored?.second.orEmpty())
+                        ))
                         editing = false
                     }, modifier = Modifier.weight(1f))
                 }
@@ -290,10 +340,7 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                     "ask pilot about this",
                     brush = Flow.auroraSweep,
                     icon = Icons.Rounded.AutoAwesome,
-                    onClick = {
-                        viewModel.pilotDraft.value = "About my saved memory \"${m.title}\": what are the key points, anything I should act on, and what else I've saved that relates to it?"
-                        viewModel.closeAllMemories()
-                    },
+                    onClick = { viewModel.askAbout(m) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
