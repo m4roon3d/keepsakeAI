@@ -348,8 +348,11 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            val wantsToBuy = Regex("(?i)\\b(looking for|want to buy|wanna buy|planning to buy|thinking of (?:buying|getting)|shopping for|buy(?:ing)? an?|compare|vs\\.?)\\b")
+                .containsMatchIn("${m.title} ${m.aiSummary} ${m.rawContent.take(600)}")
             val isProduct = "product" in m.tagsCsv.split(",").map { it.trim() } ||
-                (m.photoUrisCsv.isNotBlank() && m.collectionName != "Receipts")
+                (m.photoUrisCsv.isNotBlank() && m.collectionName != "Receipts") ||
+                (wantsToBuy && m.source != com.keepsakeai.app.data.local.CaptureSource.EMAIL && m.source != com.keepsakeai.app.data.local.CaptureSource.UPI_MESSAGE)
             if (isProduct) item {
                 val checking by viewModel.checkingPrices.collectAsState()
                 val busy = m.id in checking
