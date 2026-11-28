@@ -42,6 +42,11 @@ class UpiNotificationListenerService : NotificationListenerService() {
             ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
 
         val app = application as? MindSpaceApp ?: return
+        // A deposit being opened: no spending, but its maturity date is worth tracking.
+        com.keepsakeai.app.finance.InvestmentMatcher.parseDeposit(text, "$title $pkg")?.let { d ->
+            com.keepsakeai.app.finance.Deposits.remember(app, d, sbn.notification.`when`.takeIf { it > 0 } ?: System.currentTimeMillis())
+            return
+        }
         val parsed = UpiMessageParser.parse(title, text)
         if (parsed == null) {
             // A credit is never saved, but it can reveal that a debit was a transfer between own accounts.
@@ -75,7 +80,7 @@ class UpiNotificationListenerService : NotificationListenerService() {
                 type = type
             )
             // Between your own accounts: file under Transfers. Anything else waits for review.
-            if (type == com.keepsakeai.app.data.local.TxnType.TRANSFER) guard.saveTransfer(item) else dao.insertPendingUpi(item)
+            if (type == com.keepsakeai.app.data.local.TxnType.TRANSFER || type == com.keepsakeai.app.data.local.TxnType.INVESTMENT) guard.saveTransfer(item) else dao.insertPendingUpi(item)
         }
     }
 }

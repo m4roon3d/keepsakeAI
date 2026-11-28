@@ -64,6 +64,10 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
     val transfers: StateFlow<List<ExpenseEntity>> = dao.observeTransfers()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Deposits, funds and other money put away. Kept, but never counted as spending. */
+    val investments: StateFlow<List<ExpenseEntity>> = dao.observeInvestments()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val guard by lazy { FinanceGuard(dao, com.keepsakeai.app.data.preferences.MoneyPrefs(app)) }
 
     val pendingUpi: StateFlow<List<PendingUpiTransactionEntity>> = dao.observePendingUpi()
@@ -611,6 +615,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             // Learn the user's own accounts and record credits first, so a debit can be matched to its credit.
             guard.learnAccounts(scan.accounts)
             scan.credits.forEach { (credit, at) -> guard.noteCredit(credit, at) }
+            scan.deposits.forEach { (d, at) -> com.keepsakeai.app.finance.Deposits.remember(app, d, at) }
             var filedAsTransfers = 0
             scan.debits.forEach { sd ->
                 val item = sd.item
@@ -618,7 +623,7 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
                     guard.seenMessage(item.rawMessage, item.receivedAt)
                 if (seen) return@forEach
                 val type = guard.classify(sd.parsed, item.receivedAt)
-                if (type == TxnType.TRANSFER) {
+                if (type == TxnType.TRANSFER || type == TxnType.INVESTMENT) {
                     // Money between your own accounts needs no review: file it under Transfers.
                     guard.saveTransfer(item.copy(type = type))
                     filedAsTransfers++
@@ -711,6 +716,9 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             val scan = withContext(Dispatchers.IO) { UpiSmsInboxScanner.scanInbox(app, days) }
             guard.learnAccounts(scan.accounts)
             scan.credits.forEach { (credit, at) -> guard.noteCredit(credit, at) }
+            scan.deposits.forEach { (d, at) -> com.keepsakeai.app.finance.Deposits.remember(app, d, at) }
+            // Deposits, funds and the like: out of spending and review, into Investments.
+            val invested = moveInvestments()
             scan.debits.forEach { sd ->
                 val item = sd.item
                 if (guard.classify(sd.parsed, item.receivedAt) != TxnType.TRANSFER) return@forEach
@@ -738,10 +746,44 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
             isCleaning.value = false
             refreshWidget()
             if (dupes.isEmpty()) {
-                statusMessage.value = if (moved > 0) "Tidy-up done: $moved moved to transfers, no duplicates found" else "Tidy-up done: nothing to fix"
+                val parts = listOfNotNull(
+                    if (moved > 0) "$moved moved to transfers" else null,
+                    if (invested > 0) "$invested moved to investments" else null,
+                )
+                statusMessage.value = if (parts.isEmpty()) "Tidy-up done: nothing to fix" else "Tidy-up done: " + parts.joinToString(", ") + ", no duplicates found"
             } else {
                 cleanupPlan.value = CleanupPlan(dupes, moved)
             }
+        }
+    }
+
+    /** Moves saved and waiting payments that are really investments into Investments. Returns how many moved. */
+    private suspend fun moveInvestments(): Int {
+        var n = 0
+        val messages = dao.getAllMemories().filter { it.source == CaptureSource.UPI_MESSAGE }.associate { it.createdAt to it.rawContent }
+        dao.getAllExpenses().filter { it.type == TxnType.EXPENSE && !it.sourceMethod.equals("Manual", true) }.forEach { e ->
+            val text = "${e.merchant} ${e.category} ${e.notes} ${messages[e.timestamp].orEmpty()}"
+            if (com.keepsakeai.app.finance.InvestmentMatcher.isInvestment(text)) {
+                dao.setExpenseType(e.id, TxnType.INVESTMENT)
+                val label = com.keepsakeai.app.finance.InvestmentMatcher.label(text, e.merchant)
+                if (label != e.merchant) dao.setExpenseMerchant(e.id, label)
+                n++
+            }
+        }
+        dao.observePendingUpi().first().filter { com.keepsakeai.app.finance.InvestmentMatcher.isInvestment("${it.rawMessage} ${it.merchant}") }.forEach { p ->
+            guard.saveTransfer(p.copy(type = TxnType.INVESTMENT))
+            dao.deletePendingUpi(p)
+            n++
+        }
+        return n
+    }
+
+    /** Move a payment into Investments (or back into spending). */
+    fun setExpenseInvestment(expense: ExpenseEntity, investment: Boolean) {
+        viewModelScope.launch {
+            dao.setExpenseType(expense.id, if (investment) TxnType.INVESTMENT else TxnType.EXPENSE)
+            refreshWidget()
+            statusMessage.value = if (investment) "Moved ${expense.merchant} to investments" else "${expense.merchant} counts as spending again"
         }
     }
 
