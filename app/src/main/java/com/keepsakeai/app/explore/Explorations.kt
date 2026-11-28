@@ -26,6 +26,17 @@ object Explorations {
 
     fun add(raw: String, item: Item): String = split(raw).let { (base, items) -> join(base, items + item) }
 
+    const val WHERE_TO_BUY = "Where to buy"
+
+    /** Puts a fresh where-to-buy answer on the card, replacing an older one. */
+    fun setWhereToBuy(raw: String, date: String, product: String, answer: String): String {
+        val (base, items) = split(raw)
+        return join(base, items.filterNot { it.question.startsWith(WHERE_TO_BUY) } + Item(date, "$WHERE_TO_BUY: $product", answer))
+    }
+
+    fun whereToBuyProduct(raw: String): String? =
+        split(raw).second.lastOrNull { it.question.startsWith("$WHERE_TO_BUY: ") }?.question?.removePrefix("$WHERE_TO_BUY: ")
+
     fun remove(raw: String, index: Int): String = split(raw).let { (base, items) -> join(base, items.filterIndexed { i, _ -> i != index }) }
 
     /** Tidies an answer for keeping: drops [n] citations (they only make sense in the chat) and map markers. */

@@ -1,5 +1,7 @@
 package com.keepsakeai.app.capture
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import android.net.Uri
 import com.keepsakeai.app.MindSpaceApp
 import com.keepsakeai.app.ai.AnalyzedCapture
@@ -123,7 +125,24 @@ class CapturePipeline(private val app: MindSpaceApp) {
         analyzed.reminder?.let { r ->
             ReminderStore(app).add(KeepReminder(id = now + memoryId, title = r.title, atMillis = r.atMillis, kind = r.kind, memoryId = memoryId, hasTime = r.hasTime))
         }
+        // Something you could buy: look up price and where to buy it, in the background, and add it to the card.
+        analyzed.product?.let { p -> app.appScope.launch { findWhereToBuy(memoryId, p.name, tag?.place) } }
         return Saved(memoryId, analyzed, newTodos.size, expenseAdded)
+    }
+
+    /** Looks up where to buy [product] and puts the answer on memory [memoryId] (replacing an older one). */
+    suspend fun findWhereToBuy(memoryId: Long, product: String, near: String?): Boolean {
+        val answer = app.mindPilotClient.whereToBuy(product, near) ?: return false
+        val m = dao.observeMemory(memoryId).first() ?: return false
+        val date = java.text.SimpleDateFormat("d MMM yyyy", java.util.Locale.ENGLISH).format(java.util.Date())
+        val raw = com.keepsakeai.app.explore.Explorations.setWhereToBuy(
+            m.rawContent, date, product, com.keepsakeai.app.explore.Explorations.clean(com.keepsakeai.app.ai.PlaceMarkers.parse(answer).text)
+        )
+        val tags = (m.tagsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() } + "product").distinct().joinToString(",")
+        val updated = m.copy(rawContent = raw, tagsCsv = tags)
+        val vec = app.vectorSearch.embedText(com.keepsakeai.app.explore.Explorations.embedText(updated.title, updated.aiSummary, updated.rawContent, updated.tagsCsv))
+        dao.updateMemory(updated.copy(embeddingCsv = app.vectorSearch.encodeVector(vec)))
+        return true
     }
 
     /** For a note, voice memo or link saved just now: where you were (if you allow it), with the area's name. */

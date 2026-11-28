@@ -194,6 +194,22 @@ class MindSpaceViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /** Card ids with a price lookup running. */
+    val checkingPrices = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** Looks up where to buy the product on this card again (one AI call with web search). */
+    fun checkPrices(m: MemoryEntity) {
+        if (m.id in checkingPrices.value) return
+        checkingPrices.value = checkingPrices.value + m.id
+        viewModelScope.launch {
+            val product = com.keepsakeai.app.explore.Explorations.whereToBuyProduct(m.rawContent) ?: m.title
+            val near = com.keepsakeai.app.places.PlaceTag.shortPlace(m.rawContent)
+            val ok = runCatching { pipeline.findWhereToBuy(m.id, product, near) }.getOrDefault(false)
+            checkingPrices.value = checkingPrices.value - m.id
+            statusMessage.value = if (ok) "Prices updated" else "Couldn't look up prices right now"
+        }
+    }
+
     /** Removes one saved exploration from a card. */
     fun removeExploration(m: MemoryEntity, index: Int) {
         viewModelScope.launch { saveWithEmbedding(m.copy(rawContent = com.keepsakeai.app.explore.Explorations.remove(m.rawContent, index))) }

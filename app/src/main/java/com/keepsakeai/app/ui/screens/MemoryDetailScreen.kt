@@ -348,6 +348,18 @@ fun MemoryDetailScreen(viewModel: MindSpaceViewModel, id: Long, onClose: () -> U
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            val isProduct = "product" in m.tagsCsv.split(",").map { it.trim() } ||
+                (m.photoUrisCsv.isNotBlank() && m.collectionName != "Receipts")
+            if (isProduct) item {
+                val checking by viewModel.checkingPrices.collectAsState()
+                val busy = m.id in checking
+                val hasPrices = com.keepsakeai.app.explore.Explorations.whereToBuyProduct(m.rawContent) != null
+                GlassButton(
+                    when { busy -> "looking up prices…"; hasPrices -> "check prices again"; else -> "find where to buy" },
+                    onClick = { if (!busy) viewModel.checkPrices(m) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         // Related by meaning

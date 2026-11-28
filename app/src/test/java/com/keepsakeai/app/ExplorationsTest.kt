@@ -38,4 +38,16 @@ class ExplorationsTest {
 
     @Test fun cleanDropsCitations() =
         assertEquals("Spark and Airflow are covered.", Explorations.clean("Spark [1] and Airflow [2] are covered."))
+
+    @Test fun whereToBuyReplacesTheOlderAnswerAndKeepsOthers() {
+        val q = Explorations.Item("28 Nov 2026", "Is it good for travel?", "Yes.")
+        var raw = Explorations.add(card, q)
+        raw = Explorations.setWhereToBuy(raw, "28 Nov 2026", "Sony WH-1000XM5", "Price: ₹26,990")
+        raw = Explorations.setWhereToBuy(raw, "30 Nov 2026", "Sony WH-1000XM5", "Price: ₹24,990")
+        val items = Explorations.split(raw).second
+        assertEquals(2, items.size)
+        assertEquals(q, items[0])
+        assertEquals("Price: ₹24,990", items[1].answer)
+        assertEquals("Sony WH-1000XM5", Explorations.whereToBuyProduct(raw))
+    }
 }
