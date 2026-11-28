@@ -1,5 +1,9 @@
 package com.keepsakeai.app.ui.components
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
 import androidx.compose.animation.AnimatedVisibility
@@ -68,6 +72,8 @@ private val dockItems = listOf(
 @Composable
 fun FloatingDock(
     selectedTab: Int,
+    /** Pager position 0..4 (trove, lens, spend, settings, Pilot), read every frame so the pill follows a swipe. */
+    position: () -> Float = { dockItems.indexOfFirst { it.tab == selectedTab }.takeIf { it >= 0 }?.toFloat() ?: 4f },
     pendingUpi: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -90,24 +96,39 @@ fun FloatingDock(
                 .padding(horizontal = Gap.s, vertical = Gap.s),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+          // One highlight pill that slides between items, following the finger during a swipe.
+          androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val slot = maxWidth / dockItems.size
+            val pillColor = Flow.Indigo.copy(alpha = if (c.dark) 0.28f else 0.14f)
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        val p = position()
+                        translationX = slot.toPx() * p.coerceIn(0f, (dockItems.size - 1).toFloat())
+                        alpha = 1f - (p - (dockItems.size - 1)).coerceIn(0f, 1f)
+                    }
+            ) {
+                Box(Modifier.width(slot).fillMaxHeight().clip(shape).background(pillColor))
+            }
+            Row(Modifier.fillMaxWidth()) {
             dockItems.forEach { item ->
                 val selected = selectedTab == item.tab
-                val bg by animateColorAsState(
-                    if (selected) Flow.Indigo.copy(alpha = if (c.dark) 0.28f else 0.14f) else Color.Transparent,
-                    label = "dockBg"
-                )
                 val fg by animateColorAsState(if (selected) Flow.Indigo else c.muted, label = "dockFg")
+                val pop by animateFloatAsState(
+                    if (selected) 1.12f else 1f,
+                    spring(dampingRatio = 0.45f, stiffness = 500f), label = "dockPop"
+                )
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .clip(shape)
-                        .background(bg)
                         .clickable(remember { MutableInteractionSource() }, null) { onSelect(item.tab) }
                         .padding(vertical = Gap.s),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(item.icon, item.label, tint = fg, modifier = Modifier.size(21.dp))
+                        Icon(item.icon, item.label, tint = fg, modifier = Modifier.size(21.dp).graphicsLayer { scaleX = pop; scaleY = pop })
                         Spacer(Modifier.height(Gap.xxs))
                         Text(item.label, fontSize = Ts.caption, fontWeight = FontWeight.Bold, color = fg, maxLines = 1)
                     }
@@ -123,14 +144,22 @@ fun FloatingDock(
                     }
                 }
             }
+            }
+          }
         }
         Spacer(Modifier.width(Gap.m))
-        AuroraOrb(
-            icon = Icons.Rounded.AutoAwesome,
-            contentDescription = "Ask trove Pilot",
-            onClick = { onSelect(MainActivity.TAB_PILOT) },
-            size = 60.dp
-        )
+        Box(Modifier.graphicsLayer {
+            val near = (position() - (dockItems.size - 1)).coerceIn(0f, 1f)
+            val s = 1f + 0.12f * near
+            scaleX = s; scaleY = s
+        }) {
+            AuroraOrb(
+                icon = Icons.Rounded.AutoAwesome,
+                contentDescription = "Ask trove Pilot",
+                onClick = { onSelect(MainActivity.TAB_PILOT) },
+                size = 60.dp
+            )
+        }
     }
 }
 

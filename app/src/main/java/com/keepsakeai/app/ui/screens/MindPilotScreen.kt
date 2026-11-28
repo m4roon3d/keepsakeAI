@@ -1,5 +1,7 @@
 package com.keepsakeai.app.ui.screens
 
+import com.keepsakeai.app.ui.components.appear
+import androidx.compose.foundation.lazy.itemsIndexed
 import com.keepsakeai.app.ui.theme.Ts
 import com.keepsakeai.app.ui.theme.Gap
 import android.Manifest
@@ -270,9 +272,9 @@ fun MindPilotScreen(
             }
         }
 
-        items(responses) { resp ->
+        itemsIndexed(responses) { idx, resp ->
             val pc = providerColor(resp.provider)
-            GlassCard(Modifier.fillMaxWidth()) {
+            GlassCard(Modifier.fillMaxWidth().appear(idx)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(Brush.linearGradient(listOf(pc, Flow.Sky))))
                     Spacer(Modifier.width(Gap.s))
